@@ -9,23 +9,22 @@
 #include <debug.h>
 #include <errno.h>
 #include <unistd.h>
+#include <math.h>
 
 #include "server.h"
 
-#define DEFAULT_FIFO_SIZE	(256*1024)
+#define DEFAULT_FIFO_SIZE	(512*1024)
 
 static void *xfb = NULL;
 static u32 do_copy = GX_FALSE;
 static GXRModeObj *rmode = NULL;
 
-s16 square[] ATTRIBUTE_ALIGN(32) =
-{
-  // x y z
-  -30, -30,  0, 	// 0
-  -30,  30,  0, 	// 1
-   30, -30,  0, 	// 2
-   30,  30,  0, 	// 3
-};
+#define MAJOR_STEPS 128
+#define MINOR_STEPS 64
+
+f32 *torus; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
+
+f32 *tornorms; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
 
 // color data
 u8 colors[] ATTRIBUTE_ALIGN(32) = {
@@ -39,12 +38,63 @@ u8 colors[] ATTRIBUTE_ALIGN(32) = {
 };
 
 static void
+fill_torus_coords (float outer, float inner)
+{
+  int major;
+  float major_ang = 0.0, major_incr = 2.0 * M_PI / MAJOR_STEPS;
+  
+  torus = memalign (32, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
+  tornorms = memalign (32, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
+  
+  if (!torus)
+    exit (0);
+  
+  if (!tornorms)
+    exit (0);
+  
+  /*torus = MEM_K0_TO_K1 (torus);
+  tornorms = MEM_K0_TO_K1 (tornorms);*/
+  
+  for (major = 0; major < MAJOR_STEPS; major++, major_ang += major_incr)
+    {
+      int minor;
+      float fsin_major = sin (major_ang);
+      float fcos_major = cos (major_ang);
+      float maj_x = fcos_major * outer;
+      float maj_y = fsin_major * outer;
+      float minor_ang = 0.0, minor_incr = 2.0 * M_PI / MINOR_STEPS;
+      
+      for (minor = 0; minor < MINOR_STEPS; minor++, minor_ang += minor_incr)
+        {
+	  float fsin_minor = sin (minor_ang);
+	  float fcos_minor = cos (minor_ang);
+	  int idx = (major * MINOR_STEPS + minor) * 3;
+	  float orig_min_x;
+	  
+	  tornorms[idx] = fcos_major * fsin_minor;
+	  tornorms[idx + 1] = fsin_major * fsin_minor;
+	  tornorms[idx + 2] = fcos_minor;
+	  	  
+	  orig_min_x = fsin_minor * inner;
+	  torus[idx] = fcos_major * orig_min_x + maj_x;
+	  torus[idx + 1] = fsin_major * orig_min_x + maj_y;
+	  torus[idx + 2] = fcos_minor * inner;
+	}
+    }
+  
+  DCFlushRange (torus, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
+  DCFlushRange (tornorms, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
+}
+
+static void
 copy_to_xfb (u32 count)
 {
   if (do_copy == GX_TRUE)
     {
       GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
       GX_SetColorUpdate (GX_TRUE);
+      GX_SetAlphaUpdate (GX_TRUE);
       GX_CopyDisp (xfb, GX_TRUE);
       GX_Flush ();
       do_copy = GX_FALSE;
@@ -112,20 +162,40 @@ initialise ()
 static void
 draw_init (void)
 {
+  GXLightObj lo;
+
   GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_INDEX8);
-  GX_SetVtxDesc (GX_VA_CLR0, GX_INDEX8);
+  GX_SetVtxDesc (GX_VA_POS, GX_INDEX16);
+  GX_SetVtxDesc (GX_VA_NRM, GX_INDEX16);
+  //GX_SetVtxDesc (GX_VA_CLR0, GX_INDEX8);
   
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_S16, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+  //GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
   
-  GX_SetArray (GX_VA_POS, square, 3 * sizeof (s16));
-  GX_SetArray (GX_VA_CLR0, colors, 4 * sizeof (u8));
-  
+  GX_SetArray (GX_VA_POS, torus, 3 * sizeof (f32));
+  GX_SetArray (GX_VA_NRM, tornorms, 3 * sizeof (f32));
+  //GX_SetArray (GX_VA_CLR0, colors, 4 * sizeof (u8));
+    
   GX_SetNumTexGens (0);
   GX_SetNumChans (1);
   GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
   GX_SetTevOp (GX_TEVSTAGE0, GX_PASSCLR);
+  GX_SetNumTevStages (1);
+
+  GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
+  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 96, 224, 96, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_SPOT);
+
+  GX_InitLightPos (&lo, 20, 20, 30);
+  GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
+  // Initialise "a" parameters.
+  GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
+  // Initialise "k" paramters.
+  GX_InitLightDistAttn (&lo, 1.0, 1.0, GX_DA_OFF);
+  GX_InitLightDir (&lo, 0.0, 0.0, 0.0);
+  GX_LoadLightObj (&lo, GX_LIGHT0);
 
   GX_InvalidateTexAll ();
 }
@@ -133,26 +203,53 @@ draw_init (void)
 static void
 update_screen (Mtx viewMatrix)
 {
-  Mtx modelView;
+  Mtx modelView, mvi, mvitmp;
+  guVector axis = {0, 1, 0};
+  static float deg = 0;
+  int major, minor;
 
   guMtxIdentity (modelView);
+  guMtxRotAxisDeg (modelView, &axis, deg);
+  
+  deg++;
+  
   guMtxTransApply (modelView, modelView, 0.0F, 0.0F, -50.0F);
-  guMtxConcat(viewMatrix,modelView,modelView);
+  guMtxConcat (viewMatrix, modelView, modelView);
 
-  GX_LoadPosMtxImm(modelView, GX_PNMTX0);
+  GX_LoadPosMtxImm (modelView, GX_PNMTX0);
 
-  GX_Begin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+  guMtxInverse (modelView, mvitmp);
+  guMtxTranspose (mvitmp, mvi);
+  GX_LoadNrmMtxImm (modelView, GX_PNMTX0);
 
-  GX_Position1x8(0);
-  GX_Color1x8(0);
-  GX_Position1x8(1);
-  GX_Color1x8(1);
-  GX_Position1x8(2);
-  GX_Color1x8(2);
-  GX_Position1x8(3);
-  GX_Color1x8(3);
+  for (major = 0; major < MAJOR_STEPS; major++)
+    {
+      int mjidx = major * MINOR_STEPS;
+      int mjidx1 = (major == MAJOR_STEPS - 1) ? 0
+		  : (major + 1) * MINOR_STEPS;
+      
+      GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, MINOR_STEPS * 2 + 2);
 
-  GX_End();
+      GX_Position1x16 (mjidx1);
+      GX_Normal1x16 (mjidx1);
+      //GX_Color1x8 (0);
+      GX_Position1x16 (mjidx);
+      GX_Normal1x16 (mjidx);
+      //GX_Color1x8 (0);
+
+      for (minor = 1; minor <= MINOR_STEPS; minor++)
+        {
+	  int mnidx = (minor == MINOR_STEPS) ? 0 : minor;
+
+	  GX_Position1x16 (mjidx1 + mnidx);
+	  GX_Normal1x16 (mjidx1 + mnidx);
+	  //GX_Color1x8 (0);
+	  GX_Position1x16 (mjidx + mnidx);
+	  GX_Normal1x16 (mjidx + mnidx);
+	  //GX_Color1x8 (0);
+	}
+      GX_End();
+    }
 }
 
 static void
@@ -179,6 +276,8 @@ main (int argc, char **argv)
 
   /* Hopefully this will trigger if we exit unexpectedly...  */
   atexit (return_to_loader);
+
+  fill_torus_coords (10.0, 8.0);
 
   printf("Configuring network ...\n");
 
