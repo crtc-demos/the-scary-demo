@@ -173,7 +173,7 @@ plain_lighting (void)
   GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
   GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_SPOT);
+		  GX_DF_CLAMP, GX_AF_NONE);
 
   GX_InitLightPos (&lo, 20, 20, 30);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
@@ -243,6 +243,52 @@ specular_lighting (void)
   GX_InitLightShininess (&lo, 64);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_LoadLightObj (&lo, GX_LIGHT1);
+
+  GX_InvalidateTexAll ();
+}
+
+static void
+specular_lighting_1light (void)
+{
+  GXLightObj lo;
+  guVector lpos = { 20, 20, 30 };
+
+  GX_SetNumTexGens (0);
+  GX_SetNumChans (2);
+  GX_SetNumTevStages (2);
+
+  GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+  GX_SetTevOp (GX_TEVSTAGE0, GX_PASSCLR);
+
+  GX_SetTevOrder (GX_TEVSTAGE1, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR1A1);
+
+  GX_SetTevColorOp (GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_ENABLE, GX_TEVPREV);
+  GX_SetTevColorIn (GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_RASC, GX_CC_ONE,
+		    GX_CC_CPREV);
+
+  GX_SetTevAlphaOp (GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_ENABLE, GX_TEVPREV);
+  GX_SetTevAlphaIn (GX_TEVSTAGE1, GX_CA_APREV, GX_CA_ZERO, GX_CA_APREV,
+		    GX_CA_ZERO);
+
+  GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
+  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
+
+  GX_SetChanAmbColor (GX_COLOR1A1, (GXColor) { 0, 0, 0, 0 });
+  GX_SetChanMatColor (GX_COLOR1A1, (GXColor) { 255, 255, 255, 0 });
+  GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_SPEC);
+
+  guVecNormalize (&lpos);
+
+  /* Light 0: use for both specular and diffuse lighting.  */
+  GX_InitSpecularDir (&lo, -lpos.x, -lpos.y, -lpos.z);
+  GX_InitLightShininess (&lo, 64);
+  GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
+  GX_LoadLightObj (&lo, GX_LIGHT0);
 
   GX_InvalidateTexAll ();
 }
@@ -395,7 +441,7 @@ main (int argc, char **argv)
 
       if (buttonsDown & PAD_BUTTON_A)
 	switching_model = 1;
-      else if (switching_model)
+      else if (!(buttonsDown & PAD_BUTTON_A) && switching_model)
         {
 	  switch (light_model)
 	    {
@@ -406,9 +452,17 @@ main (int argc, char **argv)
 	    case 1:
 	      specular_lighting ();
 	      break;
+
+	    case 2:
+	      specular_lighting_1light ();
+	      break;
 	    }
 
-	  light_model = !light_model;
+	  light_model++;
+	  
+	  if (light_model > 2)
+	    light_model = 0;
+	  
 	  switching_model = 0;
 	}
     }
