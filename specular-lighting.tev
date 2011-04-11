@@ -1,0 +1,6 @@
+stage 0:
+  tevprev = colour0a0;
+
+stage 1:
+  tevprev.rgb = clamp (cprev + colour1);
+  tevprev.a = aprev;

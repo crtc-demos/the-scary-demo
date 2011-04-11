@@ -1,5 +1,6 @@
 include $(DEVKITPPC)/gamecube_rules
 
+TEVSL :=	/home/jules/stuff/gamecube/tevsl/tevsl
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall $(MACHDEP) $(INCLUDE)
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
@@ -13,7 +14,9 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=	server.o demo.o
+OBJS :=		server.o demo.o
+SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
+		shadow-mapped-lighting.inc shadow-depth.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -29,7 +32,7 @@ clean:
 	rm -f *.o libcompass/*.o libcompass/*.a $(TARGET)
 
 cleaner: clean
-	rm -f libcompass/*.d *.d
+	rm -f libcompass/*.d *.d *.inc
 
 filemgr.elf: $(FILEMGR_OBJS)
 	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(FILEMGR_LIBS) -o $@
@@ -37,8 +40,11 @@ filemgr.elf: $(FILEMGR_OBJS)
 %.o:	%.c
 	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-%.d:	%.c
+%.d:	%.c $(SHADERS_INC)
 	$(CC) $(CFLAGS) $(INCLUDE) -MM $< | ./dirify.sh "$@" > $@
+
+%.inc:	%.tev
+	$(TEVSL) $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

@@ -22,6 +22,9 @@ static GXRModeObj *rmode = NULL;
 #define MAJOR_STEPS 128
 #define MINOR_STEPS 64
 
+#define SHADOW_WIDTH 256
+#define SHADOW_HEIGHT 256
+
 f32 *torus; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
 
 f32 *tornorms; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
@@ -36,6 +39,16 @@ u8 colors[] ATTRIBUTE_ALIGN(32) = {
    10, 120,  40, 255,	// 4 green
     0,  20, 100, 255	// 5 blue
 };
+
+guVector light_pos = { 20, 20, 30 };
+float lightdeg = 0.0;
+
+#define ORTHO_SHADOW
+
+float ortho_right = 20.0;
+float ortho_top = 20.0;
+float shadow_near = 20.0;
+float shadow_far = 200.0;
 
 static void
 fill_torus_coords (float outer, float inner)
@@ -91,10 +104,10 @@ copy_to_xfb (u32 count)
 {
   if (do_copy == GX_TRUE)
     {
-      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      /*GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
       GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
       GX_SetColorUpdate (GX_TRUE);
-      GX_SetAlphaUpdate (GX_TRUE);
+      GX_SetAlphaUpdate (GX_TRUE);*/
       GX_CopyDisp (xfb, GX_TRUE);
       GX_Flush ();
       do_copy = GX_FALSE;
@@ -152,7 +165,6 @@ initialise ()
   else
     GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
-  GX_SetCullMode (GX_CULL_NONE);
   GX_CopyDisp (framebuffer, GX_TRUE);
   GX_SetDispCopyGamma (GX_GM_1_0);
 
@@ -164,18 +176,22 @@ plain_lighting (void)
 {
   GXLightObj lo;
 
+#if 1
+#include "plain-lighting.inc"
+#else
   GX_SetNumTexGens (0);
   GX_SetNumChans (1);
   GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
   GX_SetTevOp (GX_TEVSTAGE0, GX_PASSCLR);
   GX_SetNumTevStages (1);
+#endif
 
   GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
   GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_NONE);
 
-  GX_InitLightPos (&lo, 20, 20, 30);
+  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   // Initialise "a" parameters.
   GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
@@ -187,13 +203,15 @@ plain_lighting (void)
   GX_InvalidateTexAll ();
 }
 
-/* Specular lighting needs two (channels?), apparently.  */
+/* Specular lighting needs two (channels?), apparently.
+   This version works around a presumed libogc bug in GX_SetChanCtrl (fixed
+   locally).  */
 
 static void
 specular_lighting (void)
 {
   GXLightObj lo;
-  guVector lpos = { 20, 20, 30 };
+  guVector lpos;
 
   GX_SetNumTexGens (0);
   GX_SetNumChans (2);
@@ -226,7 +244,7 @@ specular_lighting (void)
 
 
   /* Light 0: use for diffuse.  */
-  GX_InitLightPos (&lo, lpos.x, lpos.y, lpos.z);
+  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   // Initialise "a" parameters.
   GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
@@ -235,11 +253,12 @@ specular_lighting (void)
   GX_InitLightDir (&lo, 0.0, 0.0, 0.0);
   GX_LoadLightObj (&lo, GX_LIGHT0);
 
+  memcpy (&lpos, &light_pos, sizeof (lpos));
   guVecNormalize (&lpos);
 
   /* Light 1: use for specular.  Should be able to use the same light for
      both!  I think.  */
-  GX_InitSpecularDir (&lo, -lpos.x, -lpos.y, -lpos.z);
+  GX_InitSpecularDir (&lo, -light_pos.x, -light_pos.y, -light_pos.z);
   GX_InitLightShininess (&lo, 64);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_LoadLightObj (&lo, GX_LIGHT1);
@@ -251,8 +270,11 @@ static void
 specular_lighting_1light (void)
 {
   GXLightObj lo;
-  guVector lpos = { 20, 20, 30 };
+  guVector lpos;
 
+#if 1
+#include "specular-lighting.inc"
+#else
   GX_SetNumTexGens (0);
   GX_SetNumChans (2);
   GX_SetNumTevStages (2);
@@ -271,6 +293,7 @@ specular_lighting_1light (void)
 		    GX_ENABLE, GX_TEVPREV);
   GX_SetTevAlphaIn (GX_TEVSTAGE1, GX_CA_APREV, GX_CA_ZERO, GX_CA_APREV,
 		    GX_CA_ZERO);
+#endif
 
   GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
   GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
@@ -282,6 +305,7 @@ specular_lighting_1light (void)
   GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_SPEC);
 
+  memcpy (&lpos, &light_pos, sizeof (lpos));
   guVecNormalize (&lpos);
 
   /* Light 0: use for both specular and diffuse lighting.  */
@@ -289,6 +313,89 @@ specular_lighting_1light (void)
   GX_InitLightShininess (&lo, 64);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_LoadLightObj (&lo, GX_LIGHT0);
+
+  GX_InvalidateTexAll ();
+}
+
+static void
+shadow_mapped_lighting (void)
+{
+  GXLightObj lo;
+
+#if 1
+#include "shadow-mapped-lighting.inc"
+#else
+  GX_SetNumTexGens (2);
+  GX_SetNumChans (1);
+  GX_SetNumTevStages (3);
+
+  /* TEV stage 0: load depth value from ramp texture.  */
+  GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+  GX_SetTevColorIn (GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_ZERO, GX_CC_ZERO,
+		    GX_CC_TEXC);
+  GX_SetTevColorOp (GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_TRUE, GX_TEVPREV);
+  
+  /* TEV stage 1: REGPREV >= shadow map texture ? 0 : 255.  */
+  GX_SetTevOrder (GX_TEVSTAGE1, GX_TEXCOORD1, GX_TEXMAP1, GX_COLORNULL);
+  GX_SetTevColorIn (GX_TEVSTAGE1, GX_CC_CPREV, GX_CC_TEXC, GX_CC_ONE,
+		    GX_CC_ZERO);
+  GX_SetTevColorOp (GX_TEVSTAGE1, GX_TEV_COMP_R8_GT, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_FALSE, GX_TEVPREV);
+  
+  /* TEV stage 2: REGPREV == 0 ? shadow colour : rasterized colour.  */
+  GX_SetTevOrder (GX_TEVSTAGE2, GX_TEXCOORDNULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+  GX_SetTevColorIn (GX_TEVSTAGE2, GX_CC_RASC, GX_CC_C0, GX_CC_CPREV,
+		    GX_CC_ZERO);
+  GX_SetTevColorOp (GX_TEVSTAGE2, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_TRUE, GX_TEVPREV);
+#endif
+
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
+  
+  /* TEV reg 0 has shadow colour!  */
+  //GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 0, 0, 0 });
+  GX_SetTevColor (GX_TEVREG0, (GXColor) { 16, 32, 16, 0 });
+  
+  /* Let's try with diffuse lighting.  */
+  GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0});
+  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
+  
+  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
+  GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
+  GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
+  GX_InitLightDistAttn (&lo, 1.0, 1.0, GX_DA_OFF);
+  GX_InitLightDir (&lo, 0.0, 0.0, 0.0);
+  GX_LoadLightObj (&lo, GX_LIGHT0);
+  
+  GX_InvalidateTexAll ();
+}
+
+static void
+shadow_depth (void)
+{
+  
+  GX_SetTevColor (GX_TEVREG1, (GXColor) { 255, 0, 0, 0 });
+
+#if 1
+#include "shadow-depth.inc"
+#else
+  GX_SetNumTevStages (1);
+
+  // TEV stage 0
+  GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLORNULL);
+  GX_SetTevColorIn (GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_C1, GX_CC_ZERO);
+  GX_SetTevColorOp (GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1,
+		    GX_TRUE, GX_TEVPREV);
+
+  GX_SetNumChans (0);
+  GX_SetNumTexGens (1);
+#endif
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
 
   GX_InvalidateTexAll ();
 }
@@ -309,31 +416,39 @@ draw_init (void)
   GX_SetArray (GX_VA_NRM, tornorms, 3 * sizeof (f32));
   //GX_SetArray (GX_VA_CLR0, colors, 4 * sizeof (u8));
   
-  specular_lighting ();
+  plain_lighting ();
 }
 
+static float deg = 0;
+static Mtx texproj, depth;
+
 static void
-update_screen (Mtx viewMatrix)
+update_screen (Mtx viewMatrix, int do_texture_mats)
 {
   Mtx modelView, mvi, mvitmp;
   guVector axis = {0, 1, 0};
-  static float deg = 0;
   int major, minor;
 
   guMtxIdentity (modelView);
   guMtxRotAxisDeg (modelView, &axis, deg);
-  
-  deg++;
-  
-  guMtxTransApply (modelView, modelView, 0.0F, 0.0F, -50.0F);
+
+  if (do_texture_mats)
+    {
+      guMtxConcat (depth, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX0, GX_MTX3x4);
+      guMtxConcat (texproj, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX1, GX_MTX3x4);
+    }
+    
+  //guMtxTransApply (modelView, modelView, 0.0F, 0.0F, 0.0F);
   guMtxConcat (viewMatrix, modelView, modelView);
 
   GX_LoadPosMtxImm (modelView, GX_PNMTX0);
 
   guMtxInverse (modelView, mvitmp);
   guMtxTranspose (mvitmp, mvi);
-  GX_LoadNrmMtxImm (modelView, GX_PNMTX0);
-
+  GX_LoadNrmMtxImm (mvi, GX_PNMTX0);
+  
   for (major = 0; major < MAJOR_STEPS; major++)
     {
       int mjidx = major * MINOR_STEPS;
@@ -342,26 +457,33 @@ update_screen (Mtx viewMatrix)
       
       GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, MINOR_STEPS * 2 + 2);
 
-      GX_Position1x16 (mjidx1);
-      GX_Normal1x16 (mjidx1);
-      //GX_Color1x8 (0);
       GX_Position1x16 (mjidx);
       GX_Normal1x16 (mjidx);
+      //GX_Color1x8 (0);
+      GX_Position1x16 (mjidx1);
+      GX_Normal1x16 (mjidx1);
       //GX_Color1x8 (0);
 
       for (minor = 1; minor <= MINOR_STEPS; minor++)
         {
 	  int mnidx = (minor == MINOR_STEPS) ? 0 : minor;
 
-	  GX_Position1x16 (mjidx1 + mnidx);
-	  GX_Normal1x16 (mjidx1 + mnidx);
-	  //GX_Color1x8 (0);
 	  GX_Position1x16 (mjidx + mnidx);
 	  GX_Normal1x16 (mjidx + mnidx);
+	  //GX_Color1x8 (0);
+	  GX_Position1x16 (mjidx1 + mnidx);
+	  GX_Normal1x16 (mjidx1 + mnidx);
 	  //GX_Color1x8 (0);
 	}
       GX_End();
     }
+}
+
+static void
+update_anim (void)
+{
+  deg++;
+  lightdeg += 0.5;
 }
 
 static void
@@ -375,15 +497,22 @@ return_to_loader (void)
 int
 main (int argc, char **argv)
 {
-  Mtx viewmat, perspmat;
-  guVector pos = {0, 0, 0};
+  Mtx viewmat, perspmat, lightortho, lightmat;
+  guVector pos = {0, 0, 50};
   guVector up = {0, 1, 0};
-  guVector lookat = {0, 0, -1};
+  guVector lookat = {0, 0, 0};
+  guVector lightup = {0, 1, 0};
+  guVector lightlookat = {0, 0, 0};
   s32 ret;
   char localip[16] = {0};
   char gateway[16] = {0};
   char netmask[16] = {0};
-  int light_model = 0, switching_model = 0;
+  int light_model = 0;
+  void *shadowtex;
+  GXTexObj shadowtexobj;
+  unsigned char *ramptex;
+  GXTexObj ramptexobj;
+  int i;
 
   xfb = initialise ();
 
@@ -414,19 +543,183 @@ main (int argc, char **argv)
   srv_printf ("framebuffer = %p\n", xfb);
 
   guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
-  GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+  guLookAt (viewmat, &pos, &up, &lookat);
+
+#ifdef ORTHO_SHADOW
+  guOrtho (lightortho, ortho_top, -ortho_top, -ortho_right, ortho_right,
+	   shadow_near, shadow_far);
+#else
+  guFrustum (lightortho, ortho_top, -ortho_top, -ortho_right, ortho_right,
+	     shadow_near, shadow_far);
+#endif
+
+  shadowtex = memalign (32, SHADOW_WIDTH * SHADOW_HEIGHT);
+
+  GX_InitTexObj (&shadowtexobj, shadowtex, SHADOW_WIDTH, SHADOW_HEIGHT,
+		 GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  GX_InitTexObjLOD (&shadowtexobj, GX_NEAR, GX_NEAR, 0, 0, 0, 0, 0, GX_ANISO_1);
+
+  ramptex = memalign (32, 16 * 16);
+  
+  for (i = 0; i < 256; i++)
+    {
+      /* Straight from the patent, hmm.  */
+      unsigned int offset = ((i & 0x80) >> 2)
+			    + ((i & 0x70) >> 4)
+			    + ((i & 0x0c) << 4)
+			    + ((i & 0x03) << 3);
+      ramptex[offset] = i;
+    }
+
+  DCFlushRange (ramptex, 256);
+
+  GX_InitTexObj (&ramptexobj, ramptex, 16, 16, GX_TF_I8, GX_CLAMP, GX_REPEAT,
+		 GX_FALSE);
+  GX_InitTexObjLOD (&ramptexobj, GX_NEAR, GX_NEAR, 0, 0, 0, 0, 0, GX_ANISO_1);
 
   draw_init ();
 
   while (1)
     {
-      guLookAt (viewmat, &pos, &up, &lookat);
-      
-      GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
+
+      light_pos.x = 0.0;
+      light_pos.y = cos (lightdeg / 180.0 * M_PI) * 50.0;
+      light_pos.z = sin (lightdeg / 180.0 * M_PI) * 50.0;
+
+      {
+	float near, far, range, tscale;
+	Mtx dp, proj;
+
+	/* Settings!  */
+	near = shadow_near;
+	far = shadow_far;
+
+	range = far - near;
+	tscale = 16.0f;
+
+#ifdef ORTHO_SHADOW
+	guLightOrtho (proj, -ortho_top, ortho_top, -ortho_right, ortho_right,
+		      0.5f, 0.5f, 0.5f, 0.5f);
+
+	guMtxIdentity (dp);
+	guMtxScale (dp, 0.0f, 0.0f, 0.0f);
+
+	/* We need:
+            s = - (z + N) / ( F - N )
+	    t = s * tscale
+	*/
+	guMtxRowCol (dp, 0, 2) = -1.0f / range;
+	guMtxRowCol (dp, 0, 3) = -near / range;
+	guMtxRowCol (dp, 1, 2) = guMtxRowCol (dp, 0, 2) * tscale;
+	guMtxRowCol (dp, 1, 3) = guMtxRowCol (dp, 0, 3) * tscale;
+	guMtxRowCol (dp, 2, 3) = 1.0f;
+#else
+	guLightFrustum (proj, -ortho_top, ortho_top, -ortho_right, ortho_right,
+			near, 0.5f, 0.5f, 0.5f, 0.5f);
+
+	guMtxIdentity (dp);
+	guMtxScale (dp, 0.0f, 0.0f, 0.0f);
+	
+	guMtxRowCol (dp, 0, 2) = far / range;
+	guMtxRowCol (dp, 0, 3) = far * near / range;
+	guMtxRowCol (dp, 1, 2) = guMtxRowCol (dp, 0, 2) * tscale;
+	guMtxRowCol (dp, 1, 3) = guMtxRowCol (dp, 0, 3) * tscale;
+	guMtxRowCol (dp, 2, 2) = 1.0f;
+#endif
+
+	guLookAt (lightmat, &light_pos, &lightup, &lightlookat);
+
+	guMtxConcat (proj, lightmat, texproj);
+	guMtxConcat (dp, lightmat, depth);
+      }
+
+      if (light_model == 3 || light_model == 4)
+        {
+	  GX_SetCullMode (GX_CULL_FRONT);
+	  //GX_SetCullMode (GX_CULL_BACK);
+
+#ifdef ORTHO_SHADOW
+	  GX_LoadProjectionMtx (lightortho, GX_ORTHOGRAPHIC);
+#else
+	  GX_LoadProjectionMtx (lightortho, GX_PERSPECTIVE);
+#endif
+
+	  // GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+	  /* We're only using 8 bits of Z precision, so set Z near/far
+	     accordingly.  */
+	  GX_SetViewport (0, 0, SHADOW_WIDTH, SHADOW_HEIGHT, 0, 1);
+	  GX_SetScissor (0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+
+	  /* Disable lighting &c.  */
+	  GX_SetNumTexGens (0);
+	  GX_SetNumChans (1);
+	  GX_SetNumTevStages (1);
+	  
+	  GX_SetChanCtrl (GX_COLOR0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG,
+			  GX_LIGHTNULL, GX_DF_NONE, GX_AF_NONE);
+	  GX_SetTevOrder (GX_TEVSTAGE0, GX_TEXCOORDNULL, GX_TEXMAP_NULL,
+			  GX_COLOR0A0);
+	  GX_SetTevOp (GX_TEVSTAGE0, GX_PASSCLR);
+	  
+	  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 0, 0, 0, 0xc0 });
+
+	  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+	  GX_SetColorUpdate (GX_FALSE);
+	  GX_SetAlphaUpdate (GX_FALSE);
+
+	  update_screen (lightmat, 0);
+
+	  GX_SetTexCopySrc (0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+	  GX_SetTexCopyDst (SHADOW_WIDTH, SHADOW_HEIGHT, GX_TF_Z8, GX_FALSE);
+	  GX_CopyTex (shadowtex, GX_TRUE);
+
+	  /* We're supposed to call this before we try to use the texture we
+	     just created.  */
+	  GX_PixModeSync ();
+
+	  GX_LoadTexObj (&ramptexobj, GX_TEXMAP0);
+	  GX_LoadTexObj (&shadowtexobj, GX_TEXMAP1);
+	}
+
+      GX_SetCullMode (GX_CULL_BACK);
       
-      update_screen (viewmat);
+      GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
+      GX_SetScissor (0, 0, rmode->fbWidth, rmode->efbHeight);
+      
+      /* Set up texture transformation matrix for shadowing.  */
+      GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+
+      switch (light_model)
+	{
+	case 0:
+	  plain_lighting ();
+	  break;
+
+	case 1:
+	  specular_lighting ();
+	  break;
+
+	case 2:
+	  specular_lighting_1light ();
+	  break;
+
+	case 3:
+	  shadow_mapped_lighting ();
+	  break;
+	
+	case 4:
+	  shadow_depth ();
+	  break;
+	}
+      
+      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+      GX_SetColorUpdate (GX_TRUE);
+      GX_SetAlphaUpdate (GX_TRUE);
+      
+      update_screen (viewmat, 1);
 
       GX_DrawDone ();
       do_copy = GX_TRUE;
@@ -440,31 +733,14 @@ main (int argc, char **argv)
         return_to_loader ();
 
       if (buttonsDown & PAD_BUTTON_A)
-	switching_model = 1;
-      else if (!(buttonsDown & PAD_BUTTON_A) && switching_model)
         {
-	  switch (light_model)
-	    {
-	    case 0:
-	      plain_lighting ();
-	      break;
-	    
-	    case 1:
-	      specular_lighting ();
-	      break;
-
-	    case 2:
-	      specular_lighting_1light ();
-	      break;
-	    }
-
 	  light_model++;
 	  
-	  if (light_model > 2)
+	  if (light_model > 4)
 	    light_model = 0;
-	  
-	  switching_model = 0;
 	}
+
+      update_anim ();
     }
 
   return 0;

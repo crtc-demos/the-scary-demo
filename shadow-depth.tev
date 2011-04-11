@@ -1,0 +1,2 @@
+stage 0:
+  tevprev.rgb = texmap1[texcoord1];
