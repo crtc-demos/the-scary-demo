@@ -41,13 +41,18 @@ u8 colors[] ATTRIBUTE_ALIGN(32) = {
 };
 
 guVector light_pos = { 20, 20, 30 };
+guVector light_pos_x;
 float lightdeg = 0.0;
 
 #define ORTHO_SHADOW
 
 float ortho_right = 20.0;
 float ortho_top = 20.0;
-float shadow_near = 20.0;
+#ifdef ORTHO_SHADOW
+float shadow_near = 1.0;
+#else
+float shadow_near = 5.0;
+#endif
 float shadow_far = 200.0;
 
 static void
@@ -191,7 +196,7 @@ plain_lighting (void)
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_NONE);
 
-  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
+  GX_InitLightPos (&lo, light_pos_x.x, light_pos_x.y, light_pos_x.z);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   // Initialise "a" parameters.
   GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
@@ -244,7 +249,7 @@ specular_lighting (void)
 
 
   /* Light 0: use for diffuse.  */
-  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
+  GX_InitLightPos (&lo, light_pos_x.x, light_pos_x.y, light_pos_x.z);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   // Initialise "a" parameters.
   GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
@@ -258,7 +263,7 @@ specular_lighting (void)
 
   /* Light 1: use for specular.  Should be able to use the same light for
      both!  I think.  */
-  GX_InitSpecularDir (&lo, -light_pos.x, -light_pos.y, -light_pos.z);
+  GX_InitSpecularDir (&lo, -lpos.x, -lpos.y, -lpos.z);
   GX_InitLightShininess (&lo, 64);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_LoadLightObj (&lo, GX_LIGHT1);
@@ -305,7 +310,7 @@ specular_lighting_1light (void)
   GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_SPEC);
 
-  memcpy (&lpos, &light_pos, sizeof (lpos));
+  memcpy (&lpos, &light_pos_x, sizeof (lpos));
   guVecNormalize (&lpos);
 
   /* Light 0: use for both specular and diffuse lighting.  */
@@ -356,7 +361,7 @@ shadow_mapped_lighting (void)
   
   /* TEV reg 0 has shadow colour!  */
   //GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 0, 0, 0 });
-  GX_SetTevColor (GX_TEVREG0, (GXColor) { 16, 32, 16, 0 });
+  GX_SetTevColor (GX_TEVREG0, (GXColor) { 4, 16, 4, 0 });
   
   /* Let's try with diffuse lighting.  */
   GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0});
@@ -364,11 +369,48 @@ shadow_mapped_lighting (void)
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_NONE);
   
-  GX_InitLightPos (&lo, light_pos.x, light_pos.y, light_pos.z);
+  GX_InitLightPos (&lo, light_pos_x.x, light_pos_x.y, light_pos_x.z);
   GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_InitLightSpot (&lo, 0.0, GX_SP_OFF);
   GX_InitLightDistAttn (&lo, 1.0, 1.0, GX_DA_OFF);
   GX_InitLightDir (&lo, 0.0, 0.0, 0.0);
+  GX_LoadLightObj (&lo, GX_LIGHT0);
+  
+  GX_InvalidateTexAll ();
+}
+
+static void
+specular_shadowed_lighting (void)
+{
+  GXLightObj lo;
+  guVector lpos;
+
+#include "specular-shadowed-lighting.inc"
+
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
+  
+  /* TEV reg 0 has shadow colour!  */
+  //GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 0, 0, 0 });
+  GX_SetTevColor (GX_TEVREG0, (GXColor) { 4, 16, 4, 0 });
+  
+  GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0});
+  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
+
+  GX_SetChanAmbColor (GX_COLOR1A1, (GXColor) { 0, 0, 0, 0 });
+  GX_SetChanMatColor (GX_COLOR1A1, (GXColor) { 255, 255, 255, 0 });
+  GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_SPEC);
+
+  memcpy (&lpos, &light_pos_x, sizeof (lpos));
+  guVecNormalize (&lpos);
+
+  /* Light 0: use for both specular and diffuse lighting.  */
+  GX_InitSpecularDir (&lo, -lpos.x, -lpos.y, -lpos.z);
+  GX_InitLightShininess (&lo, 64);
+  GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 0 });
   GX_LoadLightObj (&lo, GX_LIGHT0);
   
   GX_InvalidateTexAll ();
@@ -498,7 +540,8 @@ int
 main (int argc, char **argv)
 {
   Mtx viewmat, perspmat, lightortho, lightmat;
-  guVector pos = {0, 0, 50};
+  //guVector pos = {0, 0, 50};
+  guVector pos = { 50, 0, 0 };
   guVector up = {0, 1, 0};
   guVector lookat = {0, 0, 0};
   guVector lightup = {0, 1, 0};
@@ -584,9 +627,14 @@ main (int argc, char **argv)
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
 
-      light_pos.x = 0.0;
-      light_pos.y = cos (lightdeg / 180.0 * M_PI) * 50.0;
-      light_pos.z = sin (lightdeg / 180.0 * M_PI) * 50.0;
+      //light_pos.x = 0.0;
+      //light_pos.y = cos (lightdeg / 180.0 * M_PI) * 50.0;
+      //light_pos.z = sin (lightdeg / 180.0 * M_PI) * 50.0;
+      light_pos.x = 50.0;
+      light_pos.y = 0.0;
+      light_pos.z = 0.0;
+
+      guVecMultiply (viewmat, &light_pos, &light_pos_x);
 
       {
 	float near, far, range, tscale;
@@ -635,7 +683,7 @@ main (int argc, char **argv)
 	guMtxConcat (dp, lightmat, depth);
       }
 
-      if (light_model == 3 || light_model == 4)
+      if (light_model >= 3 && light_model <= 5)
         {
 	  GX_SetCullMode (GX_CULL_FRONT);
 	  //GX_SetCullMode (GX_CULL_BACK);
@@ -710,6 +758,10 @@ main (int argc, char **argv)
 	  break;
 	
 	case 4:
+	  specular_shadowed_lighting ();
+	  break;
+	
+	case 5:
 	  shadow_depth ();
 	  break;
 	}
@@ -736,7 +788,7 @@ main (int argc, char **argv)
         {
 	  light_model++;
 	  
-	  if (light_model > 4)
+	  if (light_model > 5)
 	    light_model = 0;
 	}
 

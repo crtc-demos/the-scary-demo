@@ -16,7 +16,8 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 
 OBJS :=		server.o demo.o
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
-		shadow-mapped-lighting.inc shadow-depth.inc
+		shadow-mapped-lighting.inc shadow-depth.inc \
+		specular-shadowed-lighting.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm

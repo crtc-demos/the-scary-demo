@@ -1,0 +1,40 @@
+TevColorIn: a b c d
+TevColorOp: tevop tevbias tevscale clamp tevregid
+
+regular operation:
+
+tevregid = (d [+/-] ((1-c)*a + c*b) + tevbias) * tevscale
+
+compare operation:
+
+tevregid = d + ((a OP b) ? c : 0)
+
+stage0:
+
+a: GX_CC_ZERO
+b: GX_CC_ZERO
+c: GX_CC_ZERO
+d: GX_CC_TEXC (ramp lookup)
+
+((TEXC + (1-0)*0 + 0*0) + 0) * 1
+== clamp(TEXC)
+
+stage1:
+
+a: GX_CC_CPREV
+b: GX_CC_TEXC (shadow depth)
+c: GX_CC_ONE
+d: GX_CC_ZERO
+
+0 + ((CPREV r8> GX_CC_TEXC) ? 1 : 0) * 1
+== CPREV r8> GX_CC_TEXC ? 1 : 0
+
+stage2:
+
+a: GX_CC_RASC (GX_COLOR0A0)
+b: GX_CC_C0
+c: GX_CC_CPREV
+d: GX_CC_ZERO
+
+(0 + ((1-CPREV)*RASC + CPREV*C0) + 0) * 1
+== clamp(blended COLOR0A0 & TEV colour 0)
