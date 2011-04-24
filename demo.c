@@ -13,6 +13,19 @@
 
 #include "server.h"
 
+#define SHIP
+#undef SWIRL
+#undef DUCK
+
+#ifdef SHIP
+#include "../objconvert/ship.inc"
+#elif defined(SWIRL)
+#include "../objconvert/swirl.inc"
+#elif defined(DUCK)
+#include "../objconvert/duck5.inc"
+#endif
+
+
 #define DEFAULT_FIFO_SIZE	(512*1024)
 
 static void *xfb = NULL;
@@ -24,6 +37,8 @@ static GXRModeObj *rmode = NULL;
 
 #define SHADOW_WIDTH 256
 #define SHADOW_HEIGHT 256
+
+#define ARRAY_SIZE(X) ((sizeof (X)) / (sizeof ((X)[0])))
 
 f32 *torus; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
 
@@ -116,7 +131,7 @@ fill_torus_coords (float outer, float inner)
 	  torus[idx + 2] = fcos_minor * inner;
 	}
     }
-  
+
   DCFlushRange (torus, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
   DCFlushRange (tornorms, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
 }
@@ -471,15 +486,85 @@ draw_init (void)
   GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
   //GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
   
+#ifdef SHIP
+  GX_SetArray (GX_VA_POS, ship_pos, 3 * sizeof (f32));
+  GX_SetArray (GX_VA_NRM, ship_norm, 3 * sizeof (f32));
+#elif defined(SWIRL)
+  GX_SetArray (GX_VA_POS, swirl_pos, 3 * sizeof (f32));
+  GX_SetArray (GX_VA_NRM, swirl_norm, 3 * sizeof (f32));
+#elif defined(DUCK)
+  GX_SetArray (GX_VA_POS, duck5_pos, 3 * sizeof (f32));
+  GX_SetArray (GX_VA_NRM, duck5_norm, 3 * sizeof (f32));
+#else
   GX_SetArray (GX_VA_POS, torus, 3 * sizeof (f32));
   GX_SetArray (GX_VA_NRM, tornorms, 3 * sizeof (f32));
+#endif
   //GX_SetArray (GX_VA_CLR0, colors, 4 * sizeof (u8));
   
   plain_lighting ();
 }
 
 static float deg = 0;
+static float deg2 = 0;
 static Mtx texproj, depth;
+
+static void
+render_obj (Mtx viewMatrix, int do_texture_mats, u16 **obj_strips,
+            unsigned int *strip_lengths, unsigned int num_strips)
+{
+  Mtx modelView, mvi, mvitmp, scale, rotmtx;
+  guVector axis = {0, 1, 0};
+  guVector axis2 = {1, 0, 0};
+  unsigned int i;
+  
+  guMtxIdentity (modelView);
+  guMtxRotAxisDeg (modelView, &axis, deg);
+
+  guMtxRotAxisDeg (rotmtx, &axis2, deg2);
+
+  guMtxConcat (modelView, rotmtx, modelView);
+
+#if defined(SHIP)
+  guMtxScale (scale, 3.0, 3.0, 3.0);
+#elif defined(SWIRL)
+  guMtxScale (scale, 15.0, 15.0, 15.0);
+#elif defined(DUCK)
+  guMtxScale (scale, 30.0, 30.0, 30.0);
+#endif
+  guMtxConcat (modelView, scale, modelView);
+
+  if (do_texture_mats)
+    {
+      guMtxConcat (depth, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX0, GX_MTX3x4);
+      guMtxConcat (texproj, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX1, GX_MTX3x4);
+    }
+
+  //guMtxTransApply (modelView, modelView, 0.0F, 0.0F, 0.0F);
+  guMtxConcat (viewMatrix, modelView, modelView);
+
+  GX_LoadPosMtxImm (modelView, GX_PNMTX0);
+
+  guMtxInverse (modelView, mvitmp);
+  guMtxTranspose (mvitmp, mvi);
+  GX_LoadNrmMtxImm (mvi, GX_PNMTX0);
+  
+  for (i = 0; i < num_strips; i++)
+    {
+      unsigned int j;
+
+      GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, strip_lengths[i]);
+      
+      for (j = 0; j < strip_lengths[i]; j++)
+        {
+	  GX_Position1x16 (obj_strips[i][j * 3]);
+	  GX_Normal1x16 (obj_strips[i][j * 3 + 1]);
+	}
+      
+      GX_End ();
+    }
+}
 
 static void
 update_screen (Mtx viewMatrix, int do_texture_mats)
@@ -543,6 +628,7 @@ update_anim (void)
 {
   deg++;
   lightdeg += 0.5;
+  deg2 += 0.5;
 }
 
 static void
@@ -733,7 +819,18 @@ main (int argc, char **argv)
 	  GX_SetColorUpdate (GX_FALSE);
 	  GX_SetAlphaUpdate (GX_FALSE);
 
+#ifdef SHIP
+	  render_obj (lightmat, 0, ship_strips, ship_lengths,
+		      ARRAY_SIZE (ship_strips));
+#elif defined(SWIRL)
+	  render_obj (lightmat, 0, swirl_strips, swirl_lengths,
+		      ARRAY_SIZE (swirl_strips));
+#elif defined(DUCK)
+	  render_obj (lightmat, 0, duck5_strips, duck5_lengths,
+		      ARRAY_SIZE (duck5_strips));
+#else
 	  update_screen (lightmat, 0);
+#endif
 
 	  GX_SetTexCopySrc (0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 	  GX_SetTexCopyDst (SHADOW_WIDTH, SHADOW_HEIGHT, GX_TF_Z8, GX_FALSE);
@@ -786,8 +883,19 @@ main (int argc, char **argv)
       GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
       GX_SetColorUpdate (GX_TRUE);
       GX_SetAlphaUpdate (GX_TRUE);
-      
+
+#ifdef SHIP
+      render_obj (viewmat, 1, ship_strips, ship_lengths,
+		  ARRAY_SIZE (ship_strips));
+#elif defined(SWIRL)
+      render_obj (viewmat, 1, swirl_strips, swirl_lengths,
+		  ARRAY_SIZE (swirl_strips));
+#elif defined(DUCK)
+      render_obj (viewmat, 1, duck5_strips, duck5_lengths,
+		  ARRAY_SIZE (duck5_strips));
+#else
       update_screen (viewmat, 1);
+#endif
 
       GX_DrawDone ();
       do_copy = GX_TRUE;
