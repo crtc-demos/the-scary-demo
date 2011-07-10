@@ -33,7 +33,7 @@ clean:
 	rm -f *.o libcompass/*.o libcompass/*.a $(TARGET)
 
 cleaner: clean
-	rm -f libcompass/*.d *.d *.inc
+	rm -f libcompass/*.d *.d $(SHADERS_INC)
 
 filemgr.elf: $(FILEMGR_OBJS)
 	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(FILEMGR_LIBS) -o $@

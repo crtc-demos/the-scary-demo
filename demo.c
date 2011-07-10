@@ -13,16 +13,19 @@
 
 #include "server.h"
 
+#undef SOFTCUBE
 #define SHIP
 #undef SWIRL
 #undef DUCK
 
-#ifdef SHIP
-#include "../objconvert/ship.inc"
+#ifdef SOFTCUBE
+#include "softcube.inc"
+#elif defined(SHIP)
+#include "ship.inc"
 #elif defined(SWIRL)
-#include "../objconvert/swirl.inc"
+#include "swirl.inc"
 #elif defined(DUCK)
-#include "../objconvert/duck5.inc"
+#include "duck5.inc"
 #endif
 
 
@@ -485,8 +488,11 @@ draw_init (void)
   GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
   //GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
-  
-#ifdef SHIP
+
+#ifdef SOFTCUBE
+  GX_SetArray (GX_VA_POS, softcube_pos, 3 * sizeof (f32));
+  GX_SetArray (GX_VA_NRM, softcube_norm, 3 * sizeof (f32));
+#elif defined(SHIP)
   GX_SetArray (GX_VA_POS, ship_pos, 3 * sizeof (f32));
   GX_SetArray (GX_VA_NRM, ship_norm, 3 * sizeof (f32));
 #elif defined(SWIRL)
@@ -819,7 +825,10 @@ main (int argc, char **argv)
 	  GX_SetColorUpdate (GX_FALSE);
 	  GX_SetAlphaUpdate (GX_FALSE);
 
-#ifdef SHIP
+#ifdef SOFTCUBE
+	  render_obj (lightmat, 0, softcube_strips, softcube_lengths,
+		      ARRAY_SIZE (softcube_strips));
+#elif defined(SHIP)
 	  render_obj (lightmat, 0, ship_strips, ship_lengths,
 		      ARRAY_SIZE (ship_strips));
 #elif defined(SWIRL)
@@ -884,7 +893,10 @@ main (int argc, char **argv)
       GX_SetColorUpdate (GX_TRUE);
       GX_SetAlphaUpdate (GX_TRUE);
 
-#ifdef SHIP
+#ifdef SOFTCUBE
+      render_obj (viewmat, 1, softcube_strips, softcube_lengths,
+		  ARRAY_SIZE (softcube_strips));
+#elif defined(SHIP)
       render_obj (viewmat, 1, ship_strips, ship_lengths,
 		  ARRAY_SIZE (ship_strips));
 #elif defined(SWIRL)
