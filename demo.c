@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include <assert.h>
 
 #include "server.h"
 
@@ -38,14 +39,21 @@ static GXRModeObj *rmode = NULL;
 #define MAJOR_STEPS 128
 #define MINOR_STEPS 64
 
+#define TUBE_AROUND 16
+#define TUBE_ALONG 64
+
 #define SHADOW_WIDTH 256
 #define SHADOW_HEIGHT 256
 
 #define ARRAY_SIZE(X) ((sizeof (X)) / (sizeof ((X)[0])))
 
 f32 *torus; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
-
 f32 *tornorms; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
+
+#define NUM_TUBES 9
+
+f32 *tube[NUM_TUBES] = { 0 };
+f32 *tubenorms[NUM_TUBES] = { 0 };
 
 // color data
 u8 colors[] ATTRIBUTE_ALIGN(32) = {
@@ -137,6 +145,70 @@ fill_torus_coords (float outer, float inner)
 
   DCFlushRange (torus, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
   DCFlushRange (tornorms, MAJOR_STEPS * MINOR_STEPS * sizeof (f32) * 3);
+}
+
+static void
+allocate_tube_arrays (unsigned int which, unsigned int around_steps,
+		      unsigned int along_steps)
+{
+  tube[which] = memalign (32, around_steps * along_steps * 3 * sizeof (f32));
+  tubenorms[which] = memalign (32, around_steps * along_steps * 3
+			       * sizeof (f32));
+}
+
+static void
+free_tube_arrays (unsigned int which)
+{
+  free (tube[which]);
+  free (tubenorms[which]);
+  tube[which] = NULL;
+  tubenorms[which] = NULL;
+}
+
+static float phase = 0.0;
+
+/* A tube around X axis, from -1 to 1, with radius RADIUS.  */
+
+static void
+fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
+		  unsigned int along_steps)
+{
+  int i, j;
+  float which_phase_offset = 2.0 * M_PI * (which % 3) / 3.0;
+  float bigger_offset = 2.0 * M_PI * (which / 3) / 3.0;
+  
+  assert (tube[which] != NULL);
+  assert (tubenorms[which] != NULL);
+  
+  for (i = 0; i < along_steps; i++)
+    {
+      float x_pos = ((float) i / (float) (along_steps - 1)) * 2.0 - 1.0;
+      float y_offset = 6 * cos (which_phase_offset + phase + x_pos * 10);
+      float z_offset = 6 * sin (which_phase_offset + phase + x_pos * 10);
+      
+      y_offset += 15 * cos (bigger_offset + x_pos * 3);
+      z_offset += 15 * sin (bigger_offset + x_pos * 3);
+      
+      for (j = 0; j < around_steps; j++)
+        {
+	  float angle = (float) j * 2 * M_PI / (float) around_steps;
+	  float z_pos = z_offset + radius * cos (angle);
+	  float y_pos = y_offset + radius * sin (angle);
+	  unsigned int pt_idx = (i * around_steps + j) * 3;
+	  
+	  tube[which][pt_idx] = x_pos;
+	  tube[which][pt_idx + 1] = y_pos;
+	  tube[which][pt_idx + 2] = z_pos;
+	  
+	  tubenorms[which][pt_idx] = 0;
+	  tubenorms[which][pt_idx + 1] = sin (angle);
+	  tubenorms[which][pt_idx + 2] = cos (angle);
+	}
+    }
+  
+  DCFlushRange (tube[which], around_steps * along_steps * 3 * sizeof (f32));
+  DCFlushRange (tubenorms[which],
+		around_steps * along_steps * 3 * sizeof (f32));
 }
 
 static void
@@ -489,7 +561,8 @@ draw_init (void)
   GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
   //GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
 
-#ifdef SOFTCUBE
+#if 0
+#elif defined(SOFTCUBE)
   GX_SetArray (GX_VA_POS, softcube_pos, 3 * sizeof (f32));
   GX_SetArray (GX_VA_NRM, softcube_norm, 3 * sizeof (f32));
 #elif defined(SHIP)
@@ -530,7 +603,9 @@ render_obj (Mtx viewMatrix, int do_texture_mats, u16 **obj_strips,
 
   guMtxConcat (modelView, rotmtx, modelView);
 
-#if defined(SHIP)
+#if 1
+  /* empty */
+#elif defined(SHIP)
   guMtxScale (scale, 3.0, 3.0, 3.0);
 #elif defined(SWIRL)
   guMtxScale (scale, 15.0, 15.0, 15.0);
@@ -568,6 +643,63 @@ render_obj (Mtx viewMatrix, int do_texture_mats, u16 **obj_strips,
 	  GX_Normal1x16 (obj_strips[i][j * 3 + 1]);
 	}
       
+      GX_End ();
+    }
+}
+
+static void
+render_tube (Mtx viewMatrix, int do_texture_mats, unsigned int around_steps,
+	     unsigned int along_steps)
+{
+  Mtx modelView, mvi, mvitmp, scale, rotmtx;
+  guVector axis = {0, 1, 0};
+  guVector axis2 = {0, 0, 1};
+  unsigned int i;
+  
+  guMtxIdentity (modelView);
+  guMtxRotAxisDeg (modelView, &axis, deg);
+  guMtxRotAxisDeg (rotmtx, &axis2, deg2);
+
+  guMtxConcat (modelView, rotmtx, modelView);
+
+  guMtxScale (scale, 50.0, 1.0, 1.0);
+  guMtxConcat (modelView, scale, modelView);
+
+  if (do_texture_mats)
+    {
+      guMtxConcat (depth, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX0, GX_MTX3x4);
+      guMtxConcat (texproj, modelView, mvitmp);
+      GX_LoadTexMtxImm (mvitmp, GX_TEXMTX1, GX_MTX3x4);
+    }
+
+  //guMtxTransApply (modelView, modelView, 0.0F, 0.0F, 0.0F);
+  guMtxConcat (viewMatrix, modelView, modelView);
+
+  GX_LoadPosMtxImm (modelView, GX_PNMTX0);
+  guMtxInverse (modelView, mvitmp);
+  guMtxTranspose (mvitmp, mvi);
+  GX_LoadNrmMtxImm (mvi, GX_PNMTX0);
+
+  for (i = 0; i < along_steps - 1; i++)
+    {
+      unsigned int j;
+
+      GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, around_steps * 2 + 2);
+
+      for (j = 0; j < around_steps; j++)
+        {
+	  GX_Position1x16 ((i + 1) * around_steps + j);
+	  GX_Normal1x16 ((i + 1) * around_steps + j);
+	  GX_Position1x16 (i * around_steps + j);
+	  GX_Normal1x16 (i * around_steps + j);
+	}
+
+      GX_Position1x16 ((i + 1) * around_steps);
+      GX_Normal1x16 ((i + 1) * around_steps);
+      GX_Position1x16 (i * around_steps);
+      GX_Normal1x16 (i * around_steps);
+
       GX_End ();
     }
 }
@@ -635,6 +767,7 @@ update_anim (void)
   deg++;
   lightdeg += 0.5;
   deg2 += 0.5;
+  phase += 0.1;
 }
 
 static void
@@ -669,7 +802,10 @@ main (int argc, char **argv)
   /* Hopefully this will trigger if we exit unexpectedly...  */
   atexit (return_to_loader);
 
-  fill_torus_coords (10.0, 8.0);
+  for (i = 0; i < NUM_TUBES; i++)
+    allocate_tube_arrays (i, TUBE_AROUND, TUBE_ALONG);
+
+  //fill_torus_coords (10.0, 8.0);
 
   printf("Configuring network ...\n");
 
@@ -731,6 +867,8 @@ main (int argc, char **argv)
 
   while (1)
     {
+      unsigned int i;
+
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
 
@@ -743,6 +881,9 @@ main (int argc, char **argv)
 
       guVecMultiply (viewmat, &light0.pos, &light0.tpos);
       guVecMultiply (viewmat, &light0.lookat, &light0.tlookat);
+
+      for (i = 0; i < NUM_TUBES; i++)
+	fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
 
       {
 	float near, far, range, tscale;
@@ -825,7 +966,14 @@ main (int argc, char **argv)
 	  GX_SetColorUpdate (GX_FALSE);
 	  GX_SetAlphaUpdate (GX_FALSE);
 
-#ifdef SOFTCUBE
+#if 1
+	  for (i = 0; i < NUM_TUBES; i++)
+	    {
+	      GX_SetArray (GX_VA_POS, tube[i], 3 * sizeof (f32));
+	      GX_SetArray (GX_VA_NRM, tubenorms[i], 3 * sizeof (f32));
+	      render_tube (lightmat, 0, TUBE_AROUND, TUBE_ALONG);
+	    }
+#elif defined(SOFTCUBE)
 	  render_obj (lightmat, 0, softcube_strips, softcube_lengths,
 		      ARRAY_SIZE (softcube_strips));
 #elif defined(SHIP)
@@ -893,7 +1041,14 @@ main (int argc, char **argv)
       GX_SetColorUpdate (GX_TRUE);
       GX_SetAlphaUpdate (GX_TRUE);
 
-#ifdef SOFTCUBE
+#if 1
+      for (i = 0; i < NUM_TUBES; i++)
+	{
+	  GX_SetArray (GX_VA_POS, tube[i], 3 * sizeof (f32));
+	  GX_SetArray (GX_VA_NRM, tubenorms[i], 3 * sizeof (f32));
+	  render_tube (viewmat, 1, TUBE_AROUND, TUBE_ALONG);
+	}
+#elif defined(SOFTCUBE)
       render_obj (viewmat, 1, softcube_strips, softcube_lengths,
 		  ARRAY_SIZE (softcube_strips));
 #elif defined(SHIP)
