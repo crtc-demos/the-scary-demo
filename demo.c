@@ -176,33 +176,72 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   int i, j;
   float which_phase_offset = 2.0 * M_PI * (which % 3) / 3.0;
   float bigger_offset = 2.0 * M_PI * (which / 3) / 3.0;
+  float phase1 = which_phase_offset + phase;
+  float phase2 = bigger_offset;
   
   assert (tube[which] != NULL);
   assert (tubenorms[which] != NULL);
   
   for (i = 0; i < along_steps; i++)
     {
-      float x_pos = ((float) i / (float) (along_steps - 1)) * 2.0 - 1.0;
-      float y_offset = 6 * cos (which_phase_offset + phase + x_pos * 10);
-      float z_offset = 6 * sin (which_phase_offset + phase + x_pos * 10);
+      float x_pos = ((float) i / (float) (along_steps - 1)) * 100.0 - 50.0;
+      float y_offset = 6 * cos (phase1 + x_pos * 0.2);
+      float z_offset = 6 * sin (phase1 + x_pos * 0.2);
+      guVector along, up = { 0.0, 1.0, 0.0 }, side;
+      Mtx circ_mat;
       
-      y_offset += 15 * cos (bigger_offset + x_pos * 3);
-      z_offset += 15 * sin (bigger_offset + x_pos * 3);
+      y_offset += 15 * cos (phase2 + x_pos * 3.0 / 50.0);
+      z_offset += 15 * sin (phase2 + x_pos * 3.0 / 50.0);
+      
+      /* Differentiate the offset to get a gradient along y & z...  */
+      along.x = 1.0;
+      along.y = -(6.0 / 5.0) * sin (x_pos * 0.2 + phase1)
+		- 0.9 * sin (x_pos * 3.0 / 50.0 + phase2);
+      along.z = (6.0 / 5.0) * cos (x_pos * 0.2 + phase1)
+		+ 0.9 * cos (x_pos * 3.0 / 50.0 + phase2);
+      
+      guVecCross (&along, &up, &side);
+      guVecNormalize (&side);
+      guVecCross (&side, &along, &up);
+      guVecNormalize (&up);
+      guVecCross (&up, &side, &along);
+      
+      guMtxRowCol (circ_mat, 0, 0) = along.x;
+      guMtxRowCol (circ_mat, 1, 0) = along.y;
+      guMtxRowCol (circ_mat, 2, 0) = along.z;
+      guMtxRowCol (circ_mat, 0, 1) = up.x;
+      guMtxRowCol (circ_mat, 1, 1) = up.y;
+      guMtxRowCol (circ_mat, 2, 1) = up.z;
+      guMtxRowCol (circ_mat, 0, 2) = side.x;
+      guMtxRowCol (circ_mat, 1, 2) = side.y;
+      guMtxRowCol (circ_mat, 2, 2) = side.z;
+      guMtxRowCol (circ_mat, 0, 3) = 0;
+      guMtxRowCol (circ_mat, 1, 3) = 0;
+      guMtxRowCol (circ_mat, 2, 3) = 0;
       
       for (j = 0; j < around_steps; j++)
         {
 	  float angle = (float) j * 2 * M_PI / (float) around_steps;
-	  float z_pos = z_offset + radius * cos (angle);
-	  float y_pos = y_offset + radius * sin (angle);
+	  float z_pos = radius * cos (angle);
+	  float y_pos = radius * sin (angle);
 	  unsigned int pt_idx = (i * around_steps + j) * 3;
+	  guVector circ_point;
 	  
-	  tube[which][pt_idx] = x_pos;
-	  tube[which][pt_idx + 1] = y_pos;
-	  tube[which][pt_idx + 2] = z_pos;
+	  circ_point.x = 0;
+	  circ_point.y = y_pos;
+	  circ_point.z = z_pos;
 	  
-	  tubenorms[which][pt_idx] = 0;
-	  tubenorms[which][pt_idx + 1] = sin (angle);
-	  tubenorms[which][pt_idx + 2] = cos (angle);
+	  guVecMultiplySR (circ_mat, &circ_point, &circ_point);
+	  
+	  tube[which][pt_idx] = x_pos + circ_point.x;
+	  tube[which][pt_idx + 1] = y_offset + circ_point.y;
+	  tube[which][pt_idx + 2] = z_offset + circ_point.z;
+	  
+	  guVecNormalize (&circ_point);
+	  
+	  tubenorms[which][pt_idx] = circ_point.x;
+	  tubenorms[which][pt_idx + 1] = circ_point.y;
+	  tubenorms[which][pt_idx + 2] = circ_point.z;
 	}
     }
   
@@ -662,7 +701,7 @@ render_tube (Mtx viewMatrix, int do_texture_mats, unsigned int around_steps,
 
   guMtxConcat (modelView, rotmtx, modelView);
 
-  guMtxScale (scale, 50.0, 1.0, 1.0);
+  guMtxScale (scale, 1.0, 1.0, 1.0);
   guMtxConcat (modelView, scale, modelView);
 
   if (do_texture_mats)
