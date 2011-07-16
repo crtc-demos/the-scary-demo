@@ -29,7 +29,6 @@
 #include "duck5.inc"
 #endif
 
-
 #define DEFAULT_FIFO_SIZE	(512*1024)
 
 static void *xfb = NULL;
@@ -50,7 +49,7 @@ static GXRModeObj *rmode = NULL;
 f32 *torus; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
 f32 *tornorms; // [MAJOR_STEPS * MINOR_STEPS * 3] ATTRIBUTE_ALIGN(32);
 
-#define NUM_TUBES 9
+#define NUM_TUBES 3
 
 f32 *tube[NUM_TUBES] = { 0 };
 f32 *tubenorms[NUM_TUBES] = { 0 };
@@ -846,7 +845,7 @@ main (int argc, char **argv)
 
   //fill_torus_coords (10.0, 8.0);
 
-  printf("Configuring network ...\n");
+  printf ("Configuring network ...\n");
 
   strcpy (localip, "192.168.2.254");
   strcpy (gateway, "192.168.2.251");
