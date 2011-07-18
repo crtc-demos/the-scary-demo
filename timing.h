@@ -2,12 +2,14 @@
 #define TIMING_H 1
 
 #include <stdint.h>
+#include <ogcsys.h>
 
 typedef struct {
   void (*preinit_assets) (void);
   void (*init_effect) (void *params);
   void (*prepare_frame) (uint32_t time_offset, void *params, int iparam);
-  void (*display_effect) (uint32_t time_offset, void *params, int iparam);
+  void (*display_effect) (uint32_t time_offset, void *params, int iparam,
+			  GXRModeObj *rmode);
   void (*uninit_effect) (void *params);
   void (*finalize) (void *params);
 } effect_methods;

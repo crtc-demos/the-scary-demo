@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 #include <ogcsys.h>
 #include <gccore.h>
@@ -20,8 +21,14 @@
 #include "server.h"
 #include "timing.h"
 #include "soft-crtc.h"
+#include "tubes.h"
+
+/* Not in any header file AFAICT...  */
+extern u64 gettime (void);
+extern u32 diff_msec (u64 start, u64 end);
 
 #undef HOLD
+#undef DEBUG
 
 #undef SKIP_TO_TIME
 //#define SKIP_TO_TIME 56000
@@ -37,7 +44,7 @@ uint64_t offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  {     0, 180000, &soft_crtc_methods, NULL, -1, 0 }
+  {     0, 180000, &tubes_methods, NULL, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -140,7 +147,7 @@ int
 main (int argc, char *argv[])
 {
   int quit = 0;
-  uint64_t start_time;
+  u64 start_time;
   int i;
   unsigned int next_effect;
   do_thing_at *active_effects[MAX_ACTIVE];
@@ -195,21 +202,22 @@ main (int argc, char *argv[])
   num_active_effects = 0;
   next_effect = 0;
 
-  start_time = gamecube_timer_func ();
+  start_time = gettime ();
 
   while (!quit)
     {
-      uint64_t current_time;
+      u32 current_time;
       int i, j;
 
-      current_time = gamecube_timer_func () - start_time;
+      current_time = diff_msec (start_time, gettime ());
+      // srv_printf ("current_time: %d\n", current_time);
 
       /* Terminate old effects.  */
       for (i = 0; i < num_active_effects; i++)
         {
 	  if (current_time >= active_effects[i]->end_time)
 	    {
-	      /*printf ("uninit effect %d (iparam=%d)\n", i,
+	      /*srv_printf ("uninit effect %d (iparam=%d)\n", i,
 		      active_effects[i]->iparam);*/
 
 	      if (active_effects[i]->methods->uninit_effect)
@@ -246,7 +254,7 @@ main (int argc, char *argv[])
       num_active_effects = i;
 
 #ifdef DEBUG
-      printf ("start new effects\n");
+      srv_printf ("start new effects\n");
 #endif
 
       while (next_effect < num_effects
@@ -257,7 +265,7 @@ main (int argc, char *argv[])
 	    {
 	      active_effects[num_active_effects] = &sequence[next_effect];
 
-	      /*printf ("init effect %d (%p, iparam=%d)\n", next_effect,
+	      /*srv_printf ("init effect %d (%p, iparam=%d)\n", next_effect,
 		      sequence[next_effect].methods->init_effect,
 		      sequence[next_effect].iparam);*/
 
@@ -288,7 +296,7 @@ main (int argc, char *argv[])
       /* Do things we need to do before starting to send stuff to the PVR.  */
 
 #ifdef DEBUG
-      printf ("prepare frame (active effects=%d)\n", num_active_effects);
+      srv_printf ("prepare frame (active effects=%d)\n", num_active_effects);
 #endif
       
       for (i = 0; i < num_active_effects; i++)
@@ -296,7 +304,7 @@ main (int argc, char *argv[])
 	  if (active_effects[i]->methods->prepare_frame)
 	    {
 #ifdef DEBUG
-	      printf ("prepare frame: %p\n",
+	      srv_printf ("prepare frame: %p\n",
 		      active_effects[i]->methods->prepare_frame);
 #endif
 	      active_effects[i]->methods->prepare_frame (
@@ -306,7 +314,7 @@ main (int argc, char *argv[])
 	}
 
 #ifdef DEBUG
-      printf ("begin frame\n");
+      srv_printf ("begin frame\n");
 #endif
 
       for (i = 0; i < num_active_effects; i++)
@@ -314,7 +322,7 @@ main (int argc, char *argv[])
 	  if (active_effects[i]->methods->display_effect)
 	    active_effects[i]->methods->display_effect (
 	      current_time - active_effects[i]->start_time,
-	      active_effects[i]->params, active_effects[i]->iparam);
+	      active_effects[i]->params, active_effects[i]->iparam, rmode);
 	}
 
       GX_DrawDone ();
@@ -332,7 +340,7 @@ main (int argc, char *argv[])
         ;
 
 #ifdef DEBUG
-      printf ("finished frame\n");
+      srv_printf ("finished frame\n");
 #endif
     }
 
