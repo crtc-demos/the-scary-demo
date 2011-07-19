@@ -15,9 +15,9 @@
 #include "server.h"
 
 #undef SOFTCUBE
-#define SHIP
+#undef SHIP
 #undef SWIRL
-#undef DUCK
+#define DUCK
 
 #ifdef SOFTCUBE
 #include "softcube.inc"

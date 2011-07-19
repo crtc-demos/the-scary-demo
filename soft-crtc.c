@@ -1,5 +1,12 @@
+#include <ogcsys.h>
+#include <gccore.h>
+#include <malloc.h>
+#include <assert.h>
+#include <math.h>
+
 #include "timing.h"
 #include "soft-crtc.h"
+#include "light.h"
 
 effect_methods soft_crtc_methods =
 {

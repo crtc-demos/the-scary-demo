@@ -257,11 +257,18 @@ specular_lighting_1light (void)
 
 #include "tube-lighting.inc"
 
-  GX_SetChanAmbColor (GX_COLOR0A0, (GXColor) { 16, 32, 16, 0 });
-  GX_SetChanMatColor (GX_COLOR0A0, (GXColor) { 64, 128, 64, 255 });
+  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 16, 32, 16, 0 });
+  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 64, 128, 64, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
 
-  GX_SetChanCtrl (GX_COLOR0A0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+  GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
+  GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
+  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_SPEC);
+
+  GX_SetChanCtrl (GX_COLOR1A1, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0,
+		  GX_DF_CLAMP, GX_AF_NONE);
 
   guVecSub (&light0.tpos, &light0.tlookat, &ldir);
   guVecNormalize (&ldir);
