@@ -44,7 +44,11 @@ uint64_t offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
+#if 0
   {     0, 180000, &tubes_methods, NULL, -1, 0 }
+#else
+  {     0, 180000, &soft_crtc_methods, NULL, -1, 0 }
+#endif
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -208,6 +212,9 @@ main (int argc, char *argv[])
     {
       u32 current_time;
       int i, j;
+
+      GX_InvVtxCache ();
+      GX_InvalidateTexAll ();
 
       current_time = diff_msec (start_time, gettime ());
       // srv_printf ("current_time: %d\n", current_time);

@@ -641,7 +641,7 @@ render_obj (Mtx viewMatrix, int do_texture_mats, u16 **obj_strips,
 
   guMtxConcat (modelView, rotmtx, modelView);
 
-#if 1
+#if 0
   /* empty */
 #elif defined(SHIP)
   guMtxScale (scale, 3.0, 3.0, 3.0);
@@ -1004,7 +1004,7 @@ main (int argc, char **argv)
 	  GX_SetColorUpdate (GX_FALSE);
 	  GX_SetAlphaUpdate (GX_FALSE);
 
-#if 1
+#if 0
 	  for (i = 0; i < NUM_TUBES; i++)
 	    {
 	      GX_SetArray (GX_VA_POS, tube[i], 3 * sizeof (f32));
@@ -1079,7 +1079,7 @@ main (int argc, char **argv)
       GX_SetColorUpdate (GX_TRUE);
       GX_SetAlphaUpdate (GX_TRUE);
 
-#if 1
+#if 0
       for (i = 0; i < NUM_TUBES; i++)
 	{
 	  GX_SetArray (GX_VA_POS, tube[i], 3 * sizeof (f32));

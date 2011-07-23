@@ -29,10 +29,10 @@ static float lightdeg = 0.0;
 static float deg = 0.0;
 static float deg2 = 0.0;
 
-Mtx viewmat, perspmat, depth, texproj;
-guVector pos = {0, 0, 50};
-guVector up = {0, 1, 0};
-guVector lookat = {0, 0, 0};
+static Mtx viewmat, perspmat, depth, texproj;
+static guVector pos = {0, 0, 50};
+static guVector up = {0, 1, 0};
+static guVector lookat = {0, 0, 0};
 
 static void
 allocate_tube_arrays (unsigned int which, unsigned int around_steps,

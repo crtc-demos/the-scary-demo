@@ -14,12 +14,15 @@ typedef struct {
 #endif
 
 #define INIT_OBJECT(VAR, NAME)			\
-  object_info NAME = {				\
+  object_info VAR = {				\
     .positions = NAME##_pos,			\
     .normals = NAME##_norm,			\
     .obj_strips = NAME##_strips,		\
     .strip_lengths = NAME##_lengths,		\
     .num_strips = ARRAY_SIZE (NAME##_strips)	\
-  };
+  }
+
+extern void object_set_arrays (object_info *, int);
+extern void object_render (object_info *, int);
 
 #endif
