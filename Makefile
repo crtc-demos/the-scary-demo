@@ -2,7 +2,7 @@ include $(DEVKITPPC)/gamecube_rules
 
 TEVSL :=	/home/jules/stuff/gamecube/tevsl/tevsl
 TARGET :=	demo.dol
-CFLAGS =	-g -O0 -Wall $(MACHDEP) $(INCLUDE)
+CFLAGS =	-g -O2 -Wall $(MACHDEP) $(INCLUDE)
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
 LIBS :=		-ldb -lbba -logc -lm
 INCLUDE :=	-I$(LIBOGC_INC)
@@ -14,7 +14,7 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=		server.o object.o soft-crtc.o tubes.o timing.o
+OBJS :=		server.o object.o light.o soft-crtc.o tubes.o timing.o
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
 		specular-shadowed-lighting.inc tube-lighting.inc

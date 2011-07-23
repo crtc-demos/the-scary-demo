@@ -191,6 +191,7 @@ main (int argc, char *argv[])
   printf ("got connection!\n");
 
   srv_printf ("framebuffer = %p\n", xfb);
+  srv_printf ("rmode = %p\n", (void*) rmode);
 
   guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
   guLookAt (viewmat, &pos, &up, &lookat);
@@ -202,7 +203,7 @@ main (int argc, char *argv[])
       if (sequence[i].methods->preinit_assets)
         sequence[i].methods->preinit_assets ();
     }
-  
+
   num_active_effects = 0;
   next_effect = 0;
 

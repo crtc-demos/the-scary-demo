@@ -29,7 +29,8 @@ static float lightdeg = 0.0;
 static float deg = 0.0;
 static float deg2 = 0.0;
 
-static Mtx viewmat, perspmat, depth, texproj;
+static Mtx44 perspmat;
+static Mtx viewmat, depth, texproj;
 static guVector pos = {0, 0, 50};
 static guVector up = {0, 1, 0};
 static guVector lookat = {0, 0, 0};
