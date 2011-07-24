@@ -8,6 +8,11 @@
 #include "tubes.h"
 #include "light.h"
 
+#include "images/snakeskin.h"
+#include "snakeskin_tpl.h"
+
+static TPLFile snakeskinTPL;
+
 #define NUM_TUBES 9
 
 #define TUBE_AROUND 16
@@ -19,9 +24,14 @@ static f32 *tubenorms[NUM_TUBES] = { 0 };
 static light_info light0 =
 {
   .pos = { 20, 20, 30 },
-  .tpos = { 0, 0, 0 },
   .lookat = { 0, 0, 0 },
-  .tlookat = { 0, 0, 0 },
+  .up = { 0, 1, 0 }
+};
+
+static light_info light1 =
+{
+  .pos = { -20, -20, 30 },
+  .lookat = { 0, 0, 0 },
   .up = { 0, 1, 0 }
 };
 
@@ -179,21 +189,29 @@ render_tube (unsigned int around_steps, unsigned int along_steps)
   for (i = 0; i < along_steps - 1; i++)
     {
       unsigned int j;
+      float tex_t = (float) i / (float) along_steps;
+      float tex_t_1 = (float) (i + 1) / (float) along_steps;
 
       GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, around_steps * 2 + 2);
 
       for (j = 0; j < around_steps; j++)
         {
+	  float tex_s = (float) j / (float) around_steps;
+
 	  GX_Position1x16 ((i + 1) * around_steps + j);
 	  GX_Normal1x16 ((i + 1) * around_steps + j);
+	  GX_TexCoord2f32 (tex_s, tex_t_1 * 3);
 	  GX_Position1x16 (i * around_steps + j);
 	  GX_Normal1x16 (i * around_steps + j);
+	  GX_TexCoord2f32 (tex_s, tex_t * 3);
 	}
 
       GX_Position1x16 ((i + 1) * around_steps);
       GX_Normal1x16 ((i + 1) * around_steps);
+      GX_TexCoord2f32 (0.0, tex_t_1 * 3);
       GX_Position1x16 (i * around_steps);
       GX_Normal1x16 (i * around_steps);
+      GX_TexCoord2f32 (0.0, tex_t * 3);
 
       GX_End ();
     }
@@ -209,6 +227,18 @@ tubes_init_effect (void *params)
 
   for (i = 0; i < NUM_TUBES; i++)
     allocate_tube_arrays (i, TUBE_AROUND, TUBE_ALONG);
+  
+  TPL_OpenTPLFromMemory (&snakeskinTPL, (void *) snakeskin_tpl,
+			 snakeskin_tpl_size);
+
+  GX_ClearVtxDesc ();
+  GX_SetVtxDesc (GX_VA_POS, GX_INDEX16);
+  GX_SetVtxDesc (GX_VA_NRM, GX_INDEX16);
+  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+  
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 }
 
 static void
@@ -241,8 +271,8 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
   light0.pos.y = cos (lightdeg / 180.0 * M_PI) * 25.0;
   light0.pos.z = sin (lightdeg / 180.0 * M_PI) * 25.0;
 
-  guVecMultiply (viewmat, &light0.pos, &light0.tpos);
-  guVecMultiply (viewmat, &light0.lookat, &light0.tlookat);
+  light_update (viewmat, &light0);
+  light_update (viewmat, &light1);
 
   for (i = 0; i < NUM_TUBES; i++)
     fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
@@ -253,32 +283,39 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
 static void
 specular_lighting_1light (void)
 {
-  GXLightObj lo;
+  GXLightObj lo0;
+  GXLightObj lo1;
   guVector ldir;
 
 #include "tube-lighting.inc"
 
-  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 16, 32, 16, 0 });
-  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 64, 128, 64, 0 });
-  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_NONE);
+  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
+  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 192, 192, 192, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_NONE);
 
   GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
   GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
-  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_SPEC);
+  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_SPEC);
 
-  GX_SetChanCtrl (GX_COLOR1A1, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0,
-		  GX_DF_CLAMP, GX_AF_NONE);
-
+  /* Light 0.  */
   guVecSub (&light0.tpos, &light0.tlookat, &ldir);
   guVecNormalize (&ldir);
 
-  /* Light 0: use for both specular and diffuse lighting.  */
-  GX_InitSpecularDir (&lo, -ldir.x, -ldir.y, -ldir.z);
-  GX_InitLightShininess (&lo, 64);
-  GX_InitLightColor (&lo, (GXColor) { 192, 192, 192, 255 });
-  GX_LoadLightObj (&lo, GX_LIGHT0);
+  GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightShininess (&lo0, 64);
+  GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
+  GX_LoadLightObj (&lo0, GX_LIGHT0);
+
+  /* Light 1.  */
+  guVecSub (&light1.tpos, &light1.tlookat, &ldir);
+  guVecNormalize (&ldir);
+
+  GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightShininess (&lo1, 32);
+  GX_InitLightColor (&lo1, (GXColor) { 128, 32, 32, 192 });
+  GX_LoadLightObj (&lo1, GX_LIGHT1);
 
   GX_InvalidateTexAll ();
 }
@@ -288,11 +325,15 @@ tubes_display_effect (uint32_t time_offset, void *params, int iparam,
 		      GXRModeObj *rmode)
 {
   unsigned int i;
-
-  GX_SetCullMode (GX_CULL_BACK);
-  GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
-  GX_SetScissor (0, 0, rmode->fbWidth, rmode->efbHeight);
+  GXTexObj texture;
   
+  TPL_GetTexture (&snakeskinTPL, snakeskin, &texture);
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_TEX0, GX_IDENTITY);
+  
+  GX_InvalidateTexAll ();
+  
+  GX_LoadTexObj (&texture, GX_TEXMAP0);
+
   GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
   
   specular_lighting_1light ();

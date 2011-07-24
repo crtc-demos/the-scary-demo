@@ -44,7 +44,7 @@ specular_lighting_1light (void)
   GXLightObj lo0, lo1;
   guVector ldir;
 
-#include "tube-lighting.inc"
+#include "cube-lighting.inc"
 
   GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 16, 32, 16, 0 });
   GX_SetChanMatColor (GX_COLOR0, (GXColor) { 64, 128, 64, 0 });
@@ -266,10 +266,6 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam,
   guVector axis2 = {0, 0, 1};
   int i, j;
 
-  GX_SetCullMode (GX_CULL_BACK);
-  GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
-  GX_SetScissor (0, 0, rmode->fbWidth, rmode->efbHeight);
-  
   GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);

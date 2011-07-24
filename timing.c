@@ -31,10 +31,10 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef DEBUG
 
 #undef SKIP_TO_TIME
-//#define SKIP_TO_TIME 56000
+//#define SKIP_TO_TIME 30000
 
 #ifdef SKIP_TO_TIME
-uint64_t offset_time = 0;
+u64 offset_time = 0;
 #else
 #define offset_time 0
 #endif
@@ -44,11 +44,8 @@ uint64_t offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-#if 0
-  {     0, 180000, &tubes_methods, NULL, -1, 0 }
-#else
-  {     0, 180000, &soft_crtc_methods, NULL, -1, 0 }
-#endif
+  {      0,  30000, &soft_crtc_methods, NULL, -1, 0 },
+  {  30000, 180000, &tubes_methods, NULL, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -209,6 +206,10 @@ main (int argc, char *argv[])
 
   start_time = gettime ();
 
+#ifdef SKIP_TO_TIME
+  offset_time = SKIP_TO_TIME;
+#endif
+
   while (!quit)
     {
       u32 current_time;
@@ -217,7 +218,7 @@ main (int argc, char *argv[])
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
 
-      current_time = diff_msec (start_time, gettime ());
+      current_time = diff_msec (start_time, gettime ()) + offset_time;
       // srv_printf ("current_time: %d\n", current_time);
 
       /* Terminate old effects.  */
@@ -324,6 +325,10 @@ main (int argc, char *argv[])
 #ifdef DEBUG
       srv_printf ("begin frame\n");
 #endif
+
+      GX_SetCullMode (GX_CULL_BACK);
+      GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
+      GX_SetScissor (0, 0, rmode->fbWidth, rmode->efbHeight);
 
       for (i = 0; i < num_active_effects; i++)
         {

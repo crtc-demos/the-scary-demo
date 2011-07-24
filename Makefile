@@ -1,5 +1,6 @@
 include $(DEVKITPPC)/gamecube_rules
 
+GXTEXCONV :=	$(DEVKITPPC)/bin/gxtexconv
 TEVSL :=	/home/jules/stuff/gamecube/tevsl/tevsl
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall $(MACHDEP) $(INCLUDE)
@@ -17,13 +18,16 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 OBJS :=		server.o object.o light.o soft-crtc.o tubes.o timing.o
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
-		specular-shadowed-lighting.inc tube-lighting.inc
+		specular-shadowed-lighting.inc tube-lighting.inc \
+		cube-lighting.inc
+
+TEXTURES :=	images/snakeskin.tpl.o
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
 
 $(TARGET):	demo.elf
-demo.elf:	$(OBJS)
+demo.elf:	$(OBJS) $(TEXTURES)
 
 .PHONY:	.depend
 
@@ -46,6 +50,13 @@ filemgr.elf: $(FILEMGR_OBJS)
 
 %.inc:	%.tev
 	$(TEVSL) $< -o $@
+
+%.tpl:	%.scf
+	$(GXTEXCONV) -s $< -o $@
+
+%.tpl.o:	%.tpl
+	@echo $(notdir $<)
+	@$(bin2o)
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	
