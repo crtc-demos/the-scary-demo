@@ -198,8 +198,8 @@ soft_crtc_init_effect (void *params)
       { 'x', 'x', 'x', ' ', ' ', 'x', 'x' },
       { ' ', 'x', ' ', ' ', 'x', ' ', ' ' },
       { ' ', 'x', ' ', ' ', 'x', 'x', 'x' } };
-  unsigned int lhs = (float) GRID_WIDTH / 2 - 3.5;
-  unsigned int top = (float) GRID_HEIGHT / 2 - 3.5;
+  unsigned int lhs = (GRID_WIDTH - 7) / 2;
+  unsigned int top = (GRID_HEIGHT - 7) / 2;
 
   guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
   guLookAt (viewmat, &pos, &up, &lookat);
