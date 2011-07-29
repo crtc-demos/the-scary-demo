@@ -22,7 +22,7 @@
 #include "timing.h"
 #include "soft-crtc.h"
 #include "tubes.h"
-#include "spooky_ghost.h"
+#include "spooky-ghost.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);

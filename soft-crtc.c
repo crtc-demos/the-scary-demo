@@ -282,7 +282,8 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxRotAxisDeg (rotmtx, &axis, deg);
   guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
   
-  object_set_arrays (&softcube_obj, GX_VTXFMT0);
+  object_set_arrays (&softcube_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
+		     GX_VA_TEX0);
 
   for (i = 0; i < GRID_WIDTH; i++)
     for (j = 0; j < GRID_HEIGHT; j++)
@@ -314,7 +315,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam,
 	    guMtxTranspose (mvitmp, mvi);
 	    GX_LoadNrmMtxImm (mvi, GX_PNMTX0);
 
-	    object_render (&softcube_obj, GX_VTXFMT0);
+	    object_render (&softcube_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 	  }
       }
   

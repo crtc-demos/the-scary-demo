@@ -15,14 +15,15 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=		server.o object.o light.o soft-crtc.o tubes.o spooky_ghost.o \
+OBJS :=		server.o object.o light.o soft-crtc.o tubes.o spooky-ghost.o \
 		timing.o
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
 		specular-shadowed-lighting.inc tube-lighting.inc \
-		cube-lighting.inc
+		cube-lighting.inc tunnel-lighting.inc bump-mapping.inc
 
-TEXTURES :=	images/snakeskin.tpl.o
+TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
+		images/stones_bump.tpl.o
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
