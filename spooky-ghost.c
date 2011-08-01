@@ -30,9 +30,13 @@ INIT_OBJECT (tunnel_section_obj, tunnel_section);
 
 #define NORM_TYPE OBJECT_NBT3
 
+#define LIGHT_TEXFMT GX_TF_RGBA8
+#define LIGHT_TEX_W 64
+#define LIGHT_TEX_H 64
+
 static light_info light0 =
 {
-  .pos = { 20, 20, 30 },
+  .pos = { 0, 0, -50 },
   .lookat = { 0, 0, 0 },
   .up = { 0, 1, 0 }
 };
@@ -44,6 +48,9 @@ static guVector up = {0, 1, 0};
 static guVector lookat = {0, 0, 0};
 static float deg = 0.0;
 static float deg2 = 0.0;
+static float lightdeg = 0.0;
+
+int switch_ghost_lighting = 0;
 
 static void
 specular_lighting_1light (void)
@@ -61,7 +68,7 @@ specular_lighting_1light (void)
   GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
   GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
   GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_SPEC);
+		  GX_DF_NONE, GX_AF_SPEC);
 
   /* Light 0: use for both specular and diffuse lighting.  */
   guVecSub (&light0.tpos, &light0.tlookat, &ldir);
@@ -72,7 +79,7 @@ specular_lighting_1light (void)
   GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
 
-  GX_InvalidateTexAll ();
+  //GX_SetTevKColor (0, (GXColor) { 255, 192, 0, 0 });
 }
 
 static void
@@ -82,7 +89,12 @@ bump_mapping_tev_setup (void)
 		       { 0.0, 0.5, 0.0 } };
 #include "bump-mapping.inc"
   GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
-  GX_SetIndTexMatrix (GX_ITM_0, indmtx, 10);
+  GX_SetIndTexMatrix (GX_ITM_0, indmtx, 3);
+  
+  GX_SetChanCtrl (GX_COLOR0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_NONE, GX_AF_NONE);
+  GX_SetChanCtrl (GX_ALPHA0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_NONE, GX_AF_NONE);
 }
 
 void *lightmap;
@@ -90,6 +102,8 @@ void *lightmap;
 static void
 spooky_ghost_init_effect (void *params)
 {
+  unsigned int texbufsize;
+
   guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
   guLookAt (viewmat, &pos, &up, &lookat);
   
@@ -98,8 +112,13 @@ spooky_ghost_init_effect (void *params)
   TPL_OpenTPLFromMemory (&stone_bumpTPL, (void *) stones_bump_tpl,
 			 stones_bump_tpl_size);
 
-  lightmap = memalign (32,
-		       GX_GetTexBufferSize (64, 64, GX_TF_IA8, GX_FALSE, 0));
+  texbufsize = GX_GetTexBufferSize (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT,
+				    GX_FALSE, 0);
+
+  srv_printf ("tex buffer size: %d\n", texbufsize);
+
+  lightmap = memalign (32, texbufsize);
+		       
 }
 
 #define NRM_SCALE 0.8
@@ -116,8 +135,8 @@ hemisphere_texture (void)
       
       for (j = 0; j <= 32; j++)
         {
-	  c.x = 2.0 * (float) i / 32 - 1.0;
-	  c.y = 2.0 * (float) j / 32 - 1.0;
+	  c.x = (2.0 * (float) i / 32.0) - 1.0;
+	  c.y = (2.0 * (float) j / 32.0) - 1.0;
 	  c.z = -2.0;
 	  cn.x = c.x / NRM_SCALE;
 	  cn.y = c.y / NRM_SCALE;
@@ -126,7 +145,7 @@ hemisphere_texture (void)
 	  GX_Position3f32 (c.x, c.y, c.z);
 	  GX_Normal3f32 (cn.x, cn.y, cn.z);
 	  
-	  c.x = 2.0 * ((float) i + 1.0) / 32.0 - 1.0;
+	  c.x = (2.0 * (float) (i + 1) / 32.0) - 1.0;
 	  cn.x = c.x / NRM_SCALE;
 	  cn.z = c.x * c.x + c.y * c.y;
 	  cn.z = cn.z < 1 ? sqrtf (1.0 - cn.z) : 0;
@@ -142,7 +161,7 @@ static void
 update_matrices (Mtx obj, Mtx cam)
 {
   Mtx vertex, normal, binormal;
-  Mtx normaltexmtx, binormaltexmtx, texturemtx, tempmtx;
+  Mtx normaltexmtx, binormaltexmtx, /*texturemtx,*/ tempmtx;
   
   guMtxConcat (cam, obj, vertex);
   guMtxInverse (vertex, tempmtx);
@@ -157,18 +176,17 @@ update_matrices (Mtx obj, Mtx cam)
   guMtxRowCol (binormal, 0, 3) = 0.0;
   guMtxRowCol (binormal, 1, 3) = 0.0;
   guMtxRowCol (binormal, 2, 3) = 0.0;
-  
+
+  guMtxScale (tempmtx, NRM_SCALE / 2, NRM_SCALE / 2, NRM_SCALE / 2);
   guMtxConcat (binormal, tempmtx, binormaltexmtx);
 
-  guMtxIdentity (texturemtx);
+  //guMtxIdentity (texturemtx);
 
   GX_LoadPosMtxImm (vertex, GX_PNMTX0);
   GX_LoadNrmMtxImm (normal, GX_PNMTX0);
-  GX_LoadTexMtxImm (texturemtx, GX_TEXMTX0, GX_MTX2x4);
+  //GX_LoadTexMtxImm (texturemtx, GX_TEXMTX0, GX_MTX2x4);
   GX_LoadTexMtxImm (normaltexmtx, GX_TEXMTX1, GX_MTX2x4);
   GX_LoadTexMtxImm (binormaltexmtx, GX_TEXMTX2, GX_MTX2x4);
-  
-  light_update (cam, &light0);
 }
 
 static void
@@ -177,34 +195,87 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   Mtx44 proj;
   Mtx idmtx;
 
-  GX_SetViewport (0, 0, 64, 64, 0, 1);
-  GX_SetScissor (0, 0, 64, 64);
-  GX_SetDispCopySrc (0, 0, 64, 64);
-  GX_SetDispCopyDst (64, 64);
-  GX_SetDispCopyYScale (1);
-  GX_SetTexCopySrc (0, 0, 64, 64);
-  GX_SetTexCopyDst (64, 64, GX_TF_IA8, FALSE);
+  light0.pos.x = 0; //cos (lightdeg) * 1000.0;
+  light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
+  light0.pos.z = 0; // sin (lightdeg) * 1000.0;
   
-  guOrtho (proj, -1, 1, -1, 1, 1, 15);
-  GX_LoadProjectionMtx (proj, GX_ORTHOGRAPHIC);
-  
-  GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
-  
-  specular_lighting_1light ();
+  lightdeg += 0.03;
 
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+  if (switch_ghost_lighting)
+    {
+      GX_SetViewport (0, 0, LIGHT_TEX_W, LIGHT_TEX_H, 0, 1);
+      GX_SetScissor (0, 0, LIGHT_TEX_W, LIGHT_TEX_H);
+      GX_SetDispCopySrc (0, 0, LIGHT_TEX_W, LIGHT_TEX_H);
+      GX_SetDispCopyDst (LIGHT_TEX_W, LIGHT_TEX_H);
+      GX_SetDispCopyYScale (1);
+      GX_SetTexCopySrc (0, 0, LIGHT_TEX_W, LIGHT_TEX_H);
+      GX_SetTexCopyDst (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT, GX_FALSE);
 
-  guMtxIdentity (idmtx);
-  update_matrices (idmtx, idmtx);
-  
-  hemisphere_texture ();
-  
-  GX_CopyTex (lightmap, GX_FALSE);
-  GX_PixModeSync ();
+      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+      GX_SetColorUpdate (GX_TRUE);
+      GX_SetAlphaUpdate (GX_TRUE);
+
+      guOrtho (proj, -1, 1, -1, 1, 1, 15);
+      GX_LoadProjectionMtx (proj, GX_ORTHOGRAPHIC);
+
+      GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+
+      GX_ClearVtxDesc ();
+      GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
+      GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
+      GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+      GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+
+      guMtxIdentity (idmtx);
+      update_matrices (idmtx, idmtx);
+
+      light_update (idmtx, &light0);
+
+      specular_lighting_1light ();
+
+      hemisphere_texture ();
+
+      /*{
+        int i;
+	
+	for (i = 0; i < LIGHT_TEX_W * LIGHT_TEX_H * 2; i += 2)
+	  {
+	    char *foo = (char*) lightmap + i;
+	    foo[0] = 0x75;
+	    foo[1] = 0x75;
+	  }
+
+	DCFlushRange (lightmap, LIGHT_TEX_W * LIGHT_TEX_H * 2);
+      }*/
+
+      GX_CopyTex (lightmap, GX_FALSE);
+      GX_PixModeSync ();
+    }
+}
+
+static void
+draw_square (void)
+{
+  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+
+  GX_Position3f32 (1, -1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (1, 0);
+
+  GX_Position3f32 (-1, -1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (0, 0);
+
+  GX_Position3f32 (1, 1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (1, 1);
+
+  GX_Position3f32 (-1, 1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (0, 1);
+
+  GX_End ();
 }
 
 static void
@@ -221,8 +292,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   TPL_GetTexture (&stone_textureTPL, stone_texture, &texture);
   TPL_GetTexture (&stone_bumpTPL, stone_bump, &bumpmap);
 
-  GX_InitTexObj (&lightmap_obj, lightmap, 64, 64, GX_TF_IA8, GX_CLAMP,
-		 GX_CLAMP, GX_FALSE);
+  GX_InitTexObj (&lightmap_obj, lightmap, LIGHT_TEX_W, LIGHT_TEX_H,
+		 LIGHT_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   GX_InvalidateTexAll ();
   
@@ -253,38 +324,93 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
     GX_SetPixelFmt (GX_PF_RGB565_Z16, GX_ZC_LINEAR);
   else
     GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+
+  guMtxIdentity (modelView);
+
+  guMtxScaleApply (modelView, mvtmp, 2.0, 2.0, 2.0);
+
+  light_update (viewmat, &light0);
+
+  /* Draw an square in space.  */
+  {
+    Mtx mvtmpx;
+    
+    guMtxTransApply (mvtmp, mvtmpx, -5.0, 12.0, 0.0);
+    update_matrices (mvtmpx, viewmat);
+    
+    GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+    GX_ClearVtxDesc ();
+    GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
+    GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
+    GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    
+    #include "just-texture.inc"
+    
+    draw_square ();
+
+    #include "alpha-texture.inc"
+
+    guMtxTransApply (mvtmp, mvtmpx, 5.0, 12.0, 0.0);
+    update_matrices (mvtmpx, viewmat);
+    draw_square ();
+  }
+
+  guMtxIdentity (modelView);
+  guMtxRotAxisDeg (rotmtx, &axis, deg);
+  guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
+
+  guMtxScaleApply (modelView, mvtmp, 1.0, 1.0, 1.0);
+
+  guMtxConcat (rotmtx, modelView, mvtmp);
+  guMtxConcat (rotmtx2, mvtmp, mvtmp);
   
-  bump_mapping_tev_setup ();
+  update_matrices (mvtmp, viewmat);
+
+  /* I want it bigger, but I don't want to fuck up the normals!
+     This is stupid, fix it.  */
+  {
+    Mtx vertex;
+    
+    guMtxIdentity (modelView);
+    guMtxRotAxisDeg (rotmtx, &axis, deg);
+    guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
+
+    guMtxScaleApply (modelView, mvtmp, 25.0, 25.0, 25.0);
+
+    guMtxConcat (rotmtx, mvtmp, mvtmp);
+    guMtxConcat (rotmtx2, mvtmp, mvtmp);
+    
+    guMtxConcat (viewmat, mvtmp, vertex);
+
+    GX_LoadPosMtxImm (vertex, GX_PNMTX0);
+  }
+
+  light_update (viewmat, &light0);
+
+  object_set_arrays (&tunnel_section_obj,
+		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD,
+		     GX_VTXFMT0, GX_VA_TEX0);
+
+  if (switch_ghost_lighting)
+    bump_mapping_tev_setup ();
+  else
+    specular_lighting_1light ();
   
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX2);
   GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX2);
   GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX1);
   
   GX_SetCurrentMtx (GX_PNMTX0);
   
-  GX_SetAlphaUpdate (GX_FALSE);
-  
-  object_set_arrays (&tunnel_section_obj,
-		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD,
-		     GX_VTXFMT0, GX_VA_TEX0);
-
-  guMtxIdentity (modelView);
-  guMtxRotAxisDeg (rotmtx, &axis, deg);
-  guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
-
-  guMtxScaleApply (modelView, mvtmp, 20.0, 20.0, 20.0);
-
-  guMtxConcat (rotmtx, mvtmp, mvtmp);
-  guMtxConcat (rotmtx2, mvtmp, mvtmp);
-  
-  update_matrices (mvtmp, viewmat);
-  
   object_render (&tunnel_section_obj,
 		 OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-  deg++;
-  deg2 += 0.5;
+  deg += 0.012;
+  deg2 += 0.05;
 }
 
 effect_methods spooky_ghost_methods =

@@ -20,7 +20,8 @@ OBJS :=		server.o object.o light.o soft-crtc.o tubes.o spooky-ghost.o \
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
 		specular-shadowed-lighting.inc tube-lighting.inc \
-		cube-lighting.inc tunnel-lighting.inc bump-mapping.inc
+		cube-lighting.inc tunnel-lighting.inc bump-mapping.inc \
+		just-texture.inc alpha-texture.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o
@@ -38,8 +39,12 @@ all:	$(TARGET)
 clean:
 	rm -f *.o libcompass/*.o libcompass/*.a $(TARGET)
 
-cleaner: clean
+cleaner: clean $(TEXTURES)
 	rm -f libcompass/*.d *.d $(SHADERS_INC)
+
+.PHONY: images_clean
+images_clean: 
+	rm -f $(TEXTURES)
 
 filemgr.elf: $(FILEMGR_OBJS)
 	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(FILEMGR_LIBS) -o $@
@@ -53,8 +58,8 @@ filemgr.elf: $(FILEMGR_OBJS)
 %.inc:	%.tev
 	$(TEVSL) $< -o $@
 
-%.tpl:	%.scf
-	$(GXTEXCONV) -s $< -o $@
+#%.tpl:	%.scf
+#	$(GXTEXCONV) -s $< -o $@
 
 %.tpl.o:	%.tpl
 	@echo $(notdir $<)

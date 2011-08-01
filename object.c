@@ -1,5 +1,6 @@
 #include <ogcsys.h>
 #include <gccore.h>
+#include <stdlib.h>
 
 #include "object.h"
 
@@ -90,6 +91,9 @@ object_render (object_info *obj, unsigned int mask, int which_fmt)
 	for (i = 0; i < obj->num_strips; i++)
 	  {
 	    unsigned int j;
+
+	    /*if ((rand () & 127) < 64)
+	      continue;*/
 
 	    GX_Begin (GX_TRIANGLESTRIP, which_fmt, obj->strip_lengths[i]);
 

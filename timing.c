@@ -47,7 +47,7 @@ uint64_t start_time;
 static do_thing_at sequence[] = {
   {      0,  30000, &soft_crtc_methods, NULL, -1, 0 },
   {  30000,  60000, &tubes_methods, NULL, -1, 0 },
-  {  60000, 180000, &spooky_ghost_methods, NULL, -1, 0 }
+  {  60000, 300000, &spooky_ghost_methods, NULL, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -63,10 +63,10 @@ copy_to_xfb (u32 count)
 {
   if (do_copy == GX_TRUE)
     {
-      /*GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
       GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
       GX_SetColorUpdate (GX_TRUE);
-      GX_SetAlphaUpdate (GX_TRUE);*/
+      GX_SetAlphaUpdate (GX_TRUE);
       GX_CopyDisp (xfb, GX_TRUE);
       GX_Flush ();
       do_copy = GX_FALSE;
@@ -78,7 +78,7 @@ initialise ()
 {
   void *framebuffer;
   void *gp_fifo;
-  GXColor background = {0, 0, 0, 0xff};
+  GXColor background = {0, 0, 0, 0};
 
   VIDEO_Init();
   PAD_Init();
@@ -145,6 +145,8 @@ return_to_loader (void)
   srv_disconnect ();
   reload ();
 }
+
+extern int switch_ghost_lighting;
 
 int
 main (int argc, char *argv[])
@@ -352,7 +354,7 @@ main (int argc, char *argv[])
         return_to_loader ();
 
       if (buttonsDown & PAD_BUTTON_A)
-        ;
+        switch_ghost_lighting = 1 - switch_ghost_lighting;
 
 #ifdef DEBUG
       srv_printf ("finished frame\n");
