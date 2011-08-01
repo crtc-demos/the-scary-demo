@@ -278,6 +278,8 @@ draw_square (void)
   GX_End ();
 }
 
+static float bla = 0.0;
+
 static void
 spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
 			     GXRModeObj *rmode)
@@ -288,6 +290,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GXTexObj texture;
   GXTexObj bumpmap;
   GXTexObj lightmap_obj;
+  int i;
 
   TPL_GetTexture (&stone_textureTPL, stone_texture, &texture);
   TPL_GetTexture (&stone_bumpTPL, stone_bump, &bumpmap);
@@ -406,8 +409,30 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   GX_SetCurrentMtx (GX_PNMTX0);
   
-  object_render (&tunnel_section_obj,
-		 OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD, GX_VTXFMT0);
+  for (i = 0; i < 15; i++)
+    {
+      Mtx vertex;
+
+      guMtxIdentity (modelView);
+      guMtxRotAxisDeg (rotmtx, &axis, deg);
+      guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
+
+      guMtxTransApply (modelView, mvtmp, 4 - i - bla, 0.0, 0.0);
+      guMtxScaleApply (mvtmp, mvtmp, 25.0, 25.0, 25.0);
+
+      guMtxConcat (rotmtx, mvtmp, mvtmp);
+      guMtxConcat (rotmtx2, mvtmp, mvtmp);
+
+      guMtxConcat (viewmat, mvtmp, vertex);
+
+      GX_LoadPosMtxImm (vertex, GX_PNMTX0);
+
+      object_render (&tunnel_section_obj,
+		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD, GX_VTXFMT0);
+
+      bla -= 0.005;
+      if (bla < 0.0) bla += 1.0;
+    }
 
   deg += 0.012;
   deg2 += 0.05;
