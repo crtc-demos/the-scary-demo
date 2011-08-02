@@ -28,8 +28,6 @@ static TPLFile stone_bumpTPL;
 INIT_OBJECT (spooky_ghost_obj, spooky_ghost);
 INIT_OBJECT (tunnel_section_obj, tunnel_section);
 
-#define NORM_TYPE OBJECT_NBT3
-
 #define LIGHT_TEXFMT GX_TF_RGBA8
 #define LIGHT_TEX_W 64
 #define LIGHT_TEX_H 64
@@ -50,7 +48,7 @@ static float deg = 0.0;
 static float deg2 = 0.0;
 static float lightdeg = 0.0;
 
-int switch_ghost_lighting = 0;
+int switch_ghost_lighting = 1;
 
 static void
 specular_lighting_1light (void)
@@ -332,6 +330,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   light_update (viewmat, &light0);
 
   /* Draw an square in space.  */
+#if 0
   {
     Mtx mvtmpx;
     
@@ -357,6 +356,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
     update_matrices (mvtmpx, viewmat);
     draw_square ();
   }
+#endif
 
   guMtxIdentity (modelView);
 
@@ -381,7 +381,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   light_update (viewmat, &light0);
 
   object_set_arrays (&tunnel_section_obj,
-		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD,
+		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
   if (switch_ghost_lighting)
@@ -412,11 +412,25 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
       GX_LoadPosMtxImm (vertex, GX_PNMTX0);
 
       object_render (&tunnel_section_obj,
-		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD, GX_VTXFMT0);
+		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD, GX_VTXFMT0);
 
       bla += 0.01;
       if (bla >= size * fudge_factor) bla -= size * fudge_factor;
     }
+
+  object_set_arrays (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
+		     0);
+
+  guMtxIdentity (modelView);
+  
+  guMtxScaleApply (modelView, mvtmp, 5.0, 5.0, 5.0);
+  guMtxTransApply (mvtmp, mvtmp, 64.4, -14, ((int) (bla + 32) % 32) - 16.0);
+  
+  update_matrices (mvtmp, viewmat);
+
+  specular_lighting_1light ();
+
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   deg += 0.012;
   deg2 += 0.05;
