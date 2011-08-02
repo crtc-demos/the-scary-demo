@@ -195,9 +195,9 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   Mtx44 proj;
   Mtx idmtx;
 
-  light0.pos.x = 0; //cos (lightdeg) * 1000.0;
+  light0.pos.x = cos (lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
-  light0.pos.z = 0; // sin (lightdeg) * 1000.0;
+  light0.pos.z = sin (lightdeg) * 500.0;
   
   lightdeg += 0.03;
 
@@ -236,20 +236,7 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
       hemisphere_texture ();
 
-      /*{
-        int i;
-	
-	for (i = 0; i < LIGHT_TEX_W * LIGHT_TEX_H * 2; i += 2)
-	  {
-	    char *foo = (char*) lightmap + i;
-	    foo[0] = 0x75;
-	    foo[1] = 0x75;
-	  }
-
-	DCFlushRange (lightmap, LIGHT_TEX_W * LIGHT_TEX_H * 2);
-      }*/
-
-      GX_CopyTex (lightmap, GX_FALSE);
+      GX_CopyTex (lightmap, GX_TRUE);
       GX_PixModeSync ();
     }
 }
@@ -291,6 +278,16 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GXTexObj bumpmap;
   GXTexObj lightmap_obj;
   int i;
+
+  pos.x = bla;
+  pos.y = 0.0;
+  pos.z = 0.0;
+  
+  lookat.x = bla + 5;
+  lookat.y = cos (deg) * 0.2 + cos (deg2) * 0.1;
+  lookat.z = sin (deg2) * 0.2 + sin (deg) * 0.1;
+
+  guLookAt (viewmat, &pos, &up, &lookat);
 
   TPL_GetTexture (&stone_textureTPL, stone_texture, &texture);
   TPL_GetTexture (&stone_bumpTPL, stone_bump, &bumpmap);
@@ -362,15 +359,10 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   }
 
   guMtxIdentity (modelView);
-  guMtxRotAxisDeg (rotmtx, &axis, deg);
-  guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
 
   guMtxScaleApply (modelView, mvtmp, 1.0, 1.0, 1.0);
-
-  guMtxConcat (rotmtx, modelView, mvtmp);
-  guMtxConcat (rotmtx2, mvtmp, mvtmp);
   
-  update_matrices (mvtmp, viewmat);
+  update_matrices (modelView, viewmat);
 
   /* I want it bigger, but I don't want to fuck up the normals!
      This is stupid, fix it.  */
@@ -378,13 +370,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
     Mtx vertex;
     
     guMtxIdentity (modelView);
-    guMtxRotAxisDeg (rotmtx, &axis, deg);
-    guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
 
     guMtxScaleApply (modelView, mvtmp, 25.0, 25.0, 25.0);
-
-    guMtxConcat (rotmtx, mvtmp, mvtmp);
-    guMtxConcat (rotmtx2, mvtmp, mvtmp);
     
     guMtxConcat (viewmat, mvtmp, vertex);
 
@@ -411,18 +398,15 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   for (i = 0; i < 15; i++)
     {
+      const float fudge_factor = 1.15;
+      const float size = 28.0;
       Mtx vertex;
 
       guMtxIdentity (modelView);
-      guMtxRotAxisDeg (rotmtx, &axis, deg);
-      guMtxRotAxisDeg (rotmtx2, &axis2, deg2);
 
-      guMtxTransApply (modelView, mvtmp, 4 - i - bla, 0.0, 0.0);
-      guMtxScaleApply (mvtmp, mvtmp, 25.0, 25.0, 25.0);
-
-      guMtxConcat (rotmtx, mvtmp, mvtmp);
-      guMtxConcat (rotmtx2, mvtmp, mvtmp);
-
+      guMtxTransApply (modelView, mvtmp, i * fudge_factor, 0.0, 0.0);
+      guMtxScaleApply (mvtmp, mvtmp, size, size, size);
+      
       guMtxConcat (viewmat, mvtmp, vertex);
 
       GX_LoadPosMtxImm (vertex, GX_PNMTX0);
@@ -430,8 +414,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
       object_render (&tunnel_section_obj,
 		     OBJECT_POS | NORM_TYPE | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-      bla -= 0.005;
-      if (bla < 0.0) bla += 1.0;
+      bla += 0.01;
+      if (bla >= size * fudge_factor) bla -= size * fudge_factor;
     }
 
   deg += 0.012;
