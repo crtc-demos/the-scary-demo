@@ -20,6 +20,7 @@
 
 #include "server.h"
 #include "timing.h"
+#include "rendertarget.h"
 #include "soft-crtc.h"
 #include "tubes.h"
 #include "spooky-ghost.h"
@@ -330,9 +331,7 @@ main (int argc, char *argv[])
       srv_printf ("begin frame\n");
 #endif
 
-      GX_SetCullMode (GX_CULL_BACK);
-      GX_SetViewport (0, 0, rmode->fbWidth, rmode->efbHeight, 0, 1);
-      GX_SetScissor (0, 0, rmode->fbWidth, rmode->efbHeight);
+      rendertarget_screen (rmode);
 
       for (i = 0; i < num_active_effects; i++)
         {

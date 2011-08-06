@@ -4,6 +4,39 @@
 
 #include "object.h"
 
+void
+object_loc_initialise (object_loc *obj)
+{
+  obj->pnmtx = 0;
+  obj->calculate_normal_tex_mtx = 0;
+  obj->calculate_binorm_tex_mtx = 0;
+  obj->normal_tex_mtx = 0;
+  obj->binorm_tex_mtx = 0;
+}
+
+void
+object_set_tex_norm_binorm_matrices (object_loc *obj, u32 normal_tex_mtx,
+				     u32 binorm_tex_mtx)
+{
+  obj->calculate_normal_tex_mtx = 1;
+  obj->normal_tex_mtx = normal_tex_mtx;
+  obj->calculate_binorm_tex_mtx = 1;
+  obj->binorm_tex_mtx = binorm_tex_mtx;
+}
+
+void
+object_unset_tex_norm_binorm_matrices (object_loc *obj)
+{
+  obj->calculate_normal_tex_mtx = 0;
+  obj->calculate_binorm_tex_mtx = 0;
+}
+
+void
+object_set_pos_norm_matrix (object_loc *obj, u32 pnmtx)
+{
+  obj->pnmtx = pnmtx;
+}
+
 /* Set vertex (position/normal) arrays for an object. WHICH_FMT should be
    GX_VTXFMT0 etc. and WHICH_TEXCOORD should be GX_VA_TEX0 etc.  */
 
