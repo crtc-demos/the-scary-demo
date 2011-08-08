@@ -39,7 +39,7 @@ typedef struct {
 #define OBJECT_TEXCOORD	4
 #define OBJECT_NBT3	8
 
-extern void object_loc_initialise (object_loc *obj);
+extern void object_loc_initialise (object_loc *obj, u32 pnmtx);
 extern void object_set_tex_norm_binorm_matrices (object_loc *,
   u32 normal_tex_mtx, u32 binorm_tex_mtx);
 extern void object_unset_tex_norm_binorm_matrices (object_loc *);

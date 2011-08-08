@@ -1,0 +1,6 @@
+stage 0:
+  tev.rgb = chan1.rgb;
+
+stage 1:
+  tev.rgb = clamp (tev.rgb + texmap0[texcoord0].rgb * chan0.rgb);
+  tev.a = 1;

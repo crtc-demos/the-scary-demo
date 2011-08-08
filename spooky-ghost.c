@@ -126,9 +126,8 @@ spooky_ghost_init_effect (void *params)
   guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
   scene_update_camera (&scene);
   
-  object_loc_initialise (&obj_loc);
+  object_loc_initialise (&obj_loc, GX_PNMTX0);
   object_set_tex_norm_binorm_matrices (&obj_loc, GX_TEXMTX1, GX_TEXMTX2);
-  object_set_pos_norm_matrix (&obj_loc, GX_PNMTX0);
   
   TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) more_stones_tpl,
 			 more_stones_tpl_size);
@@ -367,8 +366,7 @@ draw_reflection (void)
   guOrtho (ortho, -1, 1, -1, 1, 1, 15);
   GX_LoadProjectionMtx (ortho, GX_ORTHOGRAPHIC);
   
-  object_loc_initialise (&reflection_loc);
-  object_set_pos_norm_matrix (&reflection_loc, GX_PNMTX0);
+  object_loc_initialise (&reflection_loc, GX_PNMTX0);
   
   guMtxIdentity (mvtmp);
 

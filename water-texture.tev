@@ -1,2 +1,3 @@
 stage 0:
-  tev.rgb = mix (0, texmap3[texcoord0].rgb, 0.25);
+#  tev.rgb = mix (0, texmap3[texcoord0].rgb, 0.25);
+  tev.rgb = 0.25 * texmap3[texcoord0].rgb;

@@ -24,6 +24,7 @@
 #include "soft-crtc.h"
 #include "tubes.h"
 #include "spooky-ghost.h"
+#include "pumpkin.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -32,8 +33,8 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef HOLD
 #undef DEBUG
 
-//#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 60000
+#undef SKIP_TO_TIME
+//#define SKIP_TO_TIME 75000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -46,9 +47,10 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  {      0,  30000, &soft_crtc_methods, NULL, -1, 0 },
-  {  30000,  60000, &tubes_methods, NULL, -1, 0 },
-  {  60000, 300000, &spooky_ghost_methods, NULL, -1, 0 }
+  {      0,  15000, &pumpkin_methods, NULL, -1, 0 },
+  {  15000,  45000, &soft_crtc_methods, NULL, -1, 0 },
+  {  45000,  75000, &tubes_methods, NULL, -1, 0 },
+  {  75000, 300000, &spooky_ghost_methods, NULL, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))

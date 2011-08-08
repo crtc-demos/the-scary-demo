@@ -5,9 +5,9 @@
 #include "object.h"
 
 void
-object_loc_initialise (object_loc *obj)
+object_loc_initialise (object_loc *obj, u32 pnmtx)
 {
-  obj->pnmtx = 0;
+  obj->pnmtx = pnmtx;
   obj->calculate_normal_tex_mtx = 0;
   obj->calculate_binorm_tex_mtx = 0;
   obj->normal_tex_mtx = 0;
