@@ -1,5 +1,5 @@
 #!/bin/sh
-if [ "$HOSTNAME" != batbox ]; then
+if [ "$HOSTNAME" != batbox ] && [ "$HOSTNAME" != six ]; then
   exec ssh batbox "cd /home/jules/rex-home/code/cubedemo; ./load.sh \"$@\""
 fi
 DOL=$1
