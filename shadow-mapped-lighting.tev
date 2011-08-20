@@ -1,6 +1,8 @@
+# texmap0 is the ramp texture.
 stage 0:
   tev.rgb = texmap0[texcoord0];
 
+# texmap1 is the shadow map.
 stage 1:
   tev.rgb = (texmap1[texcoord1].r > tev.r) ? 1 : 0;
 
