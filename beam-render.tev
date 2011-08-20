@@ -3,7 +3,10 @@
 # screen coordinates directly to texcoords.
 
 stage 0:
-  tev.rgb = clamp (texmap1[texcoord1].rrr + texmap1[texcoord1].ggg);
+  tev.rgb = clamp (texmap2[texcoord0].rrr + texmap2[texcoord0].ggg);
 
 stage 1:
-  tev.rgb = clamp (tev.rgb + texmap1[texcoord1].bbb);
+  tev.rgb = clamp ((tev.rgb + mix (0, texmap2[texcoord0].bbb, 1) + 0) * 4);
+
+stage 2:
+  tev.rgb = clamp ((tev.rgb + mix (0, 0, 1) + 0) * 2);

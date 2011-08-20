@@ -13,6 +13,7 @@
 #include "server.h"
 #include "scene.h"
 #include "utility-texture.h"
+#include "rendertarget.h"
 
 #include "images/pumpkin_skin.h"
 #include "pumpkin_skin_tpl.h"
@@ -83,6 +84,12 @@ beam_lighting (void)
 static float phase, phase2;
 
 static void *pumpkin_skin_txr;
+static void *beams_texture;
+
+#define BEAMS_TEX_W 640
+#define BEAMS_TEX_H 480
+/* GX_TF_I8 would be better here...  */
+#define BEAMS_TEX_TF GX_TF_RGBA8
 
 static void
 pumpkin_init_effect (void *params)
@@ -100,21 +107,77 @@ pumpkin_init_effect (void *params)
       srv_printf ("out of memory!\n");
       exit (1);
     }
+  
+  beams_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
+			    BEAMS_TEX_TF, GX_FALSE, 0));
 }
 
 static void
 pumpkin_uninit_effect (void *params)
 {
   free (pumpkin_skin_txr);
+  free (beams_texture);
+}
+
+static void
+draw_beams (void)
+{
+  Mtx mvtmp;
+  object_loc reflection_loc;
+  scene_info reflscene;
+  Mtx44 ortho;
+
+  /* "Straight" camera.  */
+  scene_set_pos (&reflscene, (guVector) { 0, 0, 0 });
+  scene_set_lookat (&reflscene, (guVector) { 5, 0, 0 });
+  scene_set_up (&reflscene, (guVector) { 0, 1, 0 });
+  scene_update_camera (&reflscene);
+
+  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
+  GX_LoadProjectionMtx (ortho, GX_ORTHOGRAPHIC);
+  
+  object_loc_initialise (&reflection_loc, GX_PNMTX0);
+  
+  guMtxIdentity (mvtmp);
+
+  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp);
+
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  GX_ClearVtxDesc ();
+  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
+  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+#include "beam-render.inc"
+
+  GX_SetCullMode (GX_CULL_NONE);
+
+  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT1, 4);
+
+  GX_Position3f32 (3, -1, 1);
+  GX_TexCoord2f32 (1, 0);
+
+  GX_Position3f32 (3, -1, -1);
+  GX_TexCoord2f32 (0, 0);
+
+  GX_Position3f32 (3, 1, 1);
+  GX_TexCoord2f32 (1, 1);
+
+  GX_Position3f32 (3, 1, -1);
+  GX_TexCoord2f32 (0, 1);
+
+  GX_End ();
 }
 
 static void
 pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 			GXRModeObj *rmode)
 {
-  Mtx modelview;
+  Mtx modelview, mvtmp;
   object_loc pumpkin_loc, beam_loc;
   GXTexObj pumpkin_tex_obj;
+  GXTexObj beams_tex_obj;
 
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pumpkin_tex_obj);
 
@@ -125,7 +188,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_LoadTexObj (get_utility_texture (UTIL_TEX_8BIT_RAMP), GX_TEXMAP1);
   GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
-  
+
+  GX_InitTexObj (&beams_tex_obj, beams_texture, BEAMS_TEX_W, BEAMS_TEX_H,
+		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
 				      100 * sinf (phase) });
   scene_set_lookat (&scene, (guVector) { 0, 40, 0 });
@@ -173,43 +239,26 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     guMtxCopy (dp, scene.depth_ramp_lookup);
   }
   
+  /* Render beams to texture.  */
+  rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
+  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+    
   guMtxIdentity (modelview);
   guMtxScaleApply (modelview, modelview, 30, 30, 30);
   scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
-
-  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
-  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
-  GX_SetColorUpdate (GX_TRUE);
-  GX_SetAlphaUpdate (GX_TRUE);
-
-  GX_SetCullMode (GX_CULL_BACK);
-
-  /* Render pumpkins...  */
-
-  light_update (scene.camera, &light0);
-  pumpkin_lighting ();
-
-  object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		     GX_VTXFMT0, GX_VA_TEX0);
-  
-  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		 GX_VTXFMT0);
-  
-  guMtxTransApply (modelview, modelview, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
-
-  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		 GX_VTXFMT0);
 
   /* Render beams... */
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetCullMode (GX_CULL_FRONT);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
 
   beam_lighting ();
 
   /* Add back faces.  */
-  scene_update_matrices (&scene, &beam_loc, scene.camera, modelview);
+  guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp);
 
   GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -239,25 +288,55 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
 
-  /* Render another pumpkin...  */
+  GX_CopyTex (beams_texture, GX_TRUE);
+  GX_PixModeSync ();
+  
+  GX_LoadTexObj (&beams_tex_obj, GX_TEXMAP2);
 
+  /* Render pumpkins...  */
+
+  rendertarget_screen (rmode);
+
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
+
   GX_SetCullMode (GX_CULL_BACK);
 
+  light_update (scene.camera, &light0);
+  pumpkin_lighting ();
+
+  object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0, GX_VA_TEX0);
+
   scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+
+  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		 GX_VTXFMT0);
+  
+  guMtxTransApply (modelview, modelview, 0, 45, 0);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+
+  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		 GX_VTXFMT0);
 
   pumpkin_lighting ();
 
   guMtxTransApply (modelview, modelview, 0, 45, 0);
   scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
 
-  object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		     GX_VTXFMT0, GX_VA_TEX0);
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
-  phase += 0.04;
-  phase2 += 0.03;
+  GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
+  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
+  draw_beams ();
+
+  phase += 0.01;
+  phase2 += 0.008;
 }
 
 effect_methods pumpkin_methods =
