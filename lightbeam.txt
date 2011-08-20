@@ -1,0 +1,92 @@
+Draw back faces, against "close-Z" background.
+
+** using Z textures (somehow) would allow us to add (accumulate) onto the Z buffer. But we'd have to make each "beam" convex, and draw them separately.
+
+???
+
+??? Draw front faces, using GX_BM_SUBTRACT blend mode.
+
+
+we can use red/green channels (lo/hi parts) and ramp textures to do 16-bit arithmetic, I think. We just need to use an indirect texture matrix to create the right subtexel positioning "up" each column, to simulate a slightly-diagonal line (with REPEAT on the less-significant axis).
+
+Then we can do addition (of texcoord0/texcoord1) like:
+
+stage 0:
+  itexcoord = (indmtx0 ** texmap0[texcoord0]) * indscale0;
+
+stage 1:
+  itexcoord = itexcoord + (indmtx0 ** texmap0[texcoord1]) * indscale0;
+
+this doesn't work though, because we've got one of the operands as the EFB, which can't be turned back into a texcoord (without grabbing the EFB as a texture, but that's impractical here).
+
+
+8-bit implementation:
+=====================
+
+Render back faces with blend mode set to add to EFB.
+
+Render front faces with blend mode set to subtract from EFB (does this clamp?).
+
+Grab EFB as texture.
+
+Render solid parts of scene.
+
+Draw front faces, using Z-test but not Z-update. I guess, using the grabbed texture as intensity level to add to EFB pixels.
+
+This might work OK, but I think the number of bits of accuracy might be insufficient for good results. Especially seeing as intermediate results (front+front-back-back) will most likely overflow.
+
+8-bit implementation, 2
+=======================
+
+As above, but use three separate colour channels for three "beams" to lessen the chances of overflow. Since the maximum overdraw for my model is ~2, so we should have enough resolution I think.
+
+(We still have to use a texcoord matrix to get position->Z, and look up the number in a 16x16 ramp texture).
+
+Hmm actually this describes:
+
+front face - back face
+
+     f        b
+     |********|
+
+but we might want to take viewer position into account for being "inside" the beam,
+
+e    f        b    (b - f)
+<)   |********|
+
+e             b    (b - e)
+<)************|
+
+So when drawing faces "f", make the background colour equivalent to "e" (no, that doesn't work at all).
+
+Z-buffer implementation
+=======================
+
+For each beam, separately:
+
+  Render front faces, then grab Z buffer.
+
+  Render back faces, then grab Z buffer.
+
+  Use CPU (?) to difference the two grabbed textures.
+
+  accumulate into another texture.
+
+Use texture to render front faces over solid parts of scene, as before. A possible plus side is we can use the CPU to help with calculating a bloom effect, if we want one of those.
+
+Downside of this is that to get the right results, we can only use convex "beams", and we have to render them one at a time. Not very good.
+
+16-bit implementation
+=====================
+
+Render front faces, using Z->ramp texture->encoded colour. Use 16-bit addition trick to accumulate into EFB. No, that doesn't work! Gah.
+
+Render back faces, using same trick, but subtracting from EFB (is that possible?).
+
+is there an EFB trick with logic operations? Seems like no.
+
+Bloom
+=====
+
+A good trick might be to use three or four different seperable gaussian blurs, all at the same time, using different coefficients, then sum them. We can do quite a big blur that way, maybe 7 or 9 taps (we're limited by texcoord generation though, I think, and it might get slow!).
+

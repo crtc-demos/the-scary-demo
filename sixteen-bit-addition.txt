@@ -1,0 +1,46 @@
+Ramp texture with carry
+=======================
+
+Addition (4x4 matrices stand in for 256x256 matrices!)
+------------------------------------------------------
+
+3 7 b f     3 7 b f
+2 6 a e  +  2 6 a e
+1 5 9 d     1 5 9 d
+0 4 8 c     0 4 8 c
+(y1,x1)	    (y2,x2)
+
+using:
+
+7 b f f
+6 a e f
+5 9 d f
+4 8 c f
+3 7 b f
+2 6 a e
+1 5 9 d
+0 4 8 c
+
+(y1+y2,x1+x2)  (normalized to 0..1)
+
+e.g.
+
+6 -> (2,1)
+a -> (2,2)   -> result (4,3) -> f
+
+3 -> (3,0)
+3 -> (3,0)   -> result (6,0) -> 6
+
+3 -> (3,0)
+b -> (3,2)   -> result (6,2) -> e
+
+Subtraction (using subtractive blend mode)
+------------------------------------------
+
+3 7 b f     3 7 b f
+2 6 a e  -  2 6 a e
+1 5 9 d     1 5 9 d
+0 4 8 c     0 4 8 c
+
+=
+

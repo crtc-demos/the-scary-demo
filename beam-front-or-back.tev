@@ -1,0 +1,5 @@
+# say texmap0 is a ramp texture, texcoord0 is a position-to-Z texgen with
+# an appropriate scaling matrix to look up in that texture.
+
+stage 0:
+  tev.rgb = k0.rgb * texmap1[texcoord1];

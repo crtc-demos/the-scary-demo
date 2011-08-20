@@ -10,8 +10,10 @@ object_loc_initialise (object_loc *obj, u32 pnmtx)
   obj->pnmtx = pnmtx;
   obj->calculate_normal_tex_mtx = 0;
   obj->calculate_binorm_tex_mtx = 0;
+  obj->calculate_vertex_depth_mtx = 0;
   obj->normal_tex_mtx = 0;
   obj->binorm_tex_mtx = 0;
+  obj->vertex_depth_mtx = 0;
 }
 
 void
@@ -29,6 +31,19 @@ object_unset_tex_norm_binorm_matrices (object_loc *obj)
 {
   obj->calculate_normal_tex_mtx = 0;
   obj->calculate_binorm_tex_mtx = 0;
+}
+
+void
+object_set_vertex_depth_mtx (object_loc *obj, u32 vertex_depth_mtx)
+{
+  obj->calculate_vertex_depth_mtx = 1;
+  obj->vertex_depth_mtx = vertex_depth_mtx;
+}
+
+void
+object_unset_vertex_depth_mtx (object_loc *obj)
+{
+  obj->calculate_vertex_depth_mtx = 0;
 }
 
 void

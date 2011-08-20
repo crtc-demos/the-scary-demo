@@ -64,6 +64,12 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
 
       GX_LoadTexMtxImm (binormaltexmtx, obj->binorm_tex_mtx, GX_MTX2x4);
     }
+  
+  if (obj->calculate_vertex_depth_mtx)
+    {
+      guMtxConcat (scene->depth_ramp_lookup, vertex, tempmtx);
+      GX_LoadTexMtxImm (tempmtx, obj->vertex_depth_mtx, GX_MTX3x4);
+    }
 
   GX_LoadPosMtxImm (vertex, obj->pnmtx);
   GX_LoadNrmMtxImm (normal, obj->pnmtx);

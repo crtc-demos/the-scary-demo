@@ -14,7 +14,9 @@ typedef struct {
   guVector pos;
   guVector up;
   guVector lookat;
-  
+
+  Mtx depth_ramp_lookup;
+
   char camera_dirty;
 } scene_info;
 
