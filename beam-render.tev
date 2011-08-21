@@ -7,8 +7,8 @@ stage 0:
   tev = tev;
 
 stage 1:
-  itexcoord = itexcoord + indmtx1 ** texmap2[texcoord0] * indscale1;
+  itexcoord = itexcoord + indmtx1 ** texmap4[texcoord0] * indscale1;
   tev = tev;
 
 stage 2:
-  tev = texmap3[itexcoord + indmtx2 ** texmap2[texcoord0] * indscale2];
+  tev = texmap3[itexcoord + indmtx2 ** texmap4[texcoord0] * indscale2];

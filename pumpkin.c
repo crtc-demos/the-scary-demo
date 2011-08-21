@@ -109,15 +109,15 @@ pumpkin_init_effect (void *params)
 
   beams_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			    BEAMS_TEX_TF, GX_FALSE, 0));
-  /*beams_texture2 = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
-			     BEAMS_TEX_TF, GX_FALSE, 0));*/
+  beams_texture2 = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
+			     BEAMS_TEX_TF, GX_FALSE, 0));
 }
 
 static void
 pumpkin_uninit_effect (void *params)
 {
   free (beams_texture);
-  /*free (beams_texture2);*/
+  free (beams_texture2);
 }
 
 static void
@@ -258,7 +258,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     guMtxCopy (dp, scene.depth_ramp_lookup);
   }
 
-#if 0
+  guMtxIdentity (modelview);
+  guMtxScaleApply (modelview, modelview, 30, 30, 30);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
@@ -267,10 +270,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   /*GX_SetCopyClear ((GXColor) { 1, 1, 1, 1 }, 0x00ffffff);
   GX_CopyTex (beams_texture, GX_TRUE);*/
   
-  guMtxIdentity (modelview);
-  guMtxScaleApply (modelview, modelview, 30, 30, 30);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
-
   /* Render beams (to texmap 2).  */
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
@@ -333,12 +332,11 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_CopyTex (beams_texture2, GX_TRUE);
   GX_PixModeSync ();
 
-  GX_LoadTexObj (&beams_tex2_obj, GX_TEXMAP4);
-#endif
-
   /* Render pumpkins...  */
 
   rendertarget_screen (rmode);
+
+  GX_LoadProjectionMtx (proj, GX_PERSPECTIVE);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -370,7 +368,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
-#if 0
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
@@ -380,7 +377,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   {
     f32 indmtx[2][3];
     
-    GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+    //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
     
     /* Texture indices from colours go from 0 to 255: these are interpreted
        exactly as-is for texture coordinates.  We have to scale by 0.5 (giving
@@ -402,9 +399,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
     GX_SetIndTexMatrix (GX_ITM_2, indmtx, -1);
   }
-#endif
-  
-  //draw_beams (0);
+
+  GX_LoadTexObj (&beams_tex2_obj, GX_TEXMAP4);
+
+  draw_beams (0);
 
   phase += 0.01;
   phase2 += 0.008;
