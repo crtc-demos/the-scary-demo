@@ -28,10 +28,12 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		specular-shadowed-lighting.inc tube-lighting.inc \
 		cube-lighting.inc tunnel-lighting.inc bump-mapping.inc \
 		just-texture.inc alpha-texture.inc water-texture.inc \
-		pumpkin-lighting.inc beam-front-or-back.inc beam-render.inc
+		pumpkin-lighting.inc beam-front-or-back.inc beam-render.inc \
+		remap-texchans.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
-		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o
+		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
+		images/gradient.tpl.o
 
 GENERATED_IMAGES :=	images/stones_bump.png
 
@@ -56,6 +58,10 @@ cleaner: clean
 	rm -f libcompass/*.d *.d $(SHADERS_INC) $(TEXTURES) $(OBJECTS_INC) \
 	      $(GENERATED_IMAGES)
 
+.PHONY:	images_clean
+images_clean:
+	rm -f $(TEXTURES) $(GENERATED_IMAGES)
+
 filemgr.elf: $(FILEMGR_OBJS)
 	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(FILEMGR_LIBS) -o $@
 
@@ -64,6 +70,9 @@ filemgr.elf: $(FILEMGR_OBJS)
 
 %.d:	%.c $(SHADERS_INC) $(OBJECTS_INC)
 	$(CC) $(CFLAGS) $(INCLUDE) -MM $< | ./dirify.sh "$@" > $@
+
+%.d:	%.scf
+	$(GXTEXCONV) -d $@ -s $<
 
 %.inc:	%.tev
 	$(TEVSL) $< -o $@
@@ -109,7 +118,7 @@ exec: $(TARGET)
 
 ifneq ($(MAKECMDGOALS),clean)
 ifneq ($(MAKECMDGOALS),cleaner)
-include $(OBJS:.o=.d)
+include $(OBJS:.o=.d) $(TEXTURES:.tpl.o=.d)
 endif
 endif
 

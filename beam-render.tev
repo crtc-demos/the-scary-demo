@@ -1,12 +1,14 @@
-# say texmap1 is a texture containing separate channels of accumulated "beam"
-# brightness: we want the sum of the R, G & B channels. Texcoord1 just maps
+# Texmap2 is a texture containing separate channels of accumulated "beam"
+# brightness: we want the sum of the R, G & B channels. Texcoord0 just maps
 # screen coordinates directly to texcoords.
 
 stage 0:
-  tev.rgb = clamp (texmap2[texcoord0].rrr + texmap2[texcoord0].ggg);
+  itexcoord = indmtx0 ** texmap4[texcoord0] * indscale0;
+  tev = tev;
 
 stage 1:
-  tev.rgb = clamp ((tev.rgb + mix (0, texmap2[texcoord0].bbb, 1) + 0) * 4);
+  itexcoord = itexcoord + indmtx1 ** texmap2[texcoord0] * indscale1;
+  tev = tev;
 
 stage 2:
-  tev.rgb = clamp ((tev.rgb + mix (0, 0, 1) + 0) * 2);
+  tev = texmap3[itexcoord + indmtx2 ** texmap2[texcoord0] * indscale2];

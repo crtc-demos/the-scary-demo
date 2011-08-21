@@ -20,6 +20,11 @@
 
 static TPLFile pumpkin_skinTPL;
 
+#include "images/gradient.h"
+#include "gradient_tpl.h"
+
+static TPLFile gradientTPL;
+
 #include "objects/pumpkin.inc"
 #include "objects/beam-left.inc"
 #include "objects/beam-right.inc"
@@ -83,12 +88,11 @@ beam_lighting (void)
 
 static float phase, phase2;
 
-static void *pumpkin_skin_txr;
 static void *beams_texture;
+static void *beams_texture2;
 
 #define BEAMS_TEX_W 640
 #define BEAMS_TEX_H 480
-/* GX_TF_I8 would be better here...  */
 #define BEAMS_TEX_TF GX_TF_RGBA8
 
 static void
@@ -100,27 +104,24 @@ pumpkin_init_effect (void *params)
   TPL_OpenTPLFromMemory (&pumpkin_skinTPL, (void *) pumpkin_skin_tpl,
 			 pumpkin_skin_tpl_size);
 
-  pumpkin_skin_txr = memalign (32, GX_GetTexBufferSize (1024, 512, GX_TF_RGB565,
-			       GX_FALSE, 0));
-  if (!pumpkin_skin_txr)
-    {
-      srv_printf ("out of memory!\n");
-      exit (1);
-    }
-  
+  TPL_OpenTPLFromMemory (&gradientTPL, (void *) gradient_tpl,
+			 gradient_tpl_size);
+
   beams_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			    BEAMS_TEX_TF, GX_FALSE, 0));
+  /*beams_texture2 = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
+			     BEAMS_TEX_TF, GX_FALSE, 0));*/
 }
 
 static void
 pumpkin_uninit_effect (void *params)
 {
-  free (pumpkin_skin_txr);
   free (beams_texture);
+  /*free (beams_texture2);*/
 }
 
 static void
-draw_beams (void)
+draw_beams (int remap)
 {
   Mtx mvtmp;
   object_loc reflection_loc;
@@ -149,7 +150,14 @@ draw_beams (void)
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
-#include "beam-render.inc"
+  if (remap)
+    {
+      #include "remap-texchans.inc"
+    }
+  else
+    {
+      #include "beam-render.inc"
+    }
 
   GX_SetCullMode (GX_CULL_NONE);
 
@@ -178,9 +186,13 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_loc pumpkin_loc, beam_loc;
   GXTexObj pumpkin_tex_obj;
   GXTexObj beams_tex_obj;
+  GXTexObj beams_tex2_obj;
+  GXTexObj gradient_tex_obj;
 
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pumpkin_tex_obj);
+  TPL_GetTexture (&gradientTPL, gradient, &gradient_tex_obj);
 
+  /* We probably don't really need to do this per-frame?  */
   GX_InvalidateTexAll ();
   
   GX_LoadTexObj (&pumpkin_tex_obj, GX_TEXMAP0);
@@ -191,6 +203,13 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_InitTexObj (&beams_tex_obj, beams_texture, BEAMS_TEX_W, BEAMS_TEX_H,
 		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  GX_InitTexObj (&beams_tex2_obj, beams_texture2, BEAMS_TEX_W, BEAMS_TEX_H,
+		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  GX_InitTexObjWrapMode (&gradient_tex_obj, GX_CLAMP, GX_CLAMP);
+  GX_InitTexObjFilterMode (&gradient_tex_obj, GX_LINEAR, GX_LINEAR);
+  GX_LoadTexObj (&gradient_tex_obj, GX_TEXMAP3);
 
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
 				      100 * sinf (phase) });
@@ -238,16 +257,21 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     
     guMtxCopy (dp, scene.depth_ramp_lookup);
   }
-  
+
+#if 0
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
-    
+  
+  /* Urgh, what.  */
+  /*GX_SetCopyClear ((GXColor) { 1, 1, 1, 1 }, 0x00ffffff);
+  GX_CopyTex (beams_texture, GX_TRUE);*/
+  
   guMtxIdentity (modelview);
   guMtxScaleApply (modelview, modelview, 30, 30, 30);
   scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
 
-  /* Render beams... */
+  /* Render beams (to texmap 2).  */
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetCullMode (GX_CULL_FRONT);
@@ -293,6 +317,25 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   
   GX_LoadTexObj (&beams_tex_obj, GX_TEXMAP2);
 
+  /* Remap texture colour channels so we can use all of A,B,G as texture
+     coordinates...  */
+
+  rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
+  GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+  
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+  GX_SetCullMode (GX_CULL_NONE);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_TRUE);
+
+  draw_beams (1);
+  
+  GX_CopyTex (beams_texture2, GX_TRUE);
+  GX_PixModeSync ();
+
+  GX_LoadTexObj (&beams_tex2_obj, GX_TEXMAP4);
+#endif
+
   /* Render pumpkins...  */
 
   rendertarget_screen (rmode);
@@ -329,11 +372,41 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
+#if 0
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
-  draw_beams ();
+  
+  /* Load indirect texture matrices.  */
+  {
+    f32 indmtx[2][3];
+    
+    GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+    
+    /* Texture indices from colours go from 0 to 255: these are interpreted
+       exactly as-is for texture coordinates.  We have to scale by 0.5 (giving
+       us 0...127) due to the limited range of indirect matrices, then use an
+       exponent of 1 to get back to 0...255.  */
+    
+    indmtx[0][0] = 0.5; indmtx[0][1] = 0.0; indmtx[0][2] = 0.0;
+    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+    
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -1);
+    
+    indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
+    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, -1);
+
+    indmtx[0][0] = 0.0; indmtx[0][1] = 0.0; indmtx[0][2] = 0.5;
+    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx, -1);
+  }
+#endif
+  
+  //draw_beams (0);
 
   phase += 0.01;
   phase2 += 0.008;
