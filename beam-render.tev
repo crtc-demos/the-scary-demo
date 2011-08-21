@@ -3,12 +3,12 @@
 # screen coordinates directly to texcoords.
 
 stage 0:
-  itexcoord = indmtx0 ** texmap4[texcoord0] * indscale0;
+  itexcoord = indmtx0 ** texmap4[texcoord1] * indscale0;
   tev = tev;
 
 stage 1:
-  itexcoord = itexcoord + indmtx1 ** texmap4[texcoord0] * indscale1;
+  itexcoord = itexcoord + indmtx1 ** texmap4[texcoord1] * indscale1;
   tev = tev;
 
 stage 2:
-  tev = texmap3[itexcoord + indmtx2 ** texmap4[texcoord0] * indscale2];
+  tev = texmap3[itexcoord + indmtx2 ** texmap4[texcoord1] * indscale2];

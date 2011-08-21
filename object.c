@@ -11,9 +11,11 @@ object_loc_initialise (object_loc *obj, u32 pnmtx)
   obj->calculate_normal_tex_mtx = 0;
   obj->calculate_binorm_tex_mtx = 0;
   obj->calculate_vertex_depth_mtx = 0;
+  obj->calculate_screenspace_tex_mtx = 0;
   obj->normal_tex_mtx = 0;
   obj->binorm_tex_mtx = 0;
   obj->vertex_depth_mtx = 0;
+  obj->screenspace_tex_mtx = 0;
 }
 
 void
@@ -44,6 +46,19 @@ void
 object_unset_vertex_depth_mtx (object_loc *obj)
 {
   obj->calculate_vertex_depth_mtx = 0;
+}
+
+void
+object_set_screenspace_tex_mtx (object_loc *obj, u32 screenspace_tex_mtx)
+{
+  obj->calculate_screenspace_tex_mtx = 1;
+  obj->screenspace_tex_mtx = screenspace_tex_mtx;
+}
+
+void
+object_unset_screenspace_tex_mtx (object_loc *obj)
+{
+  obj->calculate_screenspace_tex_mtx = 0;
 }
 
 void

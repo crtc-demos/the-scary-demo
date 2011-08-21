@@ -297,7 +297,6 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
       GX_SetAlphaUpdate (GX_TRUE);
 
       guOrtho (proj, -1, 1, -1, 1, 1, 15);
-      GX_LoadProjectionMtx (proj, GX_ORTHOGRAPHIC);
 
       GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
 
@@ -308,7 +307,8 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
       GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 
       guMtxIdentity (idmtx);
-      scene_update_matrices (&scene, &obj_loc, idmtx, idmtx);
+      scene_update_matrices (&scene, &obj_loc, idmtx, idmtx, proj,
+			     GX_ORTHOGRAPHIC);
 
       light_update (scene.camera, &light0);
 
@@ -364,13 +364,13 @@ draw_reflection (void)
   scene_update_camera (&reflscene);
 
   guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  GX_LoadProjectionMtx (ortho, GX_ORTHOGRAPHIC);
   
   object_loc_initialise (&reflection_loc, GX_PNMTX0);
   
   guMtxIdentity (mvtmp);
 
-  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp);
+  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
+			 ortho, GX_ORTHOGRAPHIC);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
@@ -475,7 +475,6 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_LoadTexObj (&bumpmap, GX_TEXMAP2);
   GX_LoadTexObj (&reflection_obj, GX_TEXMAP3);
 
-  GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
   scene_update_camera (&scene);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
@@ -490,7 +489,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   light_update (scene.camera, &light0);
 
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView, perspmat,
+			 GX_PERSPECTIVE);
 
   /* I want it bigger, but I don't want to fuck up the normals!
      This is stupid, fix it.  */
@@ -557,7 +557,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxScaleApply (modelView, mvtmp, 5.0, 5.0, 5.0);
   guMtxTransApply (mvtmp, mvtmp, 64.4, -16, ((int) (bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, NULL, 0);
 
   /* Override position to make it reflected.  (Ew!).  */
   guMtxIdentity (modelView);
@@ -599,8 +599,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   const float size = 28.0;
 
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView);
-  GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView, perspmat,
+			 GX_PERSPECTIVE);
 
   if (switch_ghost_lighting)
     bump_mapping_tev_setup ();
@@ -665,7 +665,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxScaleApply (modelView, mvtmp, 5.0, 5.0, 5.0);
   guMtxTransApply (mvtmp, mvtmp, 64.4, -14, ((int) (bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, NULL, 0);
 
   tunnel_lighting ();
 

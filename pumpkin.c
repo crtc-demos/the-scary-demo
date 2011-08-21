@@ -86,13 +86,19 @@ beam_lighting (void)
 #include "beam-front-or-back.inc"
 }
 
+static void
+beam_composite_tev_setup (void)
+{
+#include "beam-render.inc"
+}
+
 static float phase, phase2;
 
 static void *beams_texture;
 static void *beams_texture2;
 
-#define BEAMS_TEX_W 640
-#define BEAMS_TEX_H 480
+#define BEAMS_TEX_W 320
+#define BEAMS_TEX_H 240
 #define BEAMS_TEX_TF GX_TF_RGBA8
 
 static void
@@ -135,13 +141,13 @@ draw_beams (int remap)
   scene_update_camera (&reflscene);
 
   guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  GX_LoadProjectionMtx (ortho, GX_ORTHOGRAPHIC);
   
   object_loc_initialise (&reflection_loc, GX_PNMTX0);
   
   guMtxIdentity (mvtmp);
 
-  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp);
+  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
+			 ortho, GX_ORTHOGRAPHIC);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
@@ -222,8 +228,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   scene_update_camera (&scene);
 
-  GX_LoadProjectionMtx (proj, GX_PERSPECTIVE);
-
   /* Put this somewhere nicer!  We need to do the same thing for shadow
      mapping.  */
   {
@@ -260,7 +264,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   guMtxIdentity (modelview);
   guMtxScaleApply (modelview, modelview, 30, 30, 30);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, proj,
+			 GX_PERSPECTIVE);
 
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
@@ -281,7 +286,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   /* Add back faces.  */
   guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp);
+  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, 0);
 
   GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -336,8 +341,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   rendertarget_screen (rmode);
 
-  GX_LoadProjectionMtx (proj, GX_PERSPECTIVE);
-
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
@@ -351,24 +354,25 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, proj,
+			 GX_PERSPECTIVE);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
   
-  guMtxTransApply (modelview, modelview, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+  guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
-  guMtxTransApply (modelview, modelview, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
+  guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL,
+			 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
-  GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
@@ -382,7 +386,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     /* Texture indices from colours go from 0 to 255: these are interpreted
        exactly as-is for texture coordinates.  We have to scale by 0.5 (giving
        us 0...127) due to the limited range of indirect matrices, then use an
-       exponent of 1 to get back to 0...255.  */
+       exponent of 1 to get back to 0...255.  Also we multiply by 4 translating
+       from RGB8 to RGBA6, so compensate for that.  */
     
     indmtx[0][0] = 0.5; indmtx[0][1] = 0.0; indmtx[0][2] = 0.0;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
@@ -402,7 +407,48 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_LoadTexObj (&beams_tex2_obj, GX_TEXMAP4);
 
-  draw_beams (0);
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+  GX_SetCullMode (GX_CULL_BACK);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
+
+  if (1)
+    {
+      beam_composite_tev_setup ();
+
+      /* Set up texcoord1 to map to screen-space coordinates.  */
+      object_set_screenspace_tex_mtx (&beam_loc, GX_TEXMTX1);
+      GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
+
+      /* Draw front faces.  */
+      guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, proj,
+			     GX_PERSPECTIVE);
+
+      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
+
+      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
+
+      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+
+      /* Draw back faces.  */
+      GX_SetCullMode (GX_CULL_FRONT);
+
+      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
+
+      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
+
+      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+    }
+  else
+    draw_beams (0);
 
   phase += 0.01;
   phase2 += 0.008;

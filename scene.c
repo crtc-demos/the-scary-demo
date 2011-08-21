@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "scene.h"
 
 void
@@ -33,10 +35,13 @@ scene_update_camera (scene_info *scene)
 
 void
 scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
-		       Mtx obj_mtx)
+		       Mtx obj_mtx, Mtx projection, u32 projection_type)
 {
   Mtx vertex, normal, binormal;
   Mtx normaltexmtx, binormaltexmtx, tempmtx;
+  
+  if (projection)
+    GX_LoadProjectionMtx (projection, projection_type);
   
   guMtxConcat (cam_mtx, obj_mtx, vertex);
   guMtxInverse (vertex, tempmtx);
@@ -69,6 +74,37 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
     {
       guMtxConcat (scene->depth_ramp_lookup, vertex, tempmtx);
       GX_LoadTexMtxImm (tempmtx, obj->vertex_depth_mtx, GX_MTX3x4);
+    }
+  
+  /* A matrix which performs the same transformation as the camera & projection,
+     but gives results in the range 0...1 suitable for use as texture
+     coordinates.  */
+  if (obj->calculate_screenspace_tex_mtx)
+    {
+      Mtx texproj;
+
+      assert (projection);
+
+      /* Get a matrix suitable for texture projection from the matrix used
+         for scene projection.  */
+      guMtxRowCol (texproj, 0, 0) = guMtxRowCol (projection, 0, 0) * 0.5;
+      guMtxRowCol (texproj, 0, 1) = guMtxRowCol (projection, 0, 1);
+      guMtxRowCol (texproj, 0, 2) = guMtxRowCol (projection, 0, 2) * 0.5 - 0.5;
+      guMtxRowCol (texproj, 0, 3) = guMtxRowCol (projection, 0, 3);
+
+      guMtxRowCol (texproj, 1, 0) = guMtxRowCol (projection, 1, 0);
+      guMtxRowCol (texproj, 1, 1) = -guMtxRowCol (projection, 1, 1) * 0.5;
+      guMtxRowCol (texproj, 1, 2) = guMtxRowCol (projection, 1, 2) * 0.5 - 0.5;
+      guMtxRowCol (texproj, 1, 3) = guMtxRowCol (projection, 1, 3);
+
+      guMtxRowCol (texproj, 2, 0) = guMtxRowCol (projection, 3, 0);
+      guMtxRowCol (texproj, 2, 1) = guMtxRowCol (projection, 3, 1);
+      guMtxRowCol (texproj, 2, 2) = guMtxRowCol (projection, 3, 2);
+      guMtxRowCol (texproj, 2, 3) = guMtxRowCol (projection, 3, 3);
+
+      guMtxConcat (texproj, vertex, tempmtx);
+      
+      GX_LoadTexMtxImm (tempmtx, obj->screenspace_tex_mtx, GX_MTX3x4);
     }
 
   GX_LoadPosMtxImm (vertex, obj->pnmtx);
