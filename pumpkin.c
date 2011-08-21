@@ -364,8 +364,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
-  pumpkin_lighting ();
-
   guMtxTransApply (modelview, modelview, 0, 45, 0);
   scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview);
 
