@@ -311,6 +311,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   beam_lighting ();
 
+  GX_SetFog (GX_FOG_PERSP_EXP2, 130, 300, 10, 500, (GXColor) { 0, 0, 0, 0 });
+
   /* Add back faces.  */
   guMtxTransApply (modelview, mvtmp, 0, 45, 0);
   
