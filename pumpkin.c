@@ -210,6 +210,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GXTexObj beams_z_tex_obj;
   GXTexObj beams_tex2_obj;
   GXTexObj gradient_tex_obj;
+  unsigned int i;
 
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pumpkin_tex_obj);
   TPL_GetTexture (&gradientTPL, gradient, &gradient_tex_obj);
@@ -312,36 +313,51 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   beam_lighting ();
 
   /* Add back faces.  */
-  guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, 0);
+  guMtxCopy (modelview, mvtmp);
+  
+  for (i = 0; i < 3; i++)
+    {
+      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, 0);
 
-  GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
-  object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
+      GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
+      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
-  object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
+      GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
+      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
-  object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+      GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
+      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+
+      guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+    }
 
   /* Take away front faces.  */
   GX_SetBlendMode (GX_BM_SUBTRACT, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetCullMode (GX_CULL_BACK);
   
-  GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
-  object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
+  guMtxCopy (modelview, mvtmp);
+  
+  for (i = 0; i < 3; i++)
+    {
+      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, 0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
-  object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
+      GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
+      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
-  object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
-  object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+      GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
+      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
+
+      GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
+      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
+      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
+
+      guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+    }
 
     /* Copy the Z buffer for the rendered beams!  */
   GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_Z24X8, GX_FALSE);
