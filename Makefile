@@ -29,7 +29,7 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		cube-lighting.inc tunnel-lighting.inc bump-mapping.inc \
 		just-texture.inc alpha-texture.inc water-texture.inc \
 		pumpkin-lighting.inc beam-front-or-back.inc beam-render.inc \
-		remap-texchans.inc beam-composite.inc
+		remap-texchans.inc beam-composite.inc beam-z-render.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \

@@ -1,0 +1,9 @@
+# Annoyingly, indirect textures use channels A,B,G to map to the S,T,U texture
+# coordinates, and we have an RGB image. Switch the colour around.
+# We lose two bits of precision doing this (changing from RGB8 to RGBA6), but
+# we're only interested in the bottom end of the scale, so that's not important.
+# Multiply values by 4, with clamping.
+
+stage 0:
+  tev.rgb = clamp ((0 + mix (0, texmap2[texcoord0].ggb, 1) + 0) * 4);
+  tev.a = clamp ((0 + mix (0, texmap2[texcoord0].r, 1) + 0) * 4);

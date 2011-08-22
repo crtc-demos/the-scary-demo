@@ -95,11 +95,13 @@ beam_composite_tev_setup (void)
 static float phase, phase2;
 
 static void *beams_texture;
+static void *beams_z_texture;
 static void *beams_texture2;
 
-#define BEAMS_TEX_W 320
-#define BEAMS_TEX_H 240
+#define BEAMS_TEX_W 640
+#define BEAMS_TEX_H 480
 #define BEAMS_TEX_TF GX_TF_RGBA8
+#define BEAMS_TEX_ZTF GX_TF_Z24X8
 
 static void
 pumpkin_init_effect (void *params)
@@ -115,6 +117,8 @@ pumpkin_init_effect (void *params)
 
   beams_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			    BEAMS_TEX_TF, GX_FALSE, 0));
+  beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
+			      BEAMS_TEX_ZTF, GX_FALSE, 0));
   beams_texture2 = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			     BEAMS_TEX_TF, GX_FALSE, 0));
 }
@@ -123,11 +127,12 @@ static void
 pumpkin_uninit_effect (void *params)
 {
   free (beams_texture);
+  free (beams_z_texture);
   free (beams_texture2);
 }
 
 static void
-draw_beams (int remap)
+draw_beams (int shader)
 {
   Mtx mvtmp;
   object_loc reflection_loc;
@@ -156,13 +161,23 @@ draw_beams (int remap)
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
-  if (remap)
+  switch (shader)
     {
-      #include "remap-texchans.inc"
-    }
-  else
-    {
-      #include "beam-render.inc"
+    case 0:
+      {
+        #include "remap-texchans.inc"
+      }
+      break;
+    
+    case 1:
+      {
+        #include "beam-z-render.inc"
+	GX_SetZTexture (GX_ZT_REPLACE, BEAMS_TEX_ZTF, 0);
+	/* tevsl doesn't support Z-textures yet!  */
+	GX_SetTevOrder (GX_TEVSTAGE3, GX_TEXCOORD0, GX_TEXMAP5, GX_COLORNULL);
+        GX_SetZCompLoc (GX_FALSE);
+      }
+      break;
     }
 
   GX_SetCullMode (GX_CULL_NONE);
@@ -192,6 +207,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_loc pumpkin_loc, beam_loc;
   GXTexObj pumpkin_tex_obj;
   GXTexObj beams_tex_obj;
+  GXTexObj beams_z_tex_obj;
   GXTexObj beams_tex2_obj;
   GXTexObj gradient_tex_obj;
 
@@ -209,6 +225,9 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_InitTexObj (&beams_tex_obj, beams_texture, BEAMS_TEX_W, BEAMS_TEX_H,
 		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  GX_InitTexObj (&beams_z_tex_obj, beams_z_texture, BEAMS_TEX_W, BEAMS_TEX_H,
+		 BEAMS_TEX_ZTF, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   GX_InitTexObj (&beams_tex2_obj, beams_texture2, BEAMS_TEX_W, BEAMS_TEX_H,
 		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
@@ -277,6 +296,14 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   
   /* Render beams (to texmap 2).  */
 
+  /* Always update: we want the closer of the back face & front face, if we're
+     drawing both.  The dodgy algorithm is this: if we have an opaque object
+     in front, we definately draw that.  If the opaque object is behind, we
+     can alpha-blend based on the difference between the opaque & transparent
+     objects (though that might be overkill).
+     This isn't correct if we have *two* transparent regions in front of an
+     opaque object, but never mind about that.  */
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetCullMode (GX_CULL_FRONT);
   GX_SetColorUpdate (GX_TRUE);
@@ -316,7 +343,13 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
 
+    /* Copy the Z buffer for the rendered beams!  */
+  GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_Z24X8, GX_FALSE);
+  GX_CopyTex (beams_z_texture, GX_FALSE);
+
+  GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_RGBA8, GX_FALSE);
   GX_CopyTex (beams_texture, GX_TRUE);
+
   GX_PixModeSync ();
   
   GX_LoadTexObj (&beams_tex_obj, GX_TEXMAP2);
@@ -332,7 +365,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_TRUE);
 
-  draw_beams (1);
+  draw_beams (0);
   
   GX_CopyTex (beams_texture2, GX_TRUE);
   GX_PixModeSync ();
@@ -413,7 +446,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  if (1)
+  if (0)
     {
       beam_composite_tev_setup ();
 
@@ -448,7 +481,12 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
       object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
     }
   else
-    draw_beams (0);
+    {
+      GX_LoadTexObj (&beams_z_tex_obj, GX_TEXMAP5);
+      draw_beams (1);
+      GX_SetZTexture (GX_ZT_DISABLE, GX_TF_I4, 0);
+      GX_SetZCompLoc (GX_TRUE);
+    }
 
   phase += 0.01;
   phase2 += 0.008;
