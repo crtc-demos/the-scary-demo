@@ -1,0 +1,16 @@
+# texmap0 is ramp texture, texcoord0 corresponds to that.
+stage 0:
+  tev.a = texmap0[texcoord0].r;
+
+# texmap1/texcoord1 is shadow buffer & lookup.
+stage 1:
+  tev.rgb = clamp (chan0.aaa * 4);
+  cr0.a = (texmap1[texcoord1].r > tev.a) ? 1 : 0;
+
+stage 2:
+  tev.rgb = clamp (tev.rgb + chan0.rgb);
+  tev.a = clamp ((chan0.a - 0.25) * 4);
+
+# Mix between either ultra-bright bloom colour or shadow colour.
+stage 3:
+  tev.rgba = mix (cr1.rgba, tev.rgba, cr0.aaaa);

@@ -17,3 +17,4 @@ stage 2:
 # Z-texturing stage.
 stage 3:
   tev = tev;
+  z = texmap5:z24[texcoord0];

@@ -35,7 +35,8 @@ scene_update_camera (scene_info *scene)
 
 void
 scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
-		       Mtx obj_mtx, Mtx projection, u32 projection_type)
+		       Mtx obj_mtx, Mtx separate_scale, Mtx projection,
+		       u32 projection_type)
 {
   Mtx vertex, normal, binormal;
   Mtx normaltexmtx, binormaltexmtx, tempmtx;
@@ -105,6 +106,29 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxConcat (texproj, vertex, tempmtx);
       
       GX_LoadTexMtxImm (tempmtx, obj->screenspace_tex_mtx, GX_MTX3x4);
+    }
+
+  /* Calculate matrices used for texture coordinate generation for casting
+     shadows (self-shadowing objects, at present).  */
+  if (obj->calculate_shadowing_tex_mtx)
+    {
+      Mtx scaled_objmtx;
+      
+      guMtxConcat (obj_mtx, separate_scale, scaled_objmtx);
+      
+      /* Depth-ramp lookup.  */
+      guMtxConcat (obj->shadow.info->shadow_tex_depth, scaled_objmtx, tempmtx);
+      GX_LoadTexMtxImm (tempmtx, obj->shadow.ramp_tex_mtx, GX_MTX3x4);
+      /* Shadow buffer lookup.  */
+      guMtxConcat (obj->shadow.info->shadow_tex_projection, scaled_objmtx,
+		   tempmtx);
+      GX_LoadTexMtxImm (tempmtx, obj->shadow.buf_tex_mtx, GX_MTX3x4);
+    }
+
+  if (separate_scale)
+    {
+      guMtxConcat (obj_mtx, separate_scale, vertex);
+      guMtxConcat (cam_mtx, vertex, vertex);
     }
 
   GX_LoadPosMtxImm (vertex, obj->pnmtx);

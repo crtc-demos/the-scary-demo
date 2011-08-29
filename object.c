@@ -1,21 +1,15 @@
 #include <ogcsys.h>
 #include <gccore.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "object.h"
 
 void
-object_loc_initialise (object_loc *obj, u32 pnmtx)
+object_loc_initialise (object_loc *loc, u32 pnmtx)
 {
-  obj->pnmtx = pnmtx;
-  obj->calculate_normal_tex_mtx = 0;
-  obj->calculate_binorm_tex_mtx = 0;
-  obj->calculate_vertex_depth_mtx = 0;
-  obj->calculate_screenspace_tex_mtx = 0;
-  obj->normal_tex_mtx = 0;
-  obj->binorm_tex_mtx = 0;
-  obj->vertex_depth_mtx = 0;
-  obj->screenspace_tex_mtx = 0;
+  memset (loc, 0, sizeof (object_loc));
+  loc->pnmtx = pnmtx;
 }
 
 void
@@ -59,6 +53,22 @@ void
 object_unset_screenspace_tex_mtx (object_loc *obj)
 {
   obj->calculate_screenspace_tex_mtx = 0;
+}
+
+void
+object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
+			   u32 shadow_ramp_tex_mtx, shadow_info *shinf)
+{
+  loc->calculate_shadowing_tex_mtx = 1;
+  loc->shadow.buf_tex_mtx = shadow_buf_tex_mtx;
+  loc->shadow.ramp_tex_mtx = shadow_ramp_tex_mtx;
+  loc->shadow.info = shinf;
+}
+
+void
+object_unset_shadow_tex_mtx (object_loc *loc)
+{
+  loc->calculate_shadowing_tex_mtx = 0;
 }
 
 void

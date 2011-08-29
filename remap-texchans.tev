@@ -5,5 +5,5 @@
 # Multiply values by 4, with clamping.
 
 stage 0:
-  tev.rgb = clamp ((0 + mix (0, texmap2[texcoord0].ggb, 1) + 0) * 4);
-  tev.a = clamp ((0 + mix (0, texmap2[texcoord0].r, 1) + 0) * 4);
+  tev.rgb = clamp (4 * texmap2[texcoord0].ggb);
+  tev.a = clamp (4 * texmap2[texcoord0].r);

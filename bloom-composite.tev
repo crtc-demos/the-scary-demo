@@ -1,0 +1,2 @@
+stage 0:
+  tev = texmap1[texcoord0];

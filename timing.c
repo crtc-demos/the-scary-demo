@@ -25,6 +25,7 @@
 #include "tubes.h"
 #include "spooky-ghost.h"
 #include "pumpkin.h"
+#include "bloom.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -47,9 +48,9 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  {      0, 150000, &pumpkin_methods, NULL, -1, 0 }
-/*
-  {      0,  15000, &pumpkin_methods, NULL, -1, 0 },
+  {      0, 150000, &bloom_methods, NULL, -1, 0 }
+ /* {      0, 150000, &pumpkin_methods, NULL, -1, 0 }*/
+/*  {      0,  15000, &pumpkin_methods, NULL, -1, 0 },
   {  15000,  45000, &soft_crtc_methods, NULL, -1, 0 },
   {  45000,  75000, &tubes_methods, NULL, -1, 0 },
   {  75000, 300000, &spooky_ghost_methods, NULL, -1, 0 }*/

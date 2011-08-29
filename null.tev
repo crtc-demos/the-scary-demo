@@ -1,0 +1,4 @@
+# No lighting or texturing at all. If casting shadows, we're not interested in
+# anything but the Z buffer.
+stage 0:
+  tev = 1;

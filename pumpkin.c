@@ -152,7 +152,7 @@ draw_beams (int shader)
   guMtxIdentity (mvtmp);
 
   scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
-			 ortho, GX_ORTHOGRAPHIC);
+			 NULL, ortho, GX_ORTHOGRAPHIC);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
@@ -172,10 +172,10 @@ draw_beams (int shader)
     case 1:
       {
         #include "beam-z-render.inc"
-	GX_SetZTexture (GX_ZT_REPLACE, BEAMS_TEX_ZTF, 0);
-	/* tevsl doesn't support Z-textures yet!  */
+	/*GX_SetZTexture (GX_ZT_REPLACE, BEAMS_TEX_ZTF, 0);
+	// tevsl doesn't support Z-textures yet!  (It does now.)
 	GX_SetTevOrder (GX_TEVSTAGE3, GX_TEXCOORD0, GX_TEXMAP5, GX_COLORNULL);
-        GX_SetZCompLoc (GX_FALSE);
+        GX_SetZCompLoc (GX_FALSE);*/
       }
       break;
     }
@@ -283,8 +283,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   guMtxIdentity (modelview);
   guMtxScaleApply (modelview, modelview, 30, 30, 30);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, proj,
-			 GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, NULL,
+			 proj, GX_PERSPECTIVE);
 
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
@@ -316,7 +316,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   /* Add back faces.  */
   guMtxTransApply (modelview, mvtmp, 0, 45, 0);
   
-  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, 0);
+  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, NULL, 0);
 
   GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -359,6 +359,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   /* Remap texture colour channels so we can use all of A,B,G as texture
      coordinates...  */
+  /* FIXME: This might not be necessary! We can use GX_TF_A8 to copy the alpha
+     channel out of a texture.  Oh actually that doesn't help.  */
 
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
   GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
@@ -390,20 +392,21 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, proj,
-			 GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, NULL,
+			 proj, GX_PERSPECTIVE);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
   
   guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, 0);
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, NULL,
+			 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL,
+  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, NULL,
 			 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
@@ -459,7 +462,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
       /* Draw front faces.  */
       guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, proj,
+      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, proj,
 			     GX_PERSPECTIVE);
 
       object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -487,8 +490,8 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     {
       GX_LoadTexObj (&beams_z_tex_obj, GX_TEXMAP5);
       draw_beams (1);
-      GX_SetZTexture (GX_ZT_DISABLE, GX_TF_I4, 0);
-      GX_SetZCompLoc (GX_TRUE);
+      /*GX_SetZTexture (GX_ZT_DISABLE, GX_TF_I4, 0);
+      GX_SetZCompLoc (GX_TRUE);*/
     }
 
   phase += 0.01;

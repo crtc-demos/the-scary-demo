@@ -1,0 +1,23 @@
+stage 0:
+  tev.rgb = texmap0[texcoord0].rgb * k0.rrr;
+
+stage 1:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord1].rgb * k0.ggg;
+
+stage 2:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord2].rgb * k0.bbb;
+
+stage 3:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord3].rgb * k0.aaa;
+
+stage 4:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord4].rgb * k1.rrr;
+
+stage 5:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord5].rgb * k1.ggg;
+
+stage 6:
+  tev.rgb = tev.rgb:s10 + texmap0[texcoord6].rgb * k1.bbb;
+
+stage 7:
+  tev.rgb = clamp ((tev.rgb:s10 + texmap0[texcoord7].rgb * k1.aaa) / 2);

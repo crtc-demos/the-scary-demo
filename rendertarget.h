@@ -6,5 +6,6 @@
 
 extern void rendertarget_screen (GXRModeObj *rmode);
 extern void rendertarget_texture (u32 width, u32 height, u32 texfmt);
+extern void rendertarget_minimise_copy (void);
 
 #endif

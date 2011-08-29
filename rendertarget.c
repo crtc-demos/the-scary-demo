@@ -43,5 +43,23 @@ rendertarget_texture (u32 width, u32 height, u32 texfmt)
   GX_SetTexCopySrc (0, 0, width, height);
   GX_SetTexCopyDst (width, height, texfmt, GX_FALSE);
   
+  GX_ClearBoundingBox ();
+  
   rendering_to_screen = 0;
+}
+
+void
+rendertarget_minimise_copy (void)
+{
+  u16 t, b, l, r;
+  
+  GX_ReadBoundingBox (&t, &b, &l, &r);
+  
+  /* Round up/down to multiple of 2.  */
+  l &= ~1;
+  t &= ~1;
+  r = (r + 1) & ~1;
+  b = (b + 1) & ~1;
+  
+  GX_SetTexCopySrc (l, t, r - l, b - t);
 }

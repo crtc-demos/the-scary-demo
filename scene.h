@@ -5,6 +5,7 @@
 #include <gccore.h>
 
 #include "object.h"
+#include "shadow.h"
 
 /* Basic camera parameters.  */
 
@@ -29,7 +30,7 @@ extern void scene_set_lookat (scene_info *scene, guVector lookat);
 extern void scene_set_up (scene_info *scene, guVector up);
 extern void scene_update_camera (scene_info *scene);
 extern void scene_update_matrices (scene_info *scene, object_loc *obj,
-				   Mtx cam_mtx, Mtx obj_mtx, Mtx projection,
-				   u32 proj_type);
+				   Mtx cam_mtx, Mtx obj_mtx, Mtx sep_scale,
+				   Mtx projection, u32 proj_type);
 		       
 #endif

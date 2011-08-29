@@ -1,6 +1,8 @@
 #ifndef OBJECT_H
 #define OBJECT_H 1
 
+#include "shadow.h"
+
 typedef struct {
   /* Which position/normal matrix to use (GX_PNMTX0 etc.).  */
   u32 pnmtx;
@@ -9,10 +11,16 @@ typedef struct {
   char calculate_binorm_tex_mtx;
   char calculate_vertex_depth_mtx;
   char calculate_screenspace_tex_mtx;
+  char calculate_shadowing_tex_mtx;
   u32 normal_tex_mtx;
   u32 binorm_tex_mtx;
   u32 vertex_depth_mtx;
   u32 screenspace_tex_mtx;
+  struct {
+    u32 buf_tex_mtx;
+    u32 ramp_tex_mtx;
+    shadow_info *info;
+  } shadow;
 } object_loc;
 
 typedef struct {
@@ -51,6 +59,9 @@ extern void object_set_vertex_depth_mtx (object_loc *, u32);
 extern void object_unset_vertex_depth_mtx (object_loc *);
 extern void object_set_screenspace_tex_mtx (object_loc *, u32);
 extern void object_unset_screenspace_tex_mtx (object_loc *);
+extern void object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
+				       u32 shadow_ramp_tex_mtx, shadow_info *);
+extern void object_unset_shadow_tex_mtx (object_loc *loc);
 extern void object_set_pos_norm_matrix (object_loc *obj, u32 pnmtx);
 
 extern void object_set_arrays (object_info *, unsigned int, int, int);
