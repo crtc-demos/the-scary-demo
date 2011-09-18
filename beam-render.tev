@@ -3,6 +3,9 @@
 # of each channel.  Texcoord1 just maps screen coordinates directly to
 # texcoords.
 
+# Now texmap5 contains the R channel (as intensity), and texmap4 contains the
+# GB channels (as intensity/alpha).
+
 stage 0:
   itexcoord = indmtx0 ** texmap4[texcoord1] * indscale0;
   tev = tev;
@@ -12,4 +15,4 @@ stage 1:
   tev = tev;
 
 stage 2:
-  tev = texmap3[itexcoord + indmtx2 ** texmap4[texcoord1] * indscale2];
+  tev = texmap3[itexcoord + indmtx2 ** texmap5[texcoord1] * indscale2];

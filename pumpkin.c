@@ -94,9 +94,9 @@ beam_composite_tev_setup (void)
 
 static float phase, phase2;
 
-static void *beams_texture;
+static void *beams_texture_gb;
+static void *beams_texture_r;
 static void *beams_z_texture;
-static void *beams_texture2;
 
 #define BEAMS_TEX_W 640
 #define BEAMS_TEX_H 480
@@ -115,20 +115,20 @@ pumpkin_init_effect (void *params)
   TPL_OpenTPLFromMemory (&gradientTPL, (void *) gradient_tpl,
 			 gradient_tpl_size);
 
-  beams_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
-			    BEAMS_TEX_TF, GX_FALSE, 0));
+  beams_texture_gb = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
+			       BEAMS_TEX_H, GX_TF_IA8, GX_FALSE, 0));
+  beams_texture_r = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
+			      GX_TF_I8, GX_FALSE, 0));
   beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			      BEAMS_TEX_ZTF, GX_FALSE, 0));
-  beams_texture2 = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
-			     BEAMS_TEX_TF, GX_FALSE, 0));
 }
 
 static void
 pumpkin_uninit_effect (void *params)
 {
-  free (beams_texture);
+  free (beams_texture_gb);
+  free (beams_texture_r);
   free (beams_z_texture);
-  free (beams_texture2);
 }
 
 static void
@@ -206,9 +206,9 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   Mtx modelview, mvtmp;
   object_loc pumpkin_loc, beam_loc;
   GXTexObj pumpkin_tex_obj;
-  GXTexObj beams_tex_obj;
+  GXTexObj beams_gb_tex_obj;
+  GXTexObj beams_r_tex_obj;
   GXTexObj beams_z_tex_obj;
-  GXTexObj beams_tex2_obj;
   GXTexObj gradient_tex_obj;
 
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pumpkin_tex_obj);
@@ -223,14 +223,15 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_LoadTexObj (get_utility_texture (UTIL_TEX_8BIT_RAMP), GX_TEXMAP1);
   GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
 
-  GX_InitTexObj (&beams_tex_obj, beams_texture, BEAMS_TEX_W, BEAMS_TEX_H,
-		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  GX_InitTexObj (&beams_gb_tex_obj, beams_texture_gb, BEAMS_TEX_W, BEAMS_TEX_H,
+		 GX_TF_IA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  GX_InitTexObj (&beams_r_tex_obj, beams_texture_r, BEAMS_TEX_W, BEAMS_TEX_H,
+		 GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   GX_InitTexObj (&beams_z_tex_obj, beams_z_texture, BEAMS_TEX_W, BEAMS_TEX_H,
 		 BEAMS_TEX_ZTF, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
-  GX_InitTexObj (&beams_tex2_obj, beams_texture2, BEAMS_TEX_W, BEAMS_TEX_H,
-		 BEAMS_TEX_TF, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   GX_InitTexObjWrapMode (&gradient_tex_obj, GX_CLAMP, GX_CLAMP);
   GX_InitTexObjFilterMode (&gradient_tex_obj, GX_LINEAR, GX_LINEAR);
@@ -346,21 +347,29 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
 
-    /* Copy the Z buffer for the rendered beams!  */
+  /* Copy the Z buffer for the rendered beams!  */
   GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_Z24X8, GX_FALSE);
   GX_CopyTex (beams_z_texture, GX_FALSE);
 
-  GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_RGBA8, GX_FALSE);
-  GX_CopyTex (beams_texture, GX_TRUE);
+  /* Copy green & blue channels to intensity & alpha channels of
+     beams_texture_gb.  */
+  GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_CTF_GB8, GX_FALSE);
+  GX_CopyTex (beams_texture_gb, GX_FALSE);
+
+  /* Copy red channel to intensity channel of beams_texture_r.  */
+  GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_CTF_R8, GX_FALSE);
+  GX_CopyTex (beams_texture_r, GX_TRUE);
 
   GX_PixModeSync ();
   
+#if 0
   GX_LoadTexObj (&beams_tex_obj, GX_TEXMAP2);
 
   /* Remap texture colour channels so we can use all of A,B,G as texture
      coordinates...  */
-  /* FIXME: This might not be necessary! We can use GX_TF_A8 to copy the alpha
-     channel out of a texture.  Oh actually that doesn't help.  */
+  /* FIXME: This might not be necessary! We can use GX_CTF_GB8 and GX_CTF_R8 to
+     copy the needed channels to two different textures (IA8 and I8
+     formats).  */
 
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
   GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
@@ -374,6 +383,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   
   GX_CopyTex (beams_texture2, GX_TRUE);
   GX_PixModeSync ();
+#endif
 
   /* Render pumpkins...  */
 
@@ -426,25 +436,26 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
        exactly as-is for texture coordinates.  We have to scale by 0.5 (giving
        us 0...127) due to the limited range of indirect matrices, then use an
        exponent of 1 to get back to 0...255.  Also we multiply by 4 translating
-       from RGB8 to RGBA6, so compensate for that.  */
+       from RGB8 to RGBA6, so compensate for that (not any more).  */
     
     indmtx[0][0] = 0.5; indmtx[0][1] = 0.0; indmtx[0][2] = 0.0;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
     
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -1);
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
     
     indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
 
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, -1);
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 1);
 
     indmtx[0][0] = 0.0; indmtx[0][1] = 0.0; indmtx[0][2] = 0.5;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
 
-    GX_SetIndTexMatrix (GX_ITM_2, indmtx, -1);
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
   }
 
-  GX_LoadTexObj (&beams_tex2_obj, GX_TEXMAP4);
+  GX_LoadTexObj (&beams_gb_tex_obj, GX_TEXMAP4);
+  GX_LoadTexObj (&beams_r_tex_obj, GX_TEXMAP5);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
@@ -488,8 +499,9 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     }
   else
     {
-      GX_LoadTexObj (&beams_z_tex_obj, GX_TEXMAP5);
-      draw_beams (1);
+      GX_LoadTexObj (&beams_z_tex_obj, GX_TEXMAP2);
+     // if (rand () & 128)
+        draw_beams (1);
       /*GX_SetZTexture (GX_ZT_DISABLE, GX_TF_I4, 0);
       GX_SetZCompLoc (GX_TRUE);*/
     }

@@ -21,7 +21,7 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 
 OBJS :=		server.o rendertarget.o object.o scene.o light.o \
 		utility-texture.o shadow.o pumpkin.o soft-crtc.o tubes.o \
-		spooky-ghost.o bloom.o timing.o
+		spooky-ghost.o bloom.o i8-tex-test.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -31,11 +31,12 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		pumpkin-lighting.inc beam-front-or-back.inc beam-render.inc \
 		remap-texchans.inc beam-composite.inc beam-z-render.inc \
 		bloom-lighting.inc bloom-composite.inc bloom-gaussian.inc \
-		bloom-gaussian2.inc null.inc
+		bloom-gaussian2.inc null.inc plain-texturing.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
-		images/gradient.tpl.o
+		images/gradient.tpl.o images/spiderweb.tpl.o \
+		images/primary.tpl.o
 
 GENERATED_IMAGES :=	images/stones_bump.png
 
