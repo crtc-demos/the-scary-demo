@@ -49,9 +49,9 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  /*{ 0, 300000, &i8_tex_methods, NULL, -1, 0 }*/
+  { 0, 300000, &i8_tex_methods, NULL, -1, 0 }
   /*{      0, 30000, &bloom_methods, NULL, -1, 0 },*/
-  {      0, 150000, &pumpkin_methods, NULL, -1, 0 }
+  /*{      0, 150000, &pumpkin_methods, NULL, -1, 0 }*/
  /* {  30000,  50000, &pumpkin_methods, NULL, -1, 0 },
   {  50000,  75000, &soft_crtc_methods, NULL, -1, 0 },
   {  75000,  90000, &tubes_methods, NULL, -1, 0 },

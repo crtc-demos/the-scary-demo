@@ -13,6 +13,7 @@
 #include "object.h"
 #include "scene.h"
 #include "server.h"
+#include "ghost-obj.h"
 
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
@@ -24,10 +25,8 @@ static TPLFile stone_textureTPL;
 
 static TPLFile stone_bumpTPL;
 
-#include "objects/spooky-ghost.inc"
 #include "objects/tunnel-section.inc"
 
-INIT_OBJECT (spooky_ghost_obj, spooky_ghost);
 INIT_OBJECT (tunnel_section_obj, tunnel_section);
 
 #define LIGHT_TEXFMT GX_TF_RGBA8
