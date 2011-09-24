@@ -139,7 +139,7 @@ create_refract (utility_texture_info *dst)
   
   for (t = 0; t < 128; t++)
     {
-      float tf = 1.0 - ((float) t / 127.0);
+      float tf = /*1.0 -*/ ((float) t / 127.0);
 
       for (s = 0; s < 128; s++)
 	{

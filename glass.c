@@ -251,7 +251,7 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
-  GX_SetCullMode (GX_CULL_BACK);
+  GX_SetCullMode (GX_CULL_NONE);
 
   guMtxIdentity (mvtmp);
   guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), thr);
@@ -297,9 +297,15 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
     indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.5;
     
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 2);
   }
-  
+
+  GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
+  GX_SetCullMode (GX_CULL_NONE);
+
   GX_LoadTexObj (&grabbed_tex_obj, GX_TEXMAP0);
   GX_LoadTexObj (&mighty_zebu_tex_obj, GX_TEXMAP1);
   
