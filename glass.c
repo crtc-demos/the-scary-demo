@@ -189,7 +189,7 @@ glass_postpass (void)
   guVecNormalize (&ldir);
 
   GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
-  GX_InitLightShininess (&lo0, 64);
+  GX_InitLightShininess (&lo0, 128);
   GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
 }

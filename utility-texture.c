@@ -192,8 +192,10 @@ create_darkening (utility_texture_info *dst)
 	  float rad = 1.0 - sf * sf - tf * tf;
 	  unsigned int idx;
 	  
+	  /* This is just a value which happens to look OK, not physically
+	     correct.  */
 	  if (rad > 0)
-	    rad = sqrtf (sqrtf (rad));
+	    rad = powf (rad, 0.3);
 	  else
 	    rad = 0;
 	  
