@@ -30,6 +30,19 @@ object_unset_tex_norm_binorm_matrices (object_loc *obj)
 }
 
 void
+object_set_tex_norm_matrix (object_loc *loc, u32 normal_tex_mtx)
+{
+  loc->calculate_normal_tex_mtx = 1;
+  loc->normal_tex_mtx = normal_tex_mtx;
+}
+
+void
+object_unset_tex_norm_matrix (object_loc *loc)
+{
+  loc->calculate_normal_tex_mtx = 0;
+}
+
+void
 object_set_vertex_depth_mtx (object_loc *obj, u32 vertex_depth_mtx)
 {
   obj->calculate_vertex_depth_mtx = 1;

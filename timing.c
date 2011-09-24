@@ -26,7 +26,7 @@
 #include "spooky-ghost.h"
 #include "pumpkin.h"
 #include "bloom.h"
-#include "i8-tex-test.h"
+#include "glass.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -49,7 +49,7 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  { 0, 300000, &i8_tex_methods, NULL, -1, 0 }
+  { 0, 300000, &glass_methods, NULL, -1, 0 }
   /*{      0, 30000, &bloom_methods, NULL, -1, 0 },*/
   /*{      0, 150000, &pumpkin_methods, NULL, -1, 0 }*/
  /* {  30000,  50000, &pumpkin_methods, NULL, -1, 0 },

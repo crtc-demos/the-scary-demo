@@ -1,0 +1,6 @@
+stage 0:
+  tev.rgb = 0;
+  tev.a = texmap1[texcoord0];
+
+finally:
+  alpha_pass = tev.a < $threshold ^ tev.a > $threshold2;

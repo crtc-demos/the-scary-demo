@@ -98,11 +98,66 @@ create_16bit_ramp (utility_texture_info *dst)
 
   DCFlushRange (ramptex, ramptexsize);
 
-  GX_InitTexObj (&dst->texobj, ramptex, 256, 256, GX_TF_IA8, GX_CLAMP,
+  GX_InitTexObj (&dst->texobj, ramptex, 256, 256, dst->format, GX_CLAMP,
 		 GX_REPEAT, GX_FALSE);
   GX_InitTexObjLOD (&dst->texobj, GX_NEAR, GX_NEAR, 0, 0, 0, 0, 0, GX_ANISO_1);
   
   dst->texbuf = ramptex;
+}
+
+static unsigned int
+tex_index (unsigned int s, unsigned int t, unsigned int pitch,
+	   unsigned int texel_bits)
+{
+  unsigned int s_blk, t_blk, s_lo, t_lo;
+  
+  if (texel_bits == 16)
+    {
+      s_blk = s >> 2;
+      t_blk = t >> 2;
+
+      s_lo = s & 3;
+      t_lo = t & 3;
+      
+      return (s_lo + (t_lo * 4) + (s_blk * 16) + (t_blk * 4 * pitch)) * 2;
+    }
+
+  return -1;
+}
+
+static void
+create_refract (utility_texture_info *dst)
+{
+  char *refrtex;
+  unsigned int refrtexsize, s, t;
+  
+  dst->format = GX_TF_IA8;
+  
+  refrtexsize = GX_GetTexBufferSize (128, 128, dst->format, GX_FALSE, 0);
+  
+  refrtex = memalign (32, refrtexsize);
+  
+  for (t = 0; t < 128; t++)
+    {
+      float tf = 1.0 - ((float) t / 127.0);
+
+      for (s = 0; s < 128; s++)
+	{
+	  float sf = 1.0 - ((float) s / 127.0);
+	  unsigned int idx;
+	  
+	  idx = tex_index (s, t, 128, 16);
+	  refrtex[idx] = 255.0 * sf;
+	  refrtex[idx + 1] = 255.0 * tf;
+	}
+    }
+  
+  DCFlushRange (refrtex, refrtexsize);
+  
+  GX_InitTexObj (&dst->texobj, refrtex, 128, 128, dst->format, GX_CLAMP,
+		 GX_CLAMP, GX_FALSE);
+
+  dst->texbuf = refrtex;
 }
 
 GXTexObj *
@@ -117,6 +172,10 @@ get_utility_texture (utility_texture_handle which)
 
       case UTIL_TEX_16BIT_RAMP:
 	create_16bit_ramp (&util_textures[which]);
+	break;
+
+      case UTIL_TEX_REFRACT:
+        create_refract (&util_textures[which]);
 	break;
 
       default:

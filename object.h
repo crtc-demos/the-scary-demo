@@ -55,6 +55,8 @@ extern void object_loc_initialise (object_loc *obj, u32 pnmtx);
 extern void object_set_tex_norm_binorm_matrices (object_loc *,
   u32 normal_tex_mtx, u32 binorm_tex_mtx);
 extern void object_unset_tex_norm_binorm_matrices (object_loc *);
+extern void object_set_tex_norm_matrix (object_loc *loc, u32 normal_tex_mtx);
+extern void object_unset_tex_norm_matrix (object_loc *loc);
 extern void object_set_vertex_depth_mtx (object_loc *, u32);
 extern void object_unset_vertex_depth_mtx (object_loc *);
 extern void object_set_screenspace_tex_mtx (object_loc *, u32);

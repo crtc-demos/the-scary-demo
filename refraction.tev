@@ -1,0 +1,5 @@
+# Make sure G & B channels have useful data.
+
+stage 0:
+  tev.rgb = texmap2[texcoord0].aar;
+  tev.a = 0.5;
