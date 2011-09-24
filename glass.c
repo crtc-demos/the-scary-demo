@@ -168,18 +168,20 @@ draw_square (int shader, int threshold, int threshold2)
 static void
 refraction_setup (void)
 {
+  #include "refraction.inc"
+}
+
+static void
+glass_postpass (void)
+{
   GXLightObj lo0;
   guVector ldir;
-#include "refraction.inc"
-  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
-  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
-  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_NONE);
 
-  /* Orangey!  */
-  GX_SetChanAmbColor (GX_COLOR1, (GXColor) { 0, 0, 0, 0 });
-  GX_SetChanMatColor (GX_COLOR1, (GXColor) { 255, 224, 0, 0 });
-  GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+  #include "glass-postpass.inc"
+
+  GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
+  GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
+  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_NONE, GX_AF_SPEC);
 
   /* Light 0: use for both specular and diffuse lighting.  */
@@ -201,15 +203,16 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GXTexObj mighty_zebu_tex_obj;
   GXTexObj grabbed_tex_obj;
   GXTexObj spiderweb_tex_obj;
-  Mtx mvtmp, rot;
-  
+  Mtx mvtmp, rot, mvtmp2;
+  Mtx sep_scale;
+
   GX_LoadTexObj (get_utility_texture (UTIL_TEX_REFRACT), GX_TEXMAP2);
   
   TPL_GetTexture (&mighty_zebuTPL, mighty_zebu, &mighty_zebu_tex_obj);
   TPL_GetTexture (&spiderwebTPL, spiderweb, &spiderweb_tex_obj);
 
-  /*GX_InitTexObjWrapMode (&mighty_zebu_tex_obj, GX_CLAMP, GX_CLAMP);
-  GX_InitTexObjFilterMode (&mighty_zebu_tex_obj, GX_NEAR, GX_NEAR);*/
+  GX_InitTexObjWrapMode (&mighty_zebu_tex_obj, GX_CLAMP, GX_CLAMP);
+  GX_InitTexObjFilterMode (&mighty_zebu_tex_obj, GX_LINEAR, GX_LINEAR);
 
   GX_InitTexObj (&grabbed_tex_obj, grabbed_texture, RTT_WIDTH, RTT_HEIGHT,
 		 USEFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
@@ -261,13 +264,10 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   object_set_tex_norm_matrix (&obj_loc, GX_TEXMTX0);
   
-  {
-    Mtx sep_scale;
-    
-    guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-    scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, sep_scale,
-			   perspmat, GX_PERSPECTIVE);
-  }
+  guMtxScale (sep_scale, 6.0, 6.0, 6.0);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, sep_scale,
+			 perspmat, GX_PERSPECTIVE);
+
   light_update (scene.camera, &light0);
   
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX0);
@@ -276,6 +276,16 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   object_set_arrays (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
 		     0);
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+
+  guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp2, sep_scale,
+			 NULL, 0);
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+
+  guMtxTransApply (mvtmp, mvtmp2, -13, 0, 0);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp2, sep_scale,
+			 NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   GX_CopyTex (grabbed_texture, GX_TRUE);
@@ -288,11 +298,11 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
     f32 indmtx[2][3];
     
     /* Channels for indirect lookup go:
-      R -> -
-      G -> U
-      B -> T
-      A -> S
-    */
+	 R -> -
+	 G -> U
+	 B -> T
+	 A -> S
+       We have G/B channels, so map those to S/T.  */
     
     indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
     indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.5;
@@ -315,7 +325,31 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   draw_square (1, 128 + 127 * sin (thr * M_PI / 360.0),
 	       128 + 127 * sin (thr * M_PI / 200.0));*/
-  
+
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, sep_scale,
+			 perspmat, GX_PERSPECTIVE);
+
+  glass_postpass ();
+
+  GX_LoadTexObj (get_utility_texture (UTIL_TEX_DARKENING), GX_TEXMAP3);
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX0);
+
+  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_SRCALPHA, GX_LO_SET);
+
+  object_set_arrays (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
+		     0);
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+
+  guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp2, sep_scale,
+			 NULL, 0);
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+
+  guMtxTransApply (mvtmp, mvtmp2, -13, 0, 0);
+  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp2, sep_scale,
+			 NULL, 0);
+  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+
   thr += 1;
 }
 

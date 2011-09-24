@@ -14,6 +14,7 @@ typedef enum {
   UTIL_TEX_8BIT_RAMP,
   UTIL_TEX_16BIT_RAMP,
   UTIL_TEX_REFRACT,
+  UTIL_TEX_DARKENING,
   UTIL_TEX_MAX
 } utility_texture_handle;
 

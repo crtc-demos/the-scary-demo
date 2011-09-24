@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <malloc.h>
 #include <assert.h>
+#include <math.h>
 
 #include "utility-texture.h"
 
@@ -111,7 +112,17 @@ tex_index (unsigned int s, unsigned int t, unsigned int pitch,
 {
   unsigned int s_blk, t_blk, s_lo, t_lo;
   
-  if (texel_bits == 16)
+  if (texel_bits == 8)
+    {
+      s_blk = s >> 3;
+      t_blk = t >> 2;
+      
+      s_lo = s & 7;
+      t_lo = t & 3;
+      
+      return s_lo + (t_lo * 8) + (s_blk * 32) + (t_blk * 4 * pitch);
+    }
+  else if (texel_bits == 16)
     {
       s_blk = s >> 2;
       t_blk = t >> 2;
@@ -160,6 +171,45 @@ create_refract (utility_texture_info *dst)
   dst->texbuf = refrtex;
 }
 
+static void
+create_darkening (utility_texture_info *dst)
+{
+  char *darkentex;
+  unsigned int darkentexsize, s, t;
+  
+  dst->format = GX_TF_I8;
+  
+  darkentexsize = GX_GetTexBufferSize (128, 128, dst->format, GX_FALSE, 0);
+  
+  darkentex = memalign (32, darkentexsize);
+  
+  for (t = 0; t < 128; t++)
+    {
+      float tf = (t / 127.0) * 2.0 - 1.0;
+      for (s = 0; s < 128; s++)
+	{
+	  float sf = (s / 127.0) * 2.0 - 1.0;
+	  float rad = 1.0 - sf * sf - tf * tf;
+	  unsigned int idx;
+	  
+	  if (rad > 0)
+	    rad = sqrtf (sqrtf (rad));
+	  else
+	    rad = 0;
+	  
+	  idx = tex_index (s, t, 128, 8);
+	  darkentex[idx] = 255.0 * rad;
+	}
+    }
+  
+  DCFlushRange (darkentex, darkentexsize);
+  
+  GX_InitTexObj (&dst->texobj, darkentex, 128, 128, dst->format, GX_CLAMP,
+		 GX_CLAMP, GX_FALSE);
+
+  dst->texbuf = darkentex;
+}
+
 GXTexObj *
 get_utility_texture (utility_texture_handle which)
 {
@@ -176,6 +226,10 @@ get_utility_texture (utility_texture_handle which)
 
       case UTIL_TEX_REFRACT:
         create_refract (&util_textures[which]);
+	break;
+
+      case UTIL_TEX_DARKENING:
+        create_darkening (&util_textures[which]);
 	break;
 
       default:

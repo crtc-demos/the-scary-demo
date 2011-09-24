@@ -32,7 +32,8 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		remap-texchans.inc beam-composite.inc beam-z-render.inc \
 		bloom-lighting.inc bloom-composite.inc bloom-gaussian.inc \
 		bloom-gaussian2.inc null.inc plain-texturing.inc \
-		alpha-test.inc refraction.inc do-refraction.inc
+		alpha-test.inc refraction.inc do-refraction.inc \
+		glass-postpass.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
