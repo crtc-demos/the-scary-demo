@@ -18,6 +18,9 @@
 #include <debug.h>
 #include <malloc.h>
 
+#include <aesndlib.h>
+#include <gcmodplay.h>
+
 #include "server.h"
 #include "timing.h"
 #include "rendertarget.h"
@@ -35,6 +38,12 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef HOLD
 #undef DEBUG
 
+#undef SOUND
+
+#ifdef SOUND
+#include "back_to_my_roots_mod.h"
+#endif
+
 #undef SKIP_TO_TIME
 //#define SKIP_TO_TIME 75000
 
@@ -49,13 +58,12 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  { 0, 300000, &glass_methods, NULL, -1, 0 }
-  /*{      0, 30000, &bloom_methods, NULL, -1, 0 },*/
-  /*{      0, 150000, &pumpkin_methods, NULL, -1, 0 }*/
- /* {  30000,  50000, &pumpkin_methods, NULL, -1, 0 },
-  {  50000,  75000, &soft_crtc_methods, NULL, -1, 0 },
-  {  75000,  90000, &tubes_methods, NULL, -1, 0 },
-  {  90000, 300000, &spooky_ghost_methods, NULL, -1, 0 }*/
+  {      0,  15000, &glass_methods, NULL, -1, 0 },
+  {  15000,  50000, &bloom_methods, NULL, -1, 0 },
+  {  50000,  70000, &pumpkin_methods, NULL, -1, 0 },
+  {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
+  {  95000, 110000, &tubes_methods, NULL, -1, 0 },
+  { 110000, 300000, &spooky_ghost_methods, NULL, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -91,7 +99,8 @@ initialise ()
   VIDEO_Init();
   PAD_Init();
 
-  rmode = VIDEO_GetPreferredMode (NULL);
+  //rmode = VIDEO_GetPreferredMode (NULL);
+  rmode = &TVPal528IntDf;
   framebuffer = MEM_K0_TO_K1 (SYS_AllocateFramebuffer (rmode));
  /* console_init (framebuffer, 20, 20, rmode->fbWidth, rmode->xfbHeight,
 		rmode->fbWidth * VI_DISPLAY_PIX_SZ);*/
@@ -174,6 +183,9 @@ main (int argc, char *argv[])
   guVector pos = {0, 0, 50};
   guVector up = {0, 1, 0};
   guVector lookat = {0, 0, 0};
+#ifdef SOUND
+  MODPlay modplay;
+#endif
 
   xfb = initialise ();
 
@@ -215,6 +227,22 @@ main (int argc, char *argv[])
 
   num_active_effects = 0;
   next_effect = 0;
+
+#ifdef SOUND
+  srv_printf ("AESND Init\n");
+
+  AESND_Init (NULL);
+
+  srv_printf ("Initialising MOD playback...\n");
+
+  MODPlay_Init (&modplay);
+  ret = MODPlay_SetFrequency (&modplay, 48000);
+  srv_printf ("  (Set frequency... %s)\n", ret == 0 ? "successful" : "failed");
+  ret = MODPlay_SetMOD (&modplay, back_to_my_roots_mod);
+  srv_printf ("  (Set MOD... %s)\n", ret == 0 ? "successful" : "failed");
+  ret = MODPlay_Start (&modplay);
+  srv_printf ("  (Start playback... %s)\n", ret == 0 ? "successful" : "failed");
+#endif
 
   start_time = gettime ();
 
@@ -357,7 +385,7 @@ main (int argc, char *argv[])
       int buttonsDown = PAD_ButtonsDown (0);
 
       if (buttonsDown & PAD_BUTTON_START)
-        return_to_loader ();
+        quit = 1;
 
       if (buttonsDown & PAD_BUTTON_A)
         switch_ghost_lighting = 1 - switch_ghost_lighting;
@@ -366,6 +394,12 @@ main (int argc, char *argv[])
       srv_printf ("finished frame\n");
 #endif
     }
+
+#ifdef SOUND
+  MODPlay_Stop (&modplay);
+#endif
+
+  return_to_loader ();
 
   return 0;
 }

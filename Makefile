@@ -9,7 +9,7 @@ BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall $(MACHDEP) $(INCLUDE)
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
-LIBS :=		-ldb -lbba -logc -lm
+LIBS :=		-ldb -lbba -lmodplay -laesnd -logc -lm
 INCLUDE :=	-I$(LIBOGC_INC)
 LIBPATHS :=	-L$(LIBOGC_LIB)
 LD :=		$(CC)
@@ -40,6 +40,8 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/gradient.tpl.o images/spiderweb.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o
 
+MODS :=		back_to_my_roots.mod.o
+
 GENERATED_IMAGES :=	images/stones_bump.png
 
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
@@ -50,7 +52,7 @@ FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
 
 $(TARGET):	demo.elf
-demo.elf:	$(OBJS) $(TEXTURES)
+demo.elf:	$(OBJS) $(TEXTURES) $(MODS)
 
 .PHONY:	.depend
 
@@ -91,6 +93,10 @@ images/stones_bump.png:	images/fake_stone_depth.png
 #	$(GXTEXCONV) -s $< -o $@
 
 %.tpl.o:	%.tpl
+	@echo $(notdir $<)
+	@$(bin2o)
+
+%.mod.o:	%.mod
 	@echo $(notdir $<)
 	@$(bin2o)
 
