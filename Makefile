@@ -21,7 +21,8 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 
 OBJS :=		server.o rendertarget.o object.o scene.o light.o \
 		utility-texture.o shadow.o pumpkin.o soft-crtc.o tubes.o \
-		ghost-obj.o spooky-ghost.o bloom.o glass.o timing.o
+		ghost-obj.o spooky-ghost.o bloom.o glass.o parallax-mapping.o \
+		timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -33,12 +34,13 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		bloom-lighting.inc bloom-composite.inc bloom-gaussian.inc \
 		bloom-gaussian2.inc null.inc plain-texturing.inc \
 		alpha-test.inc refraction.inc do-refraction.inc \
-		glass-postpass.inc
+		glass-postpass.inc parallax.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
 		images/gradient.tpl.o images/spiderweb.tpl.o \
-		images/primary.tpl.o images/mighty_zebu.tpl.o
+		images/primary.tpl.o images/mighty_zebu.tpl.o \
+		images/fake_stone_depth.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 
@@ -46,7 +48,8 @@ GENERATED_IMAGES :=	images/stones_bump.png
 
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
-		objects/pumpkin.inc objects/softcube.inc
+		objects/pumpkin.inc objects/softcube.inc \
+		objects/plane.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -123,6 +126,9 @@ objects/softcube.inc:	objects/softcube.dae
 
 objects/knot.inc:	objects/knot.dae
 	$(OBJCONVERT) -c -yz -i -n knot $< -o $@
+
+objects/plane.inc:	objects/plane.dae
+	$(OBJCONVERT) -c -yz -i -n plane $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

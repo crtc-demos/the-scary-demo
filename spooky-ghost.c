@@ -18,7 +18,7 @@
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
 
-static TPLFile stone_textureTPL;
+TPLFile stone_textureTPL;
 
 #include "images/stones_bump.h"
 #include "stones_bump_tpl.h"

@@ -1,0 +1,126 @@
+#include <ogcsys.h>
+#include <gccore.h>
+#include <malloc.h>
+#include <assert.h>
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "timing.h"
+#include "rendertarget.h"
+#include "parallax-mapping.h"
+#include "light.h"
+#include "object.h"
+#include "scene.h"
+#include "server.h"
+
+#include "objects/plane.inc"
+
+INIT_OBJECT (plane_obj, plane);
+
+static Mtx44 perspmat;
+
+static scene_info scene =
+{
+  .pos = { 0, 0, 30 },
+  .up = { 0, 1, 0 },
+  .lookat = { 0, 0, 0 },
+  .camera_dirty = 1
+};
+
+static object_loc obj_loc;
+
+#include "images/more_stones.h"
+#include "more_stones_tpl.h"
+
+extern TPLFile stone_textureTPL;
+
+#include "images/fake_stone_depth.h"
+#include "fake_stone_depth_tpl.h"
+
+static TPLFile stone_depthTPL;
+
+static void
+parallax_mapping_init_effect (void *params)
+{
+  guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
+  
+  object_loc_initialise (&obj_loc, GX_PNMTX0);
+  
+  TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) more_stones_tpl,
+			 more_stones_tpl_size);
+  TPL_OpenTPLFromMemory (&stone_depthTPL, (void *) fake_stone_depth_tpl,
+			 fake_stone_depth_tpl_size);
+}
+
+static void
+texturing (void)
+{
+#include "parallax.inc"
+}
+
+static float phase = 0;
+static float phase2 = 0;
+
+static void
+parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
+				 GXRModeObj *rmode)
+{
+  GXTexObj stone_tex_obj, stone_depth_obj;
+  Mtx modelview, rot;
+  Mtx scale;
+
+  TPL_GetTexture (&stone_textureTPL, stone_texture, &stone_tex_obj);
+  TPL_GetTexture (&stone_depthTPL, stone_depth, &stone_depth_obj);
+  
+  GX_LoadTexObj (&stone_tex_obj, GX_TEXMAP0);
+  GX_LoadTexObj (&stone_depth_obj, GX_TEXMAP1);
+  
+  scene_update_camera (&scene);
+  
+  phase += (float) PAD_StickX (0) / 100.0;
+  phase2 += (float) PAD_StickY (0) / 100.0;
+  
+  guMtxIdentity (modelview);
+  guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), phase);
+  guMtxConcat (rot, modelview, modelview);
+  guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), phase2);
+  guMtxConcat (rot, modelview, modelview);
+  
+  guMtxScale (scale, 17.0, 17.0, 17.0);
+  
+  scene_update_matrices (&scene, &obj_loc, scene.camera, modelview, scale,
+			 perspmat, GX_PERSPECTIVE);
+  
+  object_set_arrays (&plane_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0, GX_VA_TEX0);
+
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  GX_SetCurrentMtx (GX_PNMTX0);
+  
+  texturing ();
+  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+  {
+    f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
+    
+    indmtx[0][0] = cosf (phase * M_PI / 360.0);
+    indmtx[0][1] = sinf (phase * M_PI / 360.0);
+    indmtx[1][0] = cosf (phase2 * M_PI / 360.0);
+    indmtx[1][1] = sinf (phase2 * M_PI / 360.0);
+    
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -3);
+  }
+  
+  object_render (&plane_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		 GX_VTXFMT0);
+}
+
+effect_methods parallax_mapping_methods =
+{
+  .preinit_assets = NULL,
+  .init_effect = &parallax_mapping_init_effect,
+  .prepare_frame = NULL,
+  .display_effect = &parallax_mapping_display_effect,
+  .uninit_effect = NULL,
+  .finalize = NULL
+};
