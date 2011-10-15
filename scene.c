@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <string.h>
+#include <math.h>
 
 #include "scene.h"
 
@@ -106,6 +108,28 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxConcat (texproj, vertex, tempmtx);
       
       GX_LoadTexMtxImm (tempmtx, obj->screenspace_tex_mtx, GX_MTX3x4);
+    }
+
+  if (obj->calculate_parallax_tex_mtx)
+    {
+      Mtx parmtx;
+      static float q = 0, r = 0;
+      
+      guMtxCopy (vertex, parmtx);
+      guMtxRowCol (parmtx, 0, 3) = 0.0;
+      guMtxRowCol (parmtx, 1, 3) = 0.0;
+      guMtxRowCol (parmtx, 2, 3) = 0.0;
+
+      guMtxScale (tempmtx, 0.2, 0.2, 0.2);
+      guMtxConcat (parmtx, tempmtx, parmtx);
+
+      GX_LoadTexMtxImm (parmtx, obj->parallax_binorm_tex_mtx, GX_MTX2x4);
+      
+      //guMtxRowCol (parmtx, 0, 0) = sin (r);
+      GX_LoadTexMtxImm (parmtx, obj->parallax_tangent_tex_mtx, GX_MTX2x4);
+      
+      q += 0.01;
+      r += 0.012;
     }
 
   /* Calculate matrices used for texture coordinate generation for casting

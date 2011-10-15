@@ -69,6 +69,21 @@ object_unset_screenspace_tex_mtx (object_loc *obj)
 }
 
 void
+object_set_parallax_tex_mtx (object_loc *loc, u32 binorm_tex_mtx,
+			     u32 tangent_tex_mtx)
+{
+  loc->calculate_parallax_tex_mtx = 1;
+  loc->parallax_binorm_tex_mtx = binorm_tex_mtx;
+  loc->parallax_tangent_tex_mtx = tangent_tex_mtx;
+}
+
+void
+object_unset_parallax_tex_mtx (object_loc *loc)
+{
+  loc->calculate_parallax_tex_mtx = 0;
+}
+
+void
 object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
 			   u32 shadow_ramp_tex_mtx, shadow_info *shinf)
 {

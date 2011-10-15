@@ -12,10 +12,13 @@ typedef struct {
   char calculate_vertex_depth_mtx;
   char calculate_screenspace_tex_mtx;
   char calculate_shadowing_tex_mtx;
+  char calculate_parallax_tex_mtx;
   u32 normal_tex_mtx;
   u32 binorm_tex_mtx;
   u32 vertex_depth_mtx;
   u32 screenspace_tex_mtx;
+  u32 parallax_binorm_tex_mtx;
+  u32 parallax_tangent_tex_mtx;
   struct {
     u32 buf_tex_mtx;
     u32 ramp_tex_mtx;
@@ -61,6 +64,8 @@ extern void object_set_vertex_depth_mtx (object_loc *, u32);
 extern void object_unset_vertex_depth_mtx (object_loc *);
 extern void object_set_screenspace_tex_mtx (object_loc *, u32);
 extern void object_unset_screenspace_tex_mtx (object_loc *);
+extern void object_set_parallax_tex_mtx (object_loc *, u32, u32);
+extern void object_unset_parallax_tex_mtx (object_loc *);
 extern void object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
 				       u32 shadow_ramp_tex_mtx, shadow_info *);
 extern void object_unset_shadow_tex_mtx (object_loc *loc);

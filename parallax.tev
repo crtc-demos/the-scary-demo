@@ -1,2 +1,21 @@
+# S-type dynamic matrix is:
+#  [ s/256  0  0 ] ( tex_s (alpha) )
+#  [ t/256  0  0 ] ( tex_t (blue) )
+#                  ( tex_u (green) )
+# tex_s, tex_t, tex_u will all be equal for an intensity texture.
+# We need some way of getting e.g.:
+#  s = tan (arccos (binormal . eye_vector))
+#  t = 0
+
+# T-type dynamic matrix is:
+#  [ 0  s/256  0 ] ( tex_s )
+#  [ 0  t/256  0 ] ( tex_t )
+#                  ( tex_u )
+# Now we want:
+#  s = tan (arccos (tangent . eye_vector))
+#  t = 0
+
+# All that's rubbish...
+
 stage 0:
-  tev.rgb = texmap0[texcoord0 + indmtx0 ** texmap1[texcoord0] * indscale0];
+  tev.rgb = texmap0[texcoord0 + indmtx0 ** texmap1[texcoord0] * indscale0].rgb;

@@ -128,7 +128,7 @@ objects/knot.inc:	objects/knot.dae
 	$(OBJCONVERT) -c -yz -i -n knot $< -o $@
 
 objects/plane.inc:	objects/plane.dae
-	$(OBJCONVERT) -c -yz -i -n plane $< -o $@
+	$(OBJCONVERT) -c -t -n plane $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

@@ -46,6 +46,7 @@ parallax_mapping_init_effect (void *params)
   guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
   
   object_loc_initialise (&obj_loc, GX_PNMTX0);
+  object_set_parallax_tex_mtx (&obj_loc, GX_TEXMTX0, GX_TEXMTX1);
   
   TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) more_stones_tpl,
 			 more_stones_tpl_size);
@@ -92,26 +93,57 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   scene_update_matrices (&scene, &obj_loc, scene.camera, modelview, scale,
 			 perspmat, GX_PERSPECTIVE);
   
-  object_set_arrays (&plane_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+  object_set_arrays (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
   GX_SetCurrentMtx (GX_PNMTX0);
   
   texturing ();
   GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
+    guVector norm = { 0, 0, -1 };
+    guVector eye = { 0, 0, -1 };
+    float dp;
+    int scale = -4;
     
-    indmtx[0][0] = cosf (phase * M_PI / 360.0);
-    indmtx[0][1] = sinf (phase * M_PI / 360.0);
-    indmtx[1][0] = cosf (phase2 * M_PI / 360.0);
-    indmtx[1][1] = sinf (phase2 * M_PI / 360.0);
+    guVecMultiply (modelview, &norm, &norm);
     
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -3);
+    indmtx[0][0] = -norm.y;
+    indmtx[0][1] = 0;
+    indmtx[0][2] = 0;
+    indmtx[1][0] = 0;
+    indmtx[1][1] = norm.x;
+    indmtx[1][2] = 0;
+    
+    for (;;)
+      {
+        unsigned int i, j;
+	int gt_one = 0;
+	
+	for (i = 0; i < 2; i++)
+	  for (j = 0; j < 3; j++)
+	    if (fabs (indmtx[i][j]) >= 1.0)
+	      gt_one = 1;
+	
+	if (gt_one)
+	  {
+	    for (i = 0; i < 2; i++)
+	      for (j = 0; j < 3; j++)
+		indmtx[i][j] *= 0.5;
+	    scale--;
+	  }
+	else
+	  break;
+      }
+    
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
   }
   
-  object_render (&plane_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+  object_render (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 }
 
