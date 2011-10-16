@@ -1,1 +1,1 @@
-<filepath="more_stones.png" id="stone_texture" colfmt=4 />
+<filepath="more_stones.png" id="stone_texture" colfmt=4 mipmap=yes minlod=0 maxlod=6 />

@@ -74,6 +74,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   TPL_GetTexture (&stone_textureTPL, stone_texture, &stone_tex_obj);
   TPL_GetTexture (&stone_depthTPL, stone_depth, &stone_depth_obj);
   
+  GX_InitTexObjMaxAniso (&stone_tex_obj, GX_ANISO_4);
+  
   GX_LoadTexObj (&stone_tex_obj, GX_TEXMAP0);
   GX_LoadTexObj (&stone_depth_obj, GX_TEXMAP1);
   
@@ -107,16 +109,18 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
     guVector norm = { 0, 0, -1 };
     guVector eye = { 0, 0, -1 };
-    float dp;
+    /*float ang, dp;*/
     int scale = -4;
     
     guVecMultiply (modelview, &norm, &norm);
+    /*dp = guVecDotProduct (&norm, &eye);
+    ang = acosf (dp);*/
     
-    indmtx[0][0] = -norm.y;
+    indmtx[0][0] = -norm.y; // * tanf (ang);
     indmtx[0][1] = 0;
     indmtx[0][2] = 0;
     indmtx[1][0] = 0;
-    indmtx[1][1] = norm.x;
+    indmtx[1][1] = norm.x; // * tanf (ang);
     indmtx[1][2] = 0;
     
     for (;;)
@@ -134,7 +138,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 	    for (i = 0; i < 2; i++)
 	      for (j = 0; j < 3; j++)
 		indmtx[i][j] *= 0.5;
-	    scale--;
+	    scale++;
 	  }
 	else
 	  break;
