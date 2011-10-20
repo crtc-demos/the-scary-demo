@@ -113,23 +113,58 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
   if (obj->calculate_parallax_tex_mtx)
     {
       Mtx parmtx;
-      static float q = 0, r = 0;
       
-      guMtxCopy (vertex, parmtx);
+      /*guMtxCopy (vertex, parmtx);
       guMtxRowCol (parmtx, 0, 3) = 0.0;
       guMtxRowCol (parmtx, 1, 3) = 0.0;
-      guMtxRowCol (parmtx, 2, 3) = 0.0;
+      guMtxRowCol (parmtx, 2, 3) = 0.0;*/
+      /***
+       ( s )   [ 1 0 0 0 ] ( +x )
+       ( t ) = [ 0 1 0 0 ] (  0 )
+       ( u )   [ 0 0 1 0 ] (  0 )
+       
+       ( s' )   [ s 0 0 ] ( s )
+       ( t' ) = [ t 0 0 ] ( t )
+       ( u' )             ( u )
+       
+       [  0  0  1 ] [ v00 v01 v02 ]    [  v20  v21  v22 ]
+       [  0  1  0 ] [ v10 v11 v12 ] -> [  v10  v11  v12 ]
+       [ -1  0  0 ] [ v20 v21 v22 ]    [ -v00 -v01 -v02 ]
+       
+      ***/
+      guMtxRowCol (parmtx, 0, 0) = 0.5 * guMtxRowCol (vertex, 2, 0);
+      guMtxRowCol (parmtx, 0, 1) = -0.5 * guMtxRowCol (vertex, 2, 1);
+      guMtxRowCol (parmtx, 0, 2) = 0;
+      guMtxRowCol (parmtx, 0, 3) = 0;
 
-      guMtxScale (tempmtx, 0.2, 0.2, 0.2);
-      guMtxConcat (parmtx, tempmtx, parmtx);
+      guMtxRowCol (parmtx, 1, 0) = 0;
+      guMtxRowCol (parmtx, 1, 1) = 0;
+      guMtxRowCol (parmtx, 1, 2) = 0;
+      guMtxRowCol (parmtx, 1, 3) = 0;
 
-      GX_LoadTexMtxImm (parmtx, obj->parallax_binorm_tex_mtx, GX_MTX2x4);
+      guMtxRowCol (parmtx, 2, 0) = 0;
+      guMtxRowCol (parmtx, 2, 1) = 0;
+      guMtxRowCol (parmtx, 2, 2) = 0.5 + 0.5 * guMtxRowCol (vertex, 2, 2);
+      guMtxRowCol (parmtx, 2, 3) = 0;
+
+      GX_LoadTexMtxImm (parmtx, obj->parallax_binorm_tex_mtx, GX_MTX3x4);
       
+      /***
+      
+       [  1  0  0 ] [ v00 v01 v02 ]    [  v00  v01  v02 ]
+       [  0  0  1 ] [ v10 v11 v12 ] -> [  v20  v21  v22 ]
+       [  0 -1  0 ] [ v20 v21 v22 ]    [ -v10 -v11 -v12 ]
+      
+      ***/
+
+      guMtxRowCol (parmtx, 0, 0) = 0;
+      guMtxRowCol (parmtx, 0, 1) = 0;
+
+      guMtxRowCol (parmtx, 1, 0) = -0.5 * guMtxRowCol (vertex, 2, 0);
+      guMtxRowCol (parmtx, 1, 1) = 0.5 * guMtxRowCol (vertex, 2, 1);
+
       //guMtxRowCol (parmtx, 0, 0) = sin (r);
-      GX_LoadTexMtxImm (parmtx, obj->parallax_tangent_tex_mtx, GX_MTX2x4);
-      
-      q += 0.01;
-      r += 0.012;
+      GX_LoadTexMtxImm (parmtx, obj->parallax_tangent_tex_mtx, GX_MTX3x4);
     }
 
   /* Calculate matrices used for texture coordinate generation for casting

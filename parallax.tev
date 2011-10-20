@@ -7,6 +7,10 @@
 #  s = tan (arccos (binormal . eye_vector))
 #  t = 0
 
+stage 0:
+  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+
 # T-type dynamic matrix is:
 #  [ 0  s/256  0 ] ( tex_s )
 #  [ 0  t/256  0 ] ( tex_t )
@@ -15,7 +19,12 @@
 #  s = tan (arccos (tangent . eye_vector))
 #  t = 0
 
-# All that's rubbish...
+stage 1:
+  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
 
-stage 0:
-  tev.rgb = texmap0[texcoord0 + indmtx0 ** texmap1[texcoord0] * indscale0].rgb;
+stage 2:
+  tev.rgb = texmap0[texcoord0 + itexcoord].rgb;
+
+#stage 0:
+#  tev.rgb = texmap0[texcoord0 + indmtx0 ** texmap1[texcoord0] * indscale0].rgb;

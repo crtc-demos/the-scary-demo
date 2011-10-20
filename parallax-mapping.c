@@ -43,7 +43,7 @@ static TPLFile stone_depthTPL;
 static void
 parallax_mapping_init_effect (void *params)
 {
-  guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
+  guPerspective (perspmat, 30, 1.33f, 10.0f, 500.0f);
   
   object_loc_initialise (&obj_loc, GX_PNMTX0);
   object_set_parallax_tex_mtx (&obj_loc, GX_TEXMTX0, GX_TEXMTX1);
@@ -90,7 +90,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), phase2);
   guMtxConcat (rot, modelview, modelview);
   
-  guMtxScale (scale, 17.0, 17.0, 17.0);
+  guMtxScale (scale, 10.0, 10.0, 10.0);
   
   scene_update_matrices (&scene, &obj_loc, scene.camera, modelview, scale,
 			 perspmat, GX_PERSPECTIVE);
@@ -99,8 +99,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
-  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_BINRM, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX3x4, GX_TG_TANGENT, GX_TEXMTX1);
   GX_SetCurrentMtx (GX_PNMTX0);
   
   texturing ();
@@ -110,17 +110,17 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     guVector norm = { 0, 0, -1 };
     guVector eye = { 0, 0, -1 };
     /*float ang, dp;*/
-    int scale = -4;
-    
+#if 0
+    int scale = -6;
     guVecMultiply (modelview, &norm, &norm);
     /*dp = guVecDotProduct (&norm, &eye);
     ang = acosf (dp);*/
     
-    indmtx[0][0] = -norm.y; // * tanf (ang);
+    indmtx[0][0] = -norm.y / norm.z; // * tanf (ang);
     indmtx[0][1] = 0;
     indmtx[0][2] = 0;
     indmtx[1][0] = 0;
-    indmtx[1][1] = norm.x; // * tanf (ang);
+    indmtx[1][1] = norm.x / norm.z; // * tanf (ang);
     indmtx[1][2] = 0;
     
     for (;;)
@@ -145,6 +145,9 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
       }
     
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
+#else
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -4);
+#endif
   }
   
   object_render (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
