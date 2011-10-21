@@ -49,7 +49,7 @@ GENERATED_IMAGES :=	images/stones_bump.png
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
 		objects/pumpkin.inc objects/softcube.inc \
-		objects/plane.inc
+		objects/plane.inc objects/textured-cube.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -129,6 +129,9 @@ objects/knot.inc:	objects/knot.dae
 
 objects/plane.inc:	objects/plane.dae
 	$(OBJCONVERT) -c -t -n plane $< -o $@
+
+objects/textured-cube.inc:	objects/textured-cube.dae
+	$(OBJCONVERT) -c -t -n tex_cube $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

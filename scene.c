@@ -142,9 +142,11 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxRowCol (parmtx, 1, 2) = 0;
       guMtxRowCol (parmtx, 1, 3) = 0;
 
+      /* I'm still uncertain whether we (a) can or (b) should divide by the
+         Z component.  */
       guMtxRowCol (parmtx, 2, 0) = 0;
       guMtxRowCol (parmtx, 2, 1) = 0;
-      guMtxRowCol (parmtx, 2, 2) = 0.5 + 0.5 * guMtxRowCol (vertex, 2, 2);
+      guMtxRowCol (parmtx, 2, 2) = 1;
       guMtxRowCol (parmtx, 2, 3) = 0;
 
       GX_LoadTexMtxImm (parmtx, obj->parallax_binorm_tex_mtx, GX_MTX3x4);
@@ -162,7 +164,7 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
 
       guMtxRowCol (parmtx, 1, 0) = -0.5 * guMtxRowCol (vertex, 2, 0);
       guMtxRowCol (parmtx, 1, 1) = 0.5 * guMtxRowCol (vertex, 2, 1);
-
+      
       //guMtxRowCol (parmtx, 0, 0) = sin (r);
       GX_LoadTexMtxImm (parmtx, obj->parallax_tangent_tex_mtx, GX_MTX3x4);
     }

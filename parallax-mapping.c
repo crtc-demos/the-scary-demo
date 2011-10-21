@@ -14,9 +14,9 @@
 #include "scene.h"
 #include "server.h"
 
-#include "objects/plane.inc"
+#include "objects/textured-cube.inc"
 
-INIT_OBJECT (plane_obj, plane);
+INIT_OBJECT (plane_obj, tex_cube);
 
 static Mtx44 perspmat;
 
@@ -146,7 +146,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
 #else
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -4);
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -2);
 #endif
   }
   
