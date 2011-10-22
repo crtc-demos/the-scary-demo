@@ -40,7 +40,8 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
 		images/gradient.tpl.o images/spiderweb.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o \
-		images/fake_stone_depth.tpl.o
+		images/fake_stone_depth.tpl.o images/grid.tpl.o \
+		images/height.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 

@@ -30,13 +30,25 @@ static scene_info scene =
 
 static object_loc obj_loc;
 
+#undef USE_GRID
+
+#ifdef USE_GRID
+#include "images/grid.h"
+#include "grid_tpl.h"
+#else
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
+#endif
 
 extern TPLFile stone_textureTPL;
 
+#ifdef USE_GRID
+#include "images/height.h"
+#include "height_tpl.h"
+#else
 #include "images/fake_stone_depth.h"
 #include "fake_stone_depth_tpl.h"
+#endif
 
 static TPLFile stone_depthTPL;
 
@@ -47,11 +59,17 @@ parallax_mapping_init_effect (void *params)
   
   object_loc_initialise (&obj_loc, GX_PNMTX0);
   object_set_parallax_tex_mtx (&obj_loc, GX_TEXMTX0, GX_TEXMTX1);
-  
+#ifdef USE_GRID
+  TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) grid_tpl,
+			 grid_tpl_size);
+  TPL_OpenTPLFromMemory (&stone_depthTPL, (void *) height_tpl,
+			 height_tpl_size);
+#else
   TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) more_stones_tpl,
 			 more_stones_tpl_size);
   TPL_OpenTPLFromMemory (&stone_depthTPL, (void *) fake_stone_depth_tpl,
 			 fake_stone_depth_tpl_size);
+#endif
 }
 
 static void
@@ -76,6 +94,9 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   
   GX_InitTexObjMaxAniso (&stone_tex_obj, GX_ANISO_4);
   
+  GX_InitTexObjWrapMode (&stone_tex_obj, GX_CLAMP, GX_CLAMP);
+  GX_InitTexObjWrapMode (&stone_depth_obj, GX_CLAMP, GX_CLAMP);
+  
   GX_LoadTexObj (&stone_tex_obj, GX_TEXMAP0);
   GX_LoadTexObj (&stone_depth_obj, GX_TEXMAP1);
   
@@ -99,12 +120,12 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_BINRM, GX_TEXMTX0);
-  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX3x4, GX_TG_TANGENT, GX_TEXMTX1);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
   GX_SetCurrentMtx (GX_PNMTX0);
   
   texturing ();
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+  //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
     guVector norm = { 0, 0, -1 };
@@ -146,7 +167,13 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
 #else
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, -2);
+    int scale;
+# ifdef USE_GRID
+    scale = -2;
+# else
+    scale = -3;
+# endif
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
 #endif
   }
   
