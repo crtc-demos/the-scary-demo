@@ -40,6 +40,7 @@ rendertarget_texture (u32 width, u32 height, u32 texfmt)
   GX_SetDispCopySrc (0, 0, width, height);
   GX_SetDispCopyDst (width, height);
   GX_SetDispCopyYScale (1);
+  GX_SetCopyFilter (GX_FALSE, NULL, GX_FALSE, NULL);
   GX_SetTexCopySrc (0, 0, width, height);
   GX_SetTexCopyDst (width, height, texfmt, GX_FALSE);
   

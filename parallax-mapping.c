@@ -92,7 +92,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   TPL_GetTexture (&stone_textureTPL, stone_texture, &stone_tex_obj);
   TPL_GetTexture (&stone_depthTPL, stone_depth, &stone_depth_obj);
   
-  GX_InitTexObjMaxAniso (&stone_tex_obj, GX_ANISO_4);
+  //GX_InitTexObjMaxAniso (&stone_tex_obj, GX_ANISO_4);
   
   GX_InitTexObjWrapMode (&stone_tex_obj, GX_CLAMP, GX_CLAMP);
   GX_InitTexObjWrapMode (&stone_depth_obj, GX_CLAMP, GX_CLAMP);
@@ -125,7 +125,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetCurrentMtx (GX_PNMTX0);
   
   texturing ();
-  //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_4, GX_ITS_4);
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
     guVector norm = { 0, 0, -1 };
@@ -177,6 +177,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 #endif
   }
   
+  GX_SetCullMode (GX_CULL_BACK);
   object_render (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 }
