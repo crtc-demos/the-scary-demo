@@ -1,0 +1,41 @@
+# We have:
+#  texmap0: the base (colour) texture
+#  texmap1: the bump height texture
+#  texmap2: the diffuse/specular lighting texture
+#  texmap3: the bump s,t-offset texture
+#  texcoord0: the regular u,v texture coordinate
+#  texcoord1: parallax S-offset texcoord
+#  texcoord2: parallax T-offset texcoord
+#  texcoord3: lighting S-offset texcoord (slope in S dir)
+#  texcoord4: lighting T-offset texcoord (slope in T dir)
+#  texcoord5: normal, as texcoord
+
+stage 0:
+  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+
+stage 1:
+  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+
+# This is the distorted colour texture.
+stage 2:
+  cr0.rgb = texmap0[texcoord0 + itexcoord].rgb;
+
+stage 3:
+  itexcoord = s_dynmtx(texcoord3) ** (texmap3[texcoord0]
+				      + vec3 (-128, -128, 0)) * indscale1;
+  tev = tev;
+
+stage 4:
+  itexcoord = itexcoord + (t_dynmtx(texcoord4)
+			   ** (texmap3[texcoord0]
+			       + vec3 (-128, -128, 0)) * indscale1);
+  tev = tev;
+
+# This doesn't do proper lighting: we use the original texcoords not the ones
+# shifted by the parallax mapping. We can't solve that in a single pass, I
+# don't think. It might look OK as long as the shift isn't too big.
+stage 5:
+  tev.rgb = clamp (texmap2[itexcoord + texcoord5].aaa
+		   + cr0.rgb * texmap2[itexcoord + texcoord5].rgb);

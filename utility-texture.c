@@ -53,59 +53,6 @@ create_8bit_ramp (utility_texture_info *dst)
   dst->texbuf = ramptex;
 }
 
-static void
-create_16bit_ramp (utility_texture_info *dst)
-{
-  char *ramptex;
-  unsigned int ramptexsize;
-  unsigned int t_blk, s_blk, ctr = 0;
-
-  dst->format = GX_TF_IA8;
-  
-  ramptexsize = GX_GetTexBufferSize (256, 256, dst->format, GX_FALSE, 0);
-  
-  ramptex = memalign (32, ramptexsize);
-
-  /* Here we are generating 16-bit texels in IA8 format.  For each
-     16-bit chunk the first byte is alpha, the second byte intensity.
-     These texels form 4x4 (SxT) blocks of texels.  So we have (16-bit
-     entries):
-
-     00 02 04 06 20 22 24 26
-     08 0a 0c 0e 28 2a 2c 2e
-     10 12 14 16 38 ....
-     18 1a 1c 1e
-     ...  */
-
-  /* This is definitely wrong!  */
-
-  for (t_blk = 0; t_blk < 64; t_blk++)
-    for (s_blk = 0; s_blk < 64; s_blk++)
-      {
-	unsigned int s, t;
-
-	for (t = 0; t < 4; t++)
-	  for (s = 0; s < 4; s++)
-	    {
-	      unsigned int idx = (s_blk * 4 + s) + 256 * (t_blk * 4 + t);
-	      /* alpha->low byte, intensity->high byte.  */
-	      ramptex[idx * 2] = ctr & 255;
-	      ramptex[idx * 2 + 1] = (ctr >> 8) & 255;
-	      ctr++;
-	    }
-      }
-
-  assert (ctr == 65536);
-
-  DCFlushRange (ramptex, ramptexsize);
-
-  GX_InitTexObj (&dst->texobj, ramptex, 256, 256, dst->format, GX_CLAMP,
-		 GX_REPEAT, GX_FALSE);
-  GX_InitTexObjLOD (&dst->texobj, GX_NEAR, GX_NEAR, 0, 0, 0, 0, 0, GX_ANISO_1);
-  
-  dst->texbuf = ramptex;
-}
-
 static unsigned int
 tex_index (unsigned int s, unsigned int t, unsigned int pitch,
 	   unsigned int texel_bits)
@@ -134,6 +81,49 @@ tex_index (unsigned int s, unsigned int t, unsigned int pitch,
     }
 
   return -1;
+}
+
+static void
+create_16bit_ramp (utility_texture_info *dst, int norepeat)
+{
+  char *ramptex;
+  unsigned int ramptexsize;
+  unsigned int t, s;
+
+  dst->format = GX_TF_IA8;
+  
+  ramptexsize = GX_GetTexBufferSize (256, 256, dst->format, GX_FALSE, 0);
+  
+  ramptex = memalign (32, ramptexsize);
+
+  /* Here we are generating 16-bit texels in IA8 format.  For each
+     16-bit chunk the first byte is alpha, the second byte intensity.
+     These texels form 4x4 (SxT) blocks of texels.  So we have (16-bit
+     entries):
+
+     00 02 04 06 20 22 24 26
+     08 0a 0c 0e 28 2a 2c 2e
+     10 12 14 16 38 ....
+     18 1a 1c 1e
+     ...  */
+
+  for (t = 0; t < 256; t++)
+    for (s = 0; s < 256; s++)
+      {
+	unsigned int idx = tex_index (s, t, 256, 16);
+
+	/* alpha->low byte, intensity->high byte.  */
+	ramptex[idx] = s;
+	ramptex[idx + 1] = t;
+      }
+
+  DCFlushRange (ramptex, ramptexsize);
+
+  GX_InitTexObj (&dst->texobj, ramptex, 256, 256, dst->format, GX_CLAMP,
+		 norepeat ? GX_CLAMP : GX_REPEAT, GX_FALSE);
+  GX_InitTexObjLOD (&dst->texobj, GX_NEAR, GX_NEAR, 0, 0, 0, 0, 0, GX_ANISO_1);
+  
+  dst->texbuf = ramptex;
 }
 
 static void
@@ -223,7 +213,9 @@ get_utility_texture (utility_texture_handle which)
 	break;
 
       case UTIL_TEX_16BIT_RAMP:
-	create_16bit_ramp (&util_textures[which]);
+      case UTIL_TEX_16BIT_RAMP_NOREPEAT:
+	create_16bit_ramp (&util_textures[which],
+			   which == UTIL_TEX_16BIT_RAMP_NOREPEAT);
 	break;
 
       case UTIL_TEX_REFRACT:

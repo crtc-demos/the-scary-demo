@@ -84,7 +84,7 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
      coordinates.  */
   if (obj->calculate_screenspace_tex_mtx)
     {
-      Mtx texproj;
+      Mtx texproj, vertex_scaled;
 
       assert (projection);
 
@@ -105,8 +105,17 @@ scene_update_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxRowCol (texproj, 2, 2) = guMtxRowCol (projection, 3, 2);
       guMtxRowCol (texproj, 2, 3) = guMtxRowCol (projection, 3, 3);
 
-      guMtxConcat (texproj, vertex, tempmtx);
-      
+
+      if (separate_scale)
+	{
+	  guMtxConcat (vertex, separate_scale, vertex_scaled);
+	  guMtxConcat (texproj, vertex_scaled, tempmtx);
+	}
+      else
+        {
+	  guMtxConcat (texproj, vertex, tempmtx);
+	}
+
       GX_LoadTexMtxImm (tempmtx, obj->screenspace_tex_mtx, GX_MTX3x4);
     }
 

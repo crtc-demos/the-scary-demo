@@ -1,0 +1,12 @@
+# texmap4 should be a 256x256 ramp texture.
+
+stage 0:
+  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+
+stage 1:
+  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+
+stage 2:
+  tev.rgba = texmap4[texcoord0 + itexcoord].rara;
