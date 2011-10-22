@@ -35,7 +35,8 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		bloom-gaussian2.inc null.inc plain-texturing.inc \
 		alpha-test.inc refraction.inc do-refraction.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
-		parallax-lit-phase1.inc parallax-lit-phase2.inc
+		parallax-lit-phase1.inc parallax-lit-phase2.inc \
+		parallax-lit-phase3.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \

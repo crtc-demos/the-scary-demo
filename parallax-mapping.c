@@ -70,6 +70,7 @@ static lighting_texture_info *lighting_texture;
 static TPLFile height_bumpTPL;
 
 void *texcoord_map;
+void *texcoord_map2;
 
 #define TEXCOORD_MAP_H 256
 #define TEXCOORD_MAP_W 256
@@ -114,6 +115,8 @@ parallax_mapping_init_effect (void *params)
   lighting_texture = create_lighting_texture ();
   texcoord_map = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP_W,
 			   TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_FALSE, 0));
+  texcoord_map2 = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP_W,
+			    TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_FALSE, 0));
 }
 
 static void
@@ -211,7 +214,6 @@ draw_flat_texture (void)
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
-#include "parallax-lit-phase2.inc"
   //GX_SetTevColor (0, (GXColor) { 0, 0, 0 });
 
   GX_SetCullMode (GX_CULL_NONE);
@@ -244,11 +246,17 @@ parallax_phase2 (void)
 }
 
 static void
+parallax_phase3 (void)
+{
+#include "parallax-lit-phase3.inc"
+}
+
+static void
 parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 				 GXRModeObj *rmode)
 {
   GXTexObj stone_tex_obj, stone_depth_obj, height_bump_obj;
-  GXTexObj texcoord_map_obj;
+  GXTexObj texcoord_map_obj, texcoord_map2_obj;
   Mtx modelview, rot;
   Mtx scale;
   object_loc map_flat_loc;
@@ -273,6 +281,10 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 		 TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_CLAMP, GX_CLAMP,
 		 GX_FALSE);
   GX_InitTexObjFilterMode (&texcoord_map_obj, GX_NEAR, GX_NEAR);
+  GX_InitTexObj (&texcoord_map2_obj, texcoord_map, TEXCOORD_MAP_W,
+		 TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_CLAMP, GX_CLAMP,
+		 GX_FALSE);
+  GX_InitTexObjFilterMode (&texcoord_map2_obj, GX_NEAR, GX_NEAR);
 #endif
 
   rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
@@ -377,14 +389,26 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_CopyTex (texcoord_map, GX_TRUE);
   GX_PixModeSync ();
   
+  rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
+
+  GX_LoadTexObj (&texcoord_map_obj, GX_TEXMAP5);
+
+  parallax_phase2 ();
+  draw_flat_texture ();
+  
+  GX_CopyTex (texcoord_map2, GX_TRUE);
+  GX_PixModeSync ();
+  
   rendertarget_screen (rmode);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
-  GX_LoadTexObj (&texcoord_map_obj, GX_TEXMAP5);
+  GX_LoadTexObj (&texcoord_map2_obj, GX_TEXMAP6);
+
   {
     f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
     GX_SetIndTexMatrix (GX_ITM_1, indmtx, 2);
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, -1);
   }
   /*draw_flat_texture ();*/
   
@@ -397,7 +421,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetTexCoordGen (GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX2);
   GX_SetTexCoordGen (GX_TEXCOORD6, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX4);
 
-  parallax_phase2 ();
+  parallax_phase3 ();
 
   scene_update_matrices (&scene, &map_flat_loc, scene.camera, modelview, scale,
 			 perspmat, GX_PERSPECTIVE);

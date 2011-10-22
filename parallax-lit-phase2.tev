@@ -1,17 +1,2 @@
 stage 0:
-  cr0.rgb = texmap0[indmtx0 ** texmap5[texcoord6] * indscale0].rgb;
-
-stage 1:
-  itexcoord = s_dynmtx(texcoord3) ** (texmap3[texcoord0]
-				      + vec3 (-128, -128, 0)) * indscale1;
-  tev = tev;
-
-stage 2:
-  itexcoord = itexcoord + t_dynmtx(texcoord4)
-			  ** (texmap3[texcoord0] + vec3 (-128, -128, 0))
-			     * indscale1;
-  tev = tev;
-
-stage 3:
-  tev.rgb = clamp (texmap2[itexcoord + texcoord5].aaa
-		   + cr0.rgb * texmap2[itexcoord + texcoord5].rgb);
+  tev.rgb = texmap3[indmtx2 ** texmap5[texcoord0] * indscale2].rgb;
