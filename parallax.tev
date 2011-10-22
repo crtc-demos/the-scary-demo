@@ -6,6 +6,8 @@
 # We need some way of getting e.g.:
 #  s = tan (arccos (binormal . eye_vector))
 #  t = 0
+# But actually, we just approximate this: the binormal vector is rotated to
+# point "towards" the viewer, then we zero out everything but the X/S component.
 
 stage 0:
   itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
@@ -18,6 +20,7 @@ stage 0:
 # Now we want:
 #  s = tan (arccos (tangent . eye_vector))
 #  t = 0
+# Similarly, this is approximated, but with the Y/T component kept.
 
 stage 1:
   itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;

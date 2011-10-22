@@ -43,49 +43,50 @@ object_unset_tex_norm_matrix (object_loc *loc)
 }
 
 void
-object_set_vertex_depth_mtx (object_loc *obj, u32 vertex_depth_mtx)
+object_set_vertex_depth_matrix (object_loc *obj, u32 vertex_depth_mtx)
 {
   obj->calculate_vertex_depth_mtx = 1;
   obj->vertex_depth_mtx = vertex_depth_mtx;
 }
 
 void
-object_unset_vertex_depth_mtx (object_loc *obj)
+object_unset_vertex_depth_matrix (object_loc *obj)
 {
   obj->calculate_vertex_depth_mtx = 0;
 }
 
 void
-object_set_screenspace_tex_mtx (object_loc *obj, u32 screenspace_tex_mtx)
+object_set_screenspace_tex_matrix (object_loc *obj, u32 screenspace_tex_mtx)
 {
   obj->calculate_screenspace_tex_mtx = 1;
   obj->screenspace_tex_mtx = screenspace_tex_mtx;
 }
 
 void
-object_unset_screenspace_tex_mtx (object_loc *obj)
+object_unset_screenspace_tex_matrix (object_loc *obj)
 {
   obj->calculate_screenspace_tex_mtx = 0;
 }
 
 void
-object_set_parallax_tex_mtx (object_loc *loc, u32 binorm_tex_mtx,
-			     u32 tangent_tex_mtx)
+object_set_parallax_tex_matrices (object_loc *loc, u32 binorm_tex_mtx,
+				  u32 tangent_tex_mtx, u32 texture_edge_length)
 {
   loc->calculate_parallax_tex_mtx = 1;
-  loc->parallax_binorm_tex_mtx = binorm_tex_mtx;
-  loc->parallax_tangent_tex_mtx = tangent_tex_mtx;
+  loc->parallax.binorm_tex_mtx = binorm_tex_mtx;
+  loc->parallax.tangent_tex_mtx = tangent_tex_mtx;
+  loc->parallax.texture_edge = texture_edge_length;
 }
 
 void
-object_unset_parallax_tex_mtx (object_loc *loc)
+object_unset_parallax_tex_matrices (object_loc *loc)
 {
   loc->calculate_parallax_tex_mtx = 0;
 }
 
 void
-object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
-			   u32 shadow_ramp_tex_mtx, shadow_info *shinf)
+object_set_shadow_tex_matrix (object_loc *loc, u32 shadow_buf_tex_mtx,
+			      u32 shadow_ramp_tex_mtx, shadow_info *shinf)
 {
   loc->calculate_shadowing_tex_mtx = 1;
   loc->shadow.buf_tex_mtx = shadow_buf_tex_mtx;
@@ -94,7 +95,7 @@ object_set_shadow_tex_mtx (object_loc *loc, u32 shadow_buf_tex_mtx,
 }
 
 void
-object_unset_shadow_tex_mtx (object_loc *loc)
+object_unset_shadow_tex_matrix (object_loc *loc)
 {
   loc->calculate_shadowing_tex_mtx = 0;
 }

@@ -55,10 +55,18 @@ static TPLFile stone_depthTPL;
 static void
 parallax_mapping_init_effect (void *params)
 {
+  unsigned int tex_edge_length;
   guPerspective (perspmat, 30, 1.33f, 10.0f, 500.0f);
+
+#ifdef USE_GRID
+  tex_edge_length = 256;
+#else
+  tex_edge_length = 1024;
+#endif
   
   object_loc_initialise (&obj_loc, GX_PNMTX0);
-  object_set_parallax_tex_mtx (&obj_loc, GX_TEXMTX0, GX_TEXMTX1);
+  object_set_parallax_tex_matrices (&obj_loc, GX_TEXMTX0, GX_TEXMTX1,
+				    tex_edge_length);
 #ifdef USE_GRID
   TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) grid_tpl,
 			 grid_tpl_size);
@@ -125,13 +133,17 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetCurrentMtx (GX_PNMTX0);
   
   texturing ();
+#ifdef USE_GRID
+  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+#else
   GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_4, GX_ITS_4);
+#endif
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-    guVector norm = { 0, 0, -1 };
-    guVector eye = { 0, 0, -1 };
     /*float ang, dp;*/
 #if 0
+    guVector norm = { 0, 0, -1 };
+    guVector eye = { 0, 0, -1 };
     int scale = -6;
     guVecMultiply (modelview, &norm, &norm);
     /*dp = guVecDotProduct (&norm, &eye);

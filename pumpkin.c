@@ -244,7 +244,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_loc_initialise (&pumpkin_loc, GX_PNMTX0);
   object_loc_initialise (&beam_loc, GX_PNMTX0);
 
-  object_set_vertex_depth_mtx (&beam_loc, GX_TEXMTX0);
+  object_set_vertex_depth_matrix (&beam_loc, GX_TEXMTX0);
 
   scene_update_camera (&scene);
 
@@ -468,7 +468,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
       beam_composite_tev_setup ();
 
       /* Set up texcoord1 to map to screen-space coordinates.  */
-      object_set_screenspace_tex_mtx (&beam_loc, GX_TEXMTX1);
+      object_set_screenspace_tex_matrix (&beam_loc, GX_TEXMTX1);
       GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
 
       /* Draw front faces.  */
