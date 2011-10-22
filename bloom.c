@@ -296,7 +296,8 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   /* Use TEXMTX0 for ramp texture lookup, and TEXMTX1 for shadow-buffer
      lookup.  Object loc also stores a pointer to the shadow being cast onto
      the object.  */
-  object_set_shadow_tex_mtx (&softcube_loc, GX_TEXMTX1, GX_TEXMTX0, shadow_inf);
+  object_set_shadow_tex_matrix (&softcube_loc, GX_TEXMTX1, GX_TEXMTX0,
+				shadow_inf);
   
   GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
   GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);

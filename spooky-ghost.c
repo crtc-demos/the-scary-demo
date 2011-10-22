@@ -14,6 +14,7 @@
 #include "scene.h"
 #include "server.h"
 #include "ghost-obj.h"
+#include "lighting-texture.h"
 
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
@@ -28,10 +29,6 @@ static TPLFile stone_bumpTPL;
 #include "objects/tunnel-section.inc"
 
 INIT_OBJECT (tunnel_section_obj, tunnel_section);
-
-#define LIGHT_TEXFMT GX_TF_RGBA8
-#define LIGHT_TEX_W 64
-#define LIGHT_TEX_H 64
 
 #define REFLECTION_W 640
 #define REFLECTION_H 480
@@ -57,6 +54,7 @@ static scene_info scene =
 };
 
 static object_loc obj_loc;
+static lighting_texture_info *lighting_texture;
 
 /*static Mtx viewmat;
 static guVector pos = {0, 0, 30};
@@ -120,8 +118,6 @@ void *reflection;
 static void
 spooky_ghost_init_effect (void *params)
 {
-  unsigned int texbufsize;
-
   guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
   scene_update_camera (&scene);
   
@@ -133,48 +129,17 @@ spooky_ghost_init_effect (void *params)
   TPL_OpenTPLFromMemory (&stone_bumpTPL, (void *) stones_bump_tpl,
 			 stones_bump_tpl_size);
 
-  texbufsize = GX_GetTexBufferSize (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT,
-				    GX_FALSE, 0);
+  lighting_texture = create_lighting_texture ();
 
-  srv_printf ("tex buffer size: %d\n", texbufsize);
-
-  lightmap = memalign (32, texbufsize);
   reflection = memalign (32, GX_GetTexBufferSize (REFLECTION_W, REFLECTION_H,
 			 REFLECTION_TEXFMT, GX_FALSE, 0));
 }
 
 static void
-hemisphere_texture (void)
+spooky_ghost_uninit_effect (void *params)
 {
-  u32 i, j;
-  guVector c, cn;
-  
-  for (i = 0; i < 32; i++)
-    {
-      GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 32 * 2 + 2);
-      
-      for (j = 0; j <= 32; j++)
-        {
-	  c.x = (2.0 * (float) i / 32.0) - 1.0;
-	  c.y = (2.0 * (float) j / 32.0) - 1.0;
-	  c.z = -2.0;
-	  cn.x = c.x / NRM_SCALE;
-	  cn.y = c.y / NRM_SCALE;
-	  cn.z = c.x * c.x + c.y * c.y;
-	  cn.z = cn.z < 1 ? sqrtf (1.0 - cn.z) : 0;
-	  GX_Position3f32 (c.x, c.y, c.z);
-	  GX_Normal3f32 (cn.x, cn.y, cn.z);
-	  
-	  c.x = (2.0 * (float) (i + 1) / 32.0) - 1.0;
-	  cn.x = c.x / NRM_SCALE;
-	  cn.z = c.x * c.x + c.y * c.y;
-	  cn.z = cn.z < 1 ? sqrtf (1.0 - cn.z) : 0;
-	  GX_Position3f32 (c.x, c.y, c.z);
-	  GX_Normal3f32 (cn.x, cn.y, cn.z);
-	}
-      
-      GX_End ();
-    }
+  free_lighting_texture (lighting_texture);
+  free (reflection);
 }
 
 static float bla = 0.0;
@@ -277,9 +242,6 @@ draw_waves (void)
 static void
 spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
-  Mtx44 proj;
-  Mtx idmtx;
-
   light0.pos.x = cos (lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
   light0.pos.z = sin (lightdeg) * 500.0;
@@ -288,35 +250,9 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   if (switch_ghost_lighting)
     {
-      rendertarget_texture (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT);
-
-      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
-      GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
-      GX_SetColorUpdate (GX_TRUE);
-      GX_SetAlphaUpdate (GX_TRUE);
-
-      guOrtho (proj, -1, 1, -1, 1, 1, 15);
-
-      GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
-
-      GX_ClearVtxDesc ();
-      GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-      GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
-      GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-      GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-
-      guMtxIdentity (idmtx);
-      scene_update_matrices (&scene, &obj_loc, idmtx, idmtx, NULL, proj,
-			     GX_ORTHOGRAPHIC);
-
-      light_update (scene.camera, &light0);
-
       tunnel_lighting ();
-
-      hemisphere_texture ();
-
-      GX_CopyTex (lightmap, GX_TRUE);
-      GX_PixModeSync ();
+      light_update (scene.camera, &light0);
+      update_lighting_texture (&scene, lighting_texture);
     }
 }
 
@@ -447,7 +383,6 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   Mtx modelView, mvtmp;
   GXTexObj texture;
   GXTexObj bumpmap;
-  GXTexObj lightmap_obj;
   GXTexObj reflection_obj;
   int i;
 
@@ -461,16 +396,13 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   TPL_GetTexture (&stone_textureTPL, stone_texture, &texture);
   TPL_GetTexture (&stone_bumpTPL, stone_bump, &bumpmap);
 
-  GX_InitTexObj (&lightmap_obj, lightmap, LIGHT_TEX_W, LIGHT_TEX_H,
-		 LIGHT_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
-
   GX_InitTexObj (&reflection_obj, reflection, REFLECTION_W, REFLECTION_H,
 		 REFLECTION_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   GX_InvalidateTexAll ();
   
   GX_LoadTexObj (&texture, GX_TEXMAP0);
-  GX_LoadTexObj (&lightmap_obj, GX_TEXMAP1);
+  GX_LoadTexObj (&lighting_texture->texobj, GX_TEXMAP1);
   GX_LoadTexObj (&bumpmap, GX_TEXMAP2);
   GX_LoadTexObj (&reflection_obj, GX_TEXMAP3);
 
@@ -578,7 +510,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_InvalidateTexAll ();
   
   GX_LoadTexObj (&texture, GX_TEXMAP0);
-  GX_LoadTexObj (&lightmap_obj, GX_TEXMAP1);
+  GX_LoadTexObj (&lighting_texture->texobj, GX_TEXMAP1);
   GX_LoadTexObj (&bumpmap, GX_TEXMAP2);
   GX_LoadTexObj (&reflection_obj, GX_TEXMAP3);
 
@@ -680,6 +612,6 @@ effect_methods spooky_ghost_methods =
   .init_effect = &spooky_ghost_init_effect,
   .prepare_frame = &spooky_ghost_prepare_frame,
   .display_effect = &spooky_ghost_display_effect,
-  .uninit_effect = NULL,
+  .uninit_effect = &spooky_ghost_uninit_effect,
   .finalize = NULL
 };

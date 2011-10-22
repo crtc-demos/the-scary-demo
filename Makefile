@@ -20,9 +20,9 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
 OBJS :=		server.o rendertarget.o object.o scene.o light.o \
-		utility-texture.o shadow.o pumpkin.o soft-crtc.o tubes.o \
-		ghost-obj.o spooky-ghost.o bloom.o glass.o parallax-mapping.o \
-		timing.o
+		lighting-texture.o utility-texture.o shadow.o pumpkin.o \
+		soft-crtc.o tubes.o ghost-obj.o spooky-ghost.o bloom.o \
+		glass.o parallax-mapping.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -34,14 +34,14 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		bloom-lighting.inc bloom-composite.inc bloom-gaussian.inc \
 		bloom-gaussian2.inc null.inc plain-texturing.inc \
 		alpha-test.inc refraction.inc do-refraction.inc \
-		glass-postpass.inc parallax.inc
+		glass-postpass.inc parallax.inc parallax-lit.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
 		images/gradient.tpl.o images/spiderweb.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
-		images/height.tpl.o
+		images/height.tpl.o images/height_bump.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 
@@ -92,6 +92,11 @@ images/stones_bump.scf:	images/stones_bump.png
 
 images/stones_bump.png:	images/fake_stone_depth.png
 	$(BUMPTOOL) $< -o $@
+
+images/height_bump.scf: images/height_bump.png
+
+images/height_bump.png: images/height.png
+	$(BUMPTOOL) -i $< -o $@
 
 #%.tpl:	%.scf
 #	$(GXTEXCONV) -s $< -o $@
