@@ -93,7 +93,6 @@ parallax_mapping_init_effect (void *params)
   object_set_parallax_tex_matrices (&obj_loc, GX_TEXMTX0, GX_TEXMTX1,
 				    tex_edge_length);
 #ifdef WITH_LIGHTING
-  object_set_tex_norm_binorm_matrices (&obj_loc, GX_TEXMTX2, GX_TEXMTX3);
 #endif
 
 #ifdef USE_GRID
@@ -388,28 +387,36 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_CopyTex (texcoord_map, GX_TRUE);
   GX_PixModeSync ();
+
+  {
+    f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
+    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 1);
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
+  }
+
+  /* Phase 2.  Create new texture containing bump s,t offset texture lookup
+     results -- in screen space.  */
   
   rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
 
   GX_LoadTexObj (&texcoord_map_obj, GX_TEXMAP5);
 
+  /*rendertarget_screen (rmode);*/
+
   parallax_phase2 ();
   draw_flat_texture ();
-  
+
   GX_CopyTex (texcoord_map2, GX_TRUE);
   GX_PixModeSync ();
+  
+  /* Phase 3.  Put things on the screen.  */
   
   rendertarget_screen (rmode);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   GX_LoadTexObj (&texcoord_map2_obj, GX_TEXMAP6);
 
-  {
-    f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 2);
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, -1);
-  }
   /*draw_flat_texture ();*/
   
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
