@@ -72,9 +72,13 @@ static TPLFile height_bumpTPL;
 void *texcoord_map;
 void *texcoord_map2;
 
-#define TEXCOORD_MAP_H 256
-#define TEXCOORD_MAP_W 256
+#define TEXCOORD_MAP_H 512
+#define TEXCOORD_MAP_W 512
 #define TEXCOORD_MAP_FMT GX_TF_IA8
+
+#define TEXCOORD_MAP2_H 512
+#define TEXCOORD_MAP2_W 512
+#define TEXCOORD_MAP2_FMT GX_TF_IA8
 #endif
 
 static void
@@ -114,8 +118,8 @@ parallax_mapping_init_effect (void *params)
   lighting_texture = create_lighting_texture ();
   texcoord_map = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP_W,
 			   TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_FALSE, 0));
-  texcoord_map2 = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP_W,
-			    TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_FALSE, 0));
+  texcoord_map2 = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP2_W,
+			    TEXCOORD_MAP2_H, TEXCOORD_MAP2_FMT, GX_FALSE, 0));
 }
 
 static void
@@ -282,8 +286,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 		 GX_FALSE);
   GX_InitTexObjFilterMode (&texcoord_map_obj, GX_LINEAR, GX_LINEAR);
 
-  GX_InitTexObj (&texcoord_map2_obj, texcoord_map2, TEXCOORD_MAP_W,
-		 TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_CLAMP, GX_CLAMP,
+  GX_InitTexObj (&texcoord_map2_obj, texcoord_map2, TEXCOORD_MAP2_W,
+		 TEXCOORD_MAP2_H, TEXCOORD_MAP2_FMT, GX_CLAMP, GX_CLAMP,
 		 GX_FALSE);
   GX_InitTexObjFilterMode (&texcoord_map2_obj, GX_LINEAR, GX_LINEAR);
 #endif
@@ -330,56 +334,15 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 #endif
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
-    /*float ang, dp;*/
-#if 0
-    guVector norm = { 0, 0, -1 };
-    guVector eye = { 0, 0, -1 };
-    int scale = -6;
-    guVecMultiply (modelview, &norm, &norm);
-    /*dp = guVecDotProduct (&norm, &eye);
-    ang = acosf (dp);*/
-    
-    indmtx[0][0] = -norm.y / norm.z; // * tanf (ang);
-    indmtx[0][1] = 0;
-    indmtx[0][2] = 0;
-    indmtx[1][0] = 0;
-    indmtx[1][1] = norm.x / norm.z; // * tanf (ang);
-    indmtx[1][2] = 0;
-    
-    for (;;)
-      {
-        unsigned int i, j;
-	int gt_one = 0;
-	
-	for (i = 0; i < 2; i++)
-	  for (j = 0; j < 3; j++)
-	    if (fabs (indmtx[i][j]) >= 1.0)
-	      gt_one = 1;
-	
-	if (gt_one)
-	  {
-	    for (i = 0; i < 2; i++)
-	      for (j = 0; j < 3; j++)
-		indmtx[i][j] *= 0.5;
-	    scale++;
-	  }
-	else
-	  break;
-      }
-    
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
-#else
     int scale;
-# ifdef USE_GRID
+#ifdef USE_GRID
     scale = -4;
-# else
+#else
     scale = -3;
-# endif
+#endif
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
-# ifdef WITH_LIGHTING
+#ifdef WITH_LIGHTING
     GX_SetIndTexMatrix (GX_ITM_1, indmtx, 4);
-    /*GX_SetIndTexMatrix (GX_ITM_2, indmtx, -2);*/
-# endif
 #endif
   }
   
@@ -393,7 +356,6 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   {
     f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
     f32 indmtx2[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
-    //GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
     GX_SetIndTexMatrix (GX_ITM_1, indmtx, 2);
     GX_SetIndTexMatrix (GX_ITM_2, indmtx2, 1);
   }
@@ -401,7 +363,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   /* Phase 2.  Create new texture containing bump s,t offset texture lookup
      results -- in screen space.  */
   
-  rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
+  rendertarget_texture (TEXCOORD_MAP2_W, TEXCOORD_MAP2_H, GX_CTF_GB8);
 
   GX_LoadTexObj (&texcoord_map_obj, GX_TEXMAP5);
 
