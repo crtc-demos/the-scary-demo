@@ -1,4 +1,8 @@
+# texmap1: the bump height texture
 # texmap4 should be a 256x256 ramp texture.
+# texcoord0: the regular u,v texture coordinate
+# texcoord1: parallax S-offset texcoord
+# texcoord2: parallax T-offset texcoord
 
 stage 0:
   itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;

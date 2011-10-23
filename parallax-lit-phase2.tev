@@ -1,4 +1,6 @@
+# texmap3: the bump s,t-offset texture
 # texmap5: texture containing "deferred" texture coords.
+# texcoord0: the regular u,v texture coordinate
 # texcoord6: texcoord corresponding to screen space.
 
 stage 0:

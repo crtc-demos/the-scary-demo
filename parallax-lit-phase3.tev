@@ -1,0 +1,43 @@
+# texmap0: the base (colour) texture
+# texmap1: the bump height texture
+# texmap2: the diffuse/specular lighting texture
+# texmap4: 256x256 G, B ramp texture
+# texmap5: texture containing "deferred" texture coords.
+# texmap6: 256x256 pre-computed s,t offsets in screen space
+# texcoord0: the regular u,v texture coordinate
+# texcoord1: parallax S-offset texcoord
+# texcoord2: parallax T-offset texcoord
+# texcoord3: lighting S-offset texcoord (slope in S dir)
+# texcoord4: lighting T-offset texcoord (slope in T dir)
+# texcoord5: normal, as texcoord (suitable for light texture)
+# texcoord6: texcoord corresponding to screen space.
+
+# Instead of stages 0-2 we could just do:
+#   cr0.rgb = texmap0[indmtx0 ** texmap5[texcoord6] * indscale0].rgb;
+# But we can get a more accurate result by redoing the original calculation
+# here.
+stage 0:
+  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+  
+stage 1:
+  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;
+  tev = tev;
+  
+stage 2:
+  cr0.rgb = texmap0[texcoord0 + itexcoord].rgb;
+
+stage 3:
+  itexcoord = s_dynmtx(texcoord3) ** (texmap6[texcoord6]
+				      + vec3 (-128, -128, 0)) * indscale1;
+  tev = tev;
+
+stage 4:
+  itexcoord = itexcoord + t_dynmtx(texcoord4)
+			  ** (texmap6[texcoord6] + vec3 (-128, -128, 0))
+			     * indscale1;
+  tev = tev;
+
+stage 5:
+  tev.rgb = clamp (texmap2[itexcoord + texcoord5].aaa
+	   + cr0.rgb * texmap2[itexcoord + texcoord5].rgb);
