@@ -276,14 +276,16 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_LoadTexObj (&height_bump_obj, GX_TEXMAP3);
   GX_LoadTexObj (get_utility_texture (UTIL_TEX_16BIT_RAMP_NOREPEAT),
 		 GX_TEXMAP4);
+
   GX_InitTexObj (&texcoord_map_obj, texcoord_map, TEXCOORD_MAP_W,
 		 TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_CLAMP, GX_CLAMP,
 		 GX_FALSE);
-  GX_InitTexObjFilterMode (&texcoord_map_obj, GX_NEAR, GX_NEAR);
-  GX_InitTexObj (&texcoord_map2_obj, texcoord_map, TEXCOORD_MAP_W,
+  GX_InitTexObjFilterMode (&texcoord_map_obj, GX_LINEAR, GX_LINEAR);
+
+  GX_InitTexObj (&texcoord_map2_obj, texcoord_map2, TEXCOORD_MAP_W,
 		 TEXCOORD_MAP_H, TEXCOORD_MAP_FMT, GX_CLAMP, GX_CLAMP,
 		 GX_FALSE);
-  GX_InitTexObjFilterMode (&texcoord_map2_obj, GX_NEAR, GX_NEAR);
+  GX_InitTexObjFilterMode (&texcoord_map2_obj, GX_LINEAR, GX_LINEAR);
 #endif
 
   rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
@@ -390,9 +392,10 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 
   {
     f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 1);
-    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
+    f32 indmtx2[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
+    //GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 3);
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx2, 1);
   }
 
   /* Phase 2.  Create new texture containing bump s,t offset texture lookup
@@ -416,8 +419,6 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   GX_LoadTexObj (&texcoord_map2_obj, GX_TEXMAP6);
-
-  /*draw_flat_texture ();*/
   
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
   object_set_screenspace_tex_matrix (&map_flat_loc, GX_TEXMTX4);

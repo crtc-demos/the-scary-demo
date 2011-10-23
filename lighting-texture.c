@@ -28,6 +28,7 @@ create_lighting_texture (void)
   
   GX_InitTexObj (&lt->texobj, lt->texbuf, LIGHT_TEX_W, LIGHT_TEX_H,
 		 LIGHT_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  GX_InitTexObjFilterMode (&lt->texobj, GX_LINEAR, GX_LINEAR);
   
   return lt;
 }

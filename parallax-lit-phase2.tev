@@ -2,4 +2,4 @@
 # texcoord6: texcoord corresponding to screen space.
 
 stage 0:
-  tev.rgb = texmap3[indmtx2 ** texmap5[texcoord0] * indscale2].rra;
+  tev.rgb = texmap3[indmtx2 ** texmap5[texcoord0] * indscale2].rar;
