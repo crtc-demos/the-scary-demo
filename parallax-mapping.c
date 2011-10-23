@@ -371,7 +371,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 #else
     int scale;
 # ifdef USE_GRID
-    scale = -3;
+    scale = -4;
 # else
     scale = -3;
 # endif
@@ -394,7 +394,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
     f32 indmtx2[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
     //GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 3);
+    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 2);
     GX_SetIndTexMatrix (GX_ITM_2, indmtx2, 1);
   }
 
