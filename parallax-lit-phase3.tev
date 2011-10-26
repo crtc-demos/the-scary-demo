@@ -17,15 +17,16 @@
 # But we can get a more accurate result by redoing the original calculation
 # here.
 stage 0:
-  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0] * indscale0;
+  itexcoord = s_dynmtx(texcoord1) ** texmap1[texcoord0 / 4] * indscale0;
   tev = tev;
   
 stage 1:
-  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0] * indscale0;
+  itexcoord = itexcoord + t_dynmtx(texcoord2) ** texmap1[texcoord0 / 4]
+			  * indscale0;
   tev = tev;
   
 stage 2:
-  cr0.rgb = texmap0[texcoord0 + itexcoord].rgb;
+  tev.rgb = texmap0[texcoord0 + itexcoord].rgb;
 
 stage 3:
   itexcoord = s_dynmtx(texcoord3) ** (texmap6[texcoord6]
@@ -40,4 +41,4 @@ stage 4:
 
 stage 5:
   tev.rgb = clamp (texmap2[itexcoord + texcoord5].aaa
-	   + cr0.rgb * texmap2[itexcoord + texcoord5].rgb);
+	   + tev.rgb * texmap2[itexcoord + texcoord5].rgb);

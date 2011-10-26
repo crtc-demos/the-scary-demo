@@ -38,8 +38,13 @@ static light_info light0 =
 
 static object_loc obj_loc;
 
-#define USE_GRID
+#undef USE_GRID
 #define WITH_LIGHTING
+#undef TUNNEL_SECTION
+
+#ifdef TUNNEL_SECTION
+extern object_info tunnel_section_obj;
+#endif
 
 #ifdef USE_GRID
 #include "images/grid.h"
@@ -64,10 +69,17 @@ static TPLFile stone_depthTPL;
 static lighting_texture_info *lighting_texture;
 
 #ifdef WITH_LIGHTING
+#ifdef USE_GRID
 #include "images/height_bump.h"
 #include "height_bump_tpl.h"
 
 static TPLFile height_bumpTPL;
+#else
+#include "images/stones_bump.h"
+#include "stones_bump_tpl.h"
+
+static TPLFile stone_bumpTPL;
+#endif
 
 void *texcoord_map;
 void *texcoord_map2;
@@ -111,8 +123,13 @@ parallax_mapping_init_effect (void *params)
 			 fake_stone_depth_tpl_size);
 #endif
 #ifdef WITH_LIGHTING
+#ifdef USE_GRID
   TPL_OpenTPLFromMemory (&height_bumpTPL, (void *) height_bump_tpl,
 			 height_bump_tpl_size);
+#else
+  TPL_OpenTPLFromMemory (&stone_bumpTPL, (void *) stones_bump_tpl,
+			 stones_bump_tpl_size);
+#endif
 #endif
 
   lighting_texture = create_lighting_texture ();
@@ -126,6 +143,8 @@ static void
 parallax_mapping_uninit_effect (void *params)
 {
   free_lighting_texture (lighting_texture);
+  free (texcoord_map);
+  free (texcoord_map2);
 }
 
 static void
@@ -137,9 +156,31 @@ texturing (int method)
     }
   else
     {
-      /*#include "parallax-lit.inc"*/
+      GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+      GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
+      GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
       #include "parallax-lit-phase1.inc"
     }
+}
+
+static void
+parallax_phase2 (void)
+{
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  #include "parallax-lit-phase2.inc"
+}
+
+static void
+parallax_phase3 (void)
+{
+  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
+  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
+  GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX3);
+  GX_SetTexCoordGen (GX_TEXCOORD4, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX3);
+  GX_SetTexCoordGen (GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX2);
+  GX_SetTexCoordGen (GX_TEXCOORD6, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX4);
+  #include "parallax-lit-phase3.inc"
 }
 
 static float phase = 0;
@@ -243,18 +284,6 @@ draw_flat_texture (void)
 }
 
 static void
-parallax_phase2 (void)
-{
-#include "parallax-lit-phase2.inc"
-}
-
-static void
-parallax_phase3 (void)
-{
-#include "parallax-lit-phase3.inc"
-}
-
-static void
 parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 				 GXRModeObj *rmode)
 {
@@ -263,10 +292,21 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   Mtx modelview, rot;
   Mtx scale;
   object_loc map_flat_loc;
+  object_info *render_object;
+
+#ifdef TUNNEL_SECTION
+  render_object = &tunnel_section_obj;
+#else
+  render_object = &plane_obj;
+#endif
 
   TPL_GetTexture (&stone_textureTPL, stone_texture, &stone_tex_obj);
   TPL_GetTexture (&stone_depthTPL, stone_depth, &stone_depth_obj);
+#ifdef USE_GRID
   TPL_GetTexture (&height_bumpTPL, height_bump, &height_bump_obj);
+#else
+  TPL_GetTexture (&stone_bumpTPL, stone_bump, &height_bump_obj);
+#endif
   
   //GX_InitTexObjMaxAniso (&stone_tex_obj, GX_ANISO_4);
   
@@ -303,20 +343,20 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxConcat (rot, modelview, modelview);
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), phase2);
   guMtxConcat (rot, modelview, modelview);
-  
+
+#ifdef TUNNEL_SECTION
+  guMtxScale (scale, 20.0, 20.0, 20.0);
+#else
   guMtxScale (scale, 10.0, 10.0, 10.0);
+#endif
   
   scene_update_matrices (&scene, &obj_loc, scene.camera, modelview, scale,
 			 perspmat, GX_PERSPECTIVE);
   
-  object_set_arrays (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
+  object_set_arrays (render_object,
+		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX0);
-  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
-#ifdef WITH_LIGHTING
-#endif
   GX_SetCurrentMtx (GX_PNMTX0);
   
 #ifdef WITH_LIGHTING
@@ -324,21 +364,29 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 #else
   texturing (0);
 #endif
+
+/*
 #ifdef USE_GRID
   GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
 # ifdef WITH_LIGHTING
   GX_SetIndTexCoordScale (GX_INDTEXSTAGE1, GX_ITS_1, GX_ITS_1);
 # endif
 #else
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_4, GX_ITS_4);
+  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+  GX_SetIndTexCoordScale (GX_INDTEXSTAGE1, GX_ITS_4, GX_ITS_4);
 #endif
+*/
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
     int scale;
 #ifdef USE_GRID
     scale = -4;
 #else
+# ifdef TUNNEL_SECTION
+    scale = -4;
+# else
     scale = -3;
+# endif
 #endif
     GX_SetIndTexMatrix (GX_ITM_0, indmtx, scale);
 #ifdef WITH_LIGHTING
@@ -347,7 +395,7 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   }
   
   GX_SetCullMode (GX_CULL_BACK);
-  object_render (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
+  object_render (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
   GX_CopyTex (texcoord_map, GX_TRUE);
@@ -357,7 +405,12 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
     f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
     f32 indmtx2[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
     GX_SetIndTexMatrix (GX_ITM_1, indmtx, 2);
+#ifdef USE_GRID
     GX_SetIndTexMatrix (GX_ITM_2, indmtx2, 1);
+#else
+    /* This wants to be: log2(size of bump s,t-offset texture) - 7.  */
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx2, 3);
+#endif
   }
 
   /* Phase 2.  Create new texture containing bump s,t offset texture lookup
@@ -386,18 +439,13 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_screenspace_tex_matrix (&map_flat_loc, GX_TEXMTX4);
   object_set_tex_norm_binorm_matrices (&map_flat_loc, GX_TEXMTX2, GX_TEXMTX3);
 
-  GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX3);
-  GX_SetTexCoordGen (GX_TEXCOORD4, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX3);
-  GX_SetTexCoordGen (GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX2);
-  GX_SetTexCoordGen (GX_TEXCOORD6, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX4);
-
   parallax_phase3 ();
 
   scene_update_matrices (&scene, &map_flat_loc, scene.camera, modelview, scale,
 			 perspmat, GX_PERSPECTIVE);
-  object_set_arrays (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
+  object_set_arrays (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
-  object_render (&plane_obj, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
+  object_render (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 }
 

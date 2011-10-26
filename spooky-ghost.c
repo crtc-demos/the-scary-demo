@@ -103,7 +103,7 @@ bump_mapping_tev_setup (void)
   f32 indmtx[2][3] = { { 0.5, 0.0, 0.0 },
 		       { 0.0, 0.5, 0.0 } };
 #include "bump-mapping.inc"
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+  //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
   GX_SetIndTexMatrix (GX_ITM_0, indmtx, 4);
   
   GX_SetChanCtrl (GX_COLOR0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
