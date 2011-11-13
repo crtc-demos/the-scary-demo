@@ -1,0 +1,41 @@
+/* Curve NurbsPath animation path setting:True */
+static float NurbsPath_knots_0[][4] = {
+  { -4.2581377029418945, 3.829016923904419, 0.0, 1.0 },
+  { -2.745903491973877, -1.0256508588790894, 1.8674217462539673, 1.0 },
+  { 1.2141478061676025, -3.8976261615753174, -5.998899459838867, 1.0 },
+  { 6.415140151977539, 0.7244768142700195, 3.0320427417755127, 1.0 },
+  { 4.421771049499512, 5.36716890335083, 0.0, 1.0 },
+};
+static float NurbsPath_tilt_0[] = {
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+};
+static float NurbsPath_weight_0[] = {
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+};
+static spline_tracking_obj NurbsPath_0 = {
+  .base = { .type = TRACKING_OBJ_PATH },
+  .spline = {
+    .length = 5,
+    .order = 5,
+    .resolution = 12,
+    .knots = &NurbsPath_knots_0,
+    .tilt = NurbsPath_tilt_0,
+    .weight = NurbsPath_weight_0
+  }
+};
+static static_tracking_obj Cube = {
+  .base = { .type = TRACKING_OBJ_STATIC },
+  .pos = { -0.02294600009918213, 0.07223127782344818, -0.0728791207075119 }
+};
+cam_path cube_tracking_scene = {
+  .follow_path = (tracking_obj_base *) &NurbsPath_0,
+  .track_to = (tracking_obj_base *) &Cube
+};

@@ -35,6 +35,9 @@ INIT_OBJECT (beam_left_obj, beam_left);
 INIT_OBJECT (beam_right_obj, beam_right);
 INIT_OBJECT (beam_mouth_obj, beam_mouth);
 
+#include "cam-path.h"
+#include "objects/cube-tracking-scene.xyz"
+
 static light_info light0 =
 {
   .pos = { 20, 20, 30 },
@@ -237,8 +240,23 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_InitTexObjFilterMode (&gradient_tex_obj, GX_LINEAR, GX_LINEAR);
   GX_LoadTexObj (&gradient_tex_obj, GX_TEXMAP3);
 
+#if 1
+  {
+    float spline_pos[4];
+    spline_tracking_obj *sto =
+      (spline_tracking_obj *) cube_tracking_scene.follow_path;
+    float eval_time = (float) (time_offset % 8000) / 2000.0;
+    evaluate_spline_at_param (&sto->spline, spline_pos,
+			      eval_time);
+    srv_printf ("at %f: %f,%f,%f,%f\n", eval_time,
+		spline_pos[0], spline_pos[1], spline_pos[2], spline_pos[3]);
+    scene_set_pos (&scene, (guVector) { spline_pos[0] * 30, spline_pos[2] * 30,
+					spline_pos[1] * 30 });
+  }
+#else
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
 				      100 * sinf (phase) });
+#endif
   scene_set_lookat (&scene, (guVector) { 0, 40, 0 });
   
   object_loc_initialise (&pumpkin_loc, GX_PNMTX0);
