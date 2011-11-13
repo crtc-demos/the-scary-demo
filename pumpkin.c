@@ -109,6 +109,9 @@ static void *beams_z_texture;
 static void
 pumpkin_init_effect (void *params)
 {
+  spline_tracking_obj *sto =
+    (spline_tracking_obj *) cube_tracking_scene.follow_path;
+
   guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
   phase = 0;
   phase2 = 0;
@@ -124,14 +127,20 @@ pumpkin_init_effect (void *params)
 			      GX_TF_I8, GX_FALSE, 0));
   beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
 			      BEAMS_TEX_ZTF, GX_FALSE, 0));
+
+  evaluate_spline (&sto->spline);
 }
 
 static void
 pumpkin_uninit_effect (void *params)
 {
+  spline_tracking_obj *sto =
+    (spline_tracking_obj *) cube_tracking_scene.follow_path;
+
   free (beams_texture_gb);
   free (beams_texture_r);
   free (beams_z_texture);
+  free_spline_data (&sto->spline);
 }
 
 static void
@@ -245,11 +254,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     float spline_pos[4];
     spline_tracking_obj *sto =
       (spline_tracking_obj *) cube_tracking_scene.follow_path;
-    float eval_time = (float) (time_offset % 8000) / 2000.0;
-    evaluate_spline_at_param (&sto->spline, spline_pos,
-			      eval_time);
-    srv_printf ("at %f: %f,%f,%f,%f\n", eval_time,
-		spline_pos[0], spline_pos[1], spline_pos[2], spline_pos[3]);
+    float eval_time = (float) (time_offset % 8000) / 8000.0;
+    get_evaluated_spline_pos (&sto->spline, spline_pos, eval_time);
+   /* srv_printf ("at %f: %f,%f,%f,%f\n", eval_time,
+		spline_pos[0], spline_pos[1], spline_pos[2], spline_pos[3]);*/
     scene_set_pos (&scene, (guVector) { spline_pos[0] * 30, spline_pos[2] * 30,
 					spline_pos[1] * 30 });
   }
