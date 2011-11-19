@@ -88,9 +88,12 @@ dist (float *thispt, float *prevpt)
 
    resolution * (spline_length - 1)
    
-   then join them up piecewise-linearly.  */
+   then join them up piecewise-linearly.
+   
+   If you change the spline length/resolution, you must manually free the
+   evaluated data before calling this again!  */
 
-void
+evaluated_spline_info *
 evaluate_spline (spline_info *spline)
 {
   int entries = spline->resolution * (spline->length - 1), i;
@@ -140,15 +143,20 @@ evaluate_spline (spline_info *spline)
       /*srv_printf ("accumulated length at %d: %f\n", i,
 		    eval->accum_length[i]);*/
     }
+  
+  return eval;
 }
 
 void
 free_spline_data (spline_info *spline)
 {
-  free (spline->eval->points);
-  free (spline->eval->accum_length);
-  free (spline->eval);
-  spline->eval = NULL;
+  if (spline->eval != NULL)
+    {
+      free (spline->eval->points);
+      free (spline->eval->accum_length);
+      free (spline->eval);
+      spline->eval = NULL;
+    }
 }
 
 /* Return the index of the line section we're in.  */
@@ -186,11 +194,18 @@ lerp (float a, float b, float i)
 void
 get_evaluated_spline_pos (spline_info *spline, float *dst, float u)
 {
-  evaluated_spline_info *eval = spline->eval;
-  float highest_length = eval->accum_length[eval->entries - 1];
+  evaluated_spline_info *eval;
+  float highest_length;
   int idx, dim;
   float line_start, sec_length;
   float *lo_pt, *hi_pt, sec_param;
+  
+  if (spline->eval)
+    eval = spline->eval;
+  else
+    eval = spline->eval = evaluate_spline (spline);
+
+  highest_length = eval->accum_length[eval->entries - 1];
   
   if (u < 0)
     u = 0;

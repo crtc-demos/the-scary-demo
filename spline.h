@@ -19,7 +19,7 @@ typedef struct
   evaluated_spline_info *eval;
 } spline_info;
 
-extern void evaluate_spline (spline_info *);
+extern evaluated_spline_info *evaluate_spline (spline_info *);
 extern void free_spline_data (spline_info *);
 extern void get_evaluated_spline_pos (spline_info *spline, float *dst, float u);
 

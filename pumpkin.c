@@ -116,8 +116,6 @@ beam_z_render (void *dummy)
 static void
 pumpkin_init_effect (void *params)
 {
-  spline_tracking_obj *sto =
-    (spline_tracking_obj *) cube_tracking_scene.follow_path;
   pumpkin_data *pdata = (pumpkin_data *) params;
 
   guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
@@ -137,8 +135,6 @@ pumpkin_init_effect (void *params)
 			      BEAMS_TEX_H, BEAMS_TEX_ZTF, GX_FALSE, 0));
 
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pdata->pumpkin_tex_obj);
-
-  evaluate_spline (&sto->spline);
 
   pdata->pumpkin_lighting_shader = create_shader (&pumpkin_lighting, NULL);
   shader_append_texmap (pdata->pumpkin_lighting_shader, &pdata->pumpkin_tex_obj,
@@ -272,7 +268,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   /* We probably don't really need to do this per-frame?  */
   GX_InvalidateTexAll ();
 
-#if 1
+#if 0
   {
     Mtx path_mtx;
     guMtxScale (path_mtx, 40, 40, 40);
