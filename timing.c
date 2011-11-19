@@ -62,7 +62,7 @@ static do_thing_at sequence[] = {
  /*{      0, 300000, &parallax_mapping_methods, NULL, -1, 0 }*/
   {      0,  15000, &glass_methods, NULL, -1, 0 },
   {  15000,  50000, &bloom_methods, NULL, -1, 0 },
-  {  50000,  70000, &pumpkin_methods, NULL, -1, 0 },
+  {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
   {  95000, 110000, &tubes_methods, NULL, -1, 0 },
   { 110000, 300000, &spooky_ghost_methods, NULL, -1, 0 }

@@ -180,7 +180,8 @@ lerp (float a, float b, float i)
 }
 
 /* Evaluate point at distance along piecewise-linear representation of the
-   spline.  Parameter U is normalized to 0...1.  */
+   spline.  Parameter U is normalized to 0...1.  Must have called
+   evaluate_spline first.  */
 
 void
 get_evaluated_spline_pos (spline_info *spline, float *dst, float u)

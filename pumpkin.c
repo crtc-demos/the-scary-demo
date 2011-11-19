@@ -14,6 +14,7 @@
 #include "scene.h"
 #include "utility-texture.h"
 #include "rendertarget.h"
+#include "shader.h"
 
 #include "images/pumpkin_skin.h"
 #include "pumpkin_skin_tpl.h"
@@ -54,8 +55,10 @@ static scene_info scene =
   .camera_dirty = 1
 };
 
+pumpkin_data pumpkin_data_0;
+
 static void
-pumpkin_lighting (void)
+pumpkin_lighting (void *dummy)
 {
   GXLightObj lo0;
   guVector ldir;
@@ -84,22 +87,20 @@ pumpkin_lighting (void)
 }
 
 static void
-beam_lighting (void)
+beam_lighting (void *dummy)
 {
 #include "beam-front-or-back.inc"
 }
 
+#if 0
 static void
 beam_composite_tev_setup (void)
 {
 #include "beam-render.inc"
 }
+#endif
 
 static float phase, phase2;
-
-static void *beams_texture_gb;
-static void *beams_texture_r;
-static void *beams_z_texture;
 
 #define BEAMS_TEX_W 640
 #define BEAMS_TEX_H 480
@@ -107,10 +108,17 @@ static void *beams_z_texture;
 #define BEAMS_TEX_ZTF GX_TF_Z24X8
 
 static void
+beam_z_render (void *dummy)
+{
+#include "beam-z-render.inc"
+}
+
+static void
 pumpkin_init_effect (void *params)
 {
   spline_tracking_obj *sto =
     (spline_tracking_obj *) cube_tracking_scene.follow_path;
+  pumpkin_data *pdata = (pumpkin_data *) params;
 
   guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
   phase = 0;
@@ -121,14 +129,57 @@ pumpkin_init_effect (void *params)
   TPL_OpenTPLFromMemory (&gradientTPL, (void *) gradient_tpl,
 			 gradient_tpl_size);
 
-  beams_texture_gb = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
-			       BEAMS_TEX_H, GX_TF_IA8, GX_FALSE, 0));
-  beams_texture_r = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
-			      GX_TF_I8, GX_FALSE, 0));
-  beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W, BEAMS_TEX_H,
-			      BEAMS_TEX_ZTF, GX_FALSE, 0));
+  pdata->beams_texture_gb = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
+			      BEAMS_TEX_H, GX_TF_IA8, GX_FALSE, 0));
+  pdata->beams_texture_r = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
+			      BEAMS_TEX_H, GX_TF_I8, GX_FALSE, 0));
+  pdata->beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
+			      BEAMS_TEX_H, BEAMS_TEX_ZTF, GX_FALSE, 0));
+
+  TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pdata->pumpkin_tex_obj);
 
   evaluate_spline (&sto->spline);
+
+  pdata->pumpkin_lighting_shader = create_shader (&pumpkin_lighting, NULL);
+  shader_append_texmap (pdata->pumpkin_lighting_shader, &pdata->pumpkin_tex_obj,
+			GX_TEXMAP0);
+  shader_append_texcoordgen (pdata->pumpkin_lighting_shader, GX_TEXCOORD0,
+			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+
+  /* Set up shader for beam-drawing pre-pass.  */
+  pdata->beam_lighting_shader = create_shader (&beam_lighting, NULL);
+  shader_append_texmap (pdata->beam_lighting_shader,
+			get_utility_texture (UTIL_TEX_8BIT_RAMP), GX_TEXMAP1);
+  shader_append_texcoordgen (pdata->beam_lighting_shader, GX_TEXCOORD1,
+			     GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
+
+  /* Set up shader for beam-drawing post-pass.  */
+  TPL_GetTexture (&gradientTPL, gradient, &pdata->gradient_tex_obj);
+
+  GX_InitTexObjWrapMode (&pdata->gradient_tex_obj, GX_CLAMP, GX_CLAMP);
+  GX_InitTexObjFilterMode (&pdata->gradient_tex_obj, GX_LINEAR, GX_LINEAR);
+
+  GX_InitTexObj (&pdata->beams_gb_tex_obj, pdata->beams_texture_gb,
+		 BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_IA8, GX_CLAMP, GX_CLAMP,
+		 GX_FALSE);
+
+  GX_InitTexObj (&pdata->beams_r_tex_obj, pdata->beams_texture_r, BEAMS_TEX_W,
+		 BEAMS_TEX_H, GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  GX_InitTexObj (&pdata->beams_z_tex_obj, pdata->beams_z_texture, BEAMS_TEX_W,
+		 BEAMS_TEX_H, BEAMS_TEX_ZTF, GX_CLAMP, GX_CLAMP, GX_FALSE);
+
+  pdata->beam_z_render_shader = create_shader (&beam_z_render, NULL);
+  shader_append_texmap (pdata->beam_z_render_shader, &pdata->beams_z_tex_obj,
+			GX_TEXMAP2);
+  shader_append_texmap (pdata->beam_z_render_shader, &pdata->gradient_tex_obj,
+			GX_TEXMAP3);
+  shader_append_texmap (pdata->beam_z_render_shader, &pdata->beams_gb_tex_obj,
+			GX_TEXMAP4);
+  shader_append_texmap (pdata->beam_z_render_shader, &pdata->beams_r_tex_obj,
+			GX_TEXMAP5);
+  shader_append_texcoordgen (pdata->beam_z_render_shader, GX_TEXCOORD0,
+			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
 }
 
 static void
@@ -136,11 +187,15 @@ pumpkin_uninit_effect (void *params)
 {
   spline_tracking_obj *sto =
     (spline_tracking_obj *) cube_tracking_scene.follow_path;
+  pumpkin_data *pdata = (pumpkin_data *) params;
 
-  free (beams_texture_gb);
-  free (beams_texture_r);
-  free (beams_z_texture);
+  free (pdata->beams_texture_gb);
+  free (pdata->beams_texture_r);
+  free (pdata->beams_z_texture);
   free_spline_data (&sto->spline);
+  free_shader (pdata->pumpkin_lighting_shader);
+  free_shader (pdata->beam_z_render_shader);
+  free_shader (pdata->beam_lighting_shader);
 }
 
 static void
@@ -183,11 +238,6 @@ draw_beams (int shader)
     
     case 1:
       {
-        #include "beam-z-render.inc"
-	/*GX_SetZTexture (GX_ZT_REPLACE, BEAMS_TEX_ZTF, 0);
-	// tevsl doesn't support Z-textures yet!  (It does now.)
-	GX_SetTevOrder (GX_TEVSTAGE3, GX_TEXCOORD0, GX_TEXMAP5, GX_COLORNULL);
-        GX_SetZCompLoc (GX_FALSE);*/
       }
       break;
     }
@@ -217,55 +267,42 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 {
   Mtx modelview, mvtmp;
   object_loc pumpkin_loc, beam_loc;
-  GXTexObj pumpkin_tex_obj;
-  GXTexObj beams_gb_tex_obj;
-  GXTexObj beams_r_tex_obj;
-  GXTexObj beams_z_tex_obj;
-  GXTexObj gradient_tex_obj;
-
-  TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pumpkin_tex_obj);
-  TPL_GetTexture (&gradientTPL, gradient, &gradient_tex_obj);
+  pumpkin_data *pdata = (pumpkin_data *) params;
 
   /* We probably don't really need to do this per-frame?  */
   GX_InvalidateTexAll ();
-  
-  GX_LoadTexObj (&pumpkin_tex_obj, GX_TEXMAP0);
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-
-  GX_LoadTexObj (get_utility_texture (UTIL_TEX_8BIT_RAMP), GX_TEXMAP1);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
-
-  GX_InitTexObj (&beams_gb_tex_obj, beams_texture_gb, BEAMS_TEX_W, BEAMS_TEX_H,
-		 GX_TF_IA8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-
-  GX_InitTexObj (&beams_r_tex_obj, beams_texture_r, BEAMS_TEX_W, BEAMS_TEX_H,
-		 GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
-
-  GX_InitTexObj (&beams_z_tex_obj, beams_z_texture, BEAMS_TEX_W, BEAMS_TEX_H,
-		 BEAMS_TEX_ZTF, GX_CLAMP, GX_CLAMP, GX_FALSE);
-
-
-  GX_InitTexObjWrapMode (&gradient_tex_obj, GX_CLAMP, GX_CLAMP);
-  GX_InitTexObjFilterMode (&gradient_tex_obj, GX_LINEAR, GX_LINEAR);
-  GX_LoadTexObj (&gradient_tex_obj, GX_TEXMAP3);
 
 #if 1
   {
-    float spline_pos[4];
-    spline_tracking_obj *sto =
-      (spline_tracking_obj *) cube_tracking_scene.follow_path;
-    float eval_time = (float) (time_offset % 8000) / 8000.0;
-    get_evaluated_spline_pos (&sto->spline, spline_pos, eval_time);
-   /* srv_printf ("at %f: %f,%f,%f,%f\n", eval_time,
-		spline_pos[0], spline_pos[1], spline_pos[2], spline_pos[3]);*/
-    scene_set_pos (&scene, (guVector) { spline_pos[0] * 30, spline_pos[2] * 30,
-					spline_pos[1] * 30 });
+    Mtx path_mtx;
+    guMtxScale (path_mtx, 40, 40, 40);
+    {
+      Mtx swap_yz;
+      guMtxRowCol (swap_yz, 0, 0) = 1.0;
+      guMtxRowCol (swap_yz, 0, 1) = 0.0;
+      guMtxRowCol (swap_yz, 0, 2) = 0.0;
+      guMtxRowCol (swap_yz, 0, 3) = 0.0;
+
+      guMtxRowCol (swap_yz, 1, 0) = 0.0;
+      guMtxRowCol (swap_yz, 1, 1) = 0.0;
+      guMtxRowCol (swap_yz, 1, 2) = 1.0;
+      guMtxRowCol (swap_yz, 1, 3) = 0.0;
+
+      guMtxRowCol (swap_yz, 2, 0) = 0.0;
+      guMtxRowCol (swap_yz, 2, 1) = 1.0;
+      guMtxRowCol (swap_yz, 2, 2) = 0.0;
+      guMtxRowCol (swap_yz, 2, 3) = 0.0;
+
+      guMtxConcat (path_mtx, swap_yz, path_mtx);
+    }
+    cam_path_follow (&scene, path_mtx, &cube_tracking_scene,
+		     (float) (time_offset % 8000) / 8000.0);
   }
 #else
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
 				      100 * sinf (phase) });
-#endif
   scene_set_lookat (&scene, (guVector) { 0, 40, 0 });
+#endif
   
   object_loc_initialise (&pumpkin_loc, GX_PNMTX0);
   object_loc_initialise (&beam_loc, GX_PNMTX0);
@@ -336,7 +373,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  beam_lighting ();
+  shader_load (pdata->beam_lighting_shader);
 
   GX_SetFog (GX_FOG_PERSP_EXP2, 130, 300, 10, 500, (GXColor) { 0, 0, 0, 0 });
 
@@ -375,42 +412,19 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   /* Copy the Z buffer for the rendered beams!  */
   GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_TF_Z24X8, GX_FALSE);
-  GX_CopyTex (beams_z_texture, GX_FALSE);
+  GX_CopyTex (pdata->beams_z_texture, GX_FALSE);
 
   /* Copy green & blue channels to intensity & alpha channels of
      beams_texture_gb.  */
   GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_CTF_GB8, GX_FALSE);
-  GX_CopyTex (beams_texture_gb, GX_FALSE);
+  GX_CopyTex (pdata->beams_texture_gb, GX_FALSE);
 
   /* Copy red channel to intensity channel of beams_texture_r.  */
   GX_SetTexCopyDst (BEAMS_TEX_W, BEAMS_TEX_H, GX_CTF_R8, GX_FALSE);
-  GX_CopyTex (beams_texture_r, GX_TRUE);
+  GX_CopyTex (pdata->beams_texture_r, GX_TRUE);
 
   GX_PixModeSync ();
   
-#if 0
-  GX_LoadTexObj (&beams_tex_obj, GX_TEXMAP2);
-
-  /* Remap texture colour channels so we can use all of A,B,G as texture
-     coordinates...  */
-  /* FIXME: This might not be necessary! We can use GX_CTF_GB8 and GX_CTF_R8 to
-     copy the needed channels to two different textures (IA8 and I8
-     formats).  */
-
-  rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
-  GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
-  
-  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
-  GX_SetCullMode (GX_CULL_NONE);
-  GX_SetColorUpdate (GX_TRUE);
-  GX_SetAlphaUpdate (GX_TRUE);
-
-  draw_beams (0);
-  
-  GX_CopyTex (beams_texture2, GX_TRUE);
-  GX_PixModeSync ();
-#endif
-
   /* Render pumpkins...  */
 
   rendertarget_screen (rmode);
@@ -423,7 +437,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetCullMode (GX_CULL_BACK);
 
   light_update (scene.camera, &light0);
-  pumpkin_lighting ();
+  shader_load (pdata->pumpkin_lighting_shader);
 
   object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
@@ -480,57 +494,14 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
   }
 
-  GX_LoadTexObj (&beams_gb_tex_obj, GX_TEXMAP4);
-  GX_LoadTexObj (&beams_r_tex_obj, GX_TEXMAP5);
-
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
   GX_SetCullMode (GX_CULL_BACK);
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  if (0)
-    {
-      beam_composite_tev_setup ();
-
-      /* Set up texcoord1 to map to screen-space coordinates.  */
-      object_set_screenspace_tex_matrix (&beam_loc, GX_TEXMTX1);
-      GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
-
-      /* Draw front faces.  */
-      guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-      scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, proj,
-			     GX_PERSPECTIVE);
-
-      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
-
-      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
-
-      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
-
-      /* Draw back faces.  */
-      GX_SetCullMode (GX_CULL_FRONT);
-
-      object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
-
-      object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
-
-      object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
-      object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
-    }
-  else
-    {
-      GX_LoadTexObj (&beams_z_tex_obj, GX_TEXMAP2);
-     // if (rand () & 128)
-        draw_beams (1);
-      /*GX_SetZTexture (GX_ZT_DISABLE, GX_TF_I4, 0);
-      GX_SetZCompLoc (GX_TRUE);*/
-    }
+  shader_load (pdata->beam_z_render_shader);
+  draw_beams (1);
 
   phase += 0.01;
   phase2 += 0.008;
