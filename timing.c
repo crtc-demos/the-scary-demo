@@ -45,8 +45,8 @@ extern u32 diff_msec (u64 start, u64 end);
 #include "back_to_my_roots_mod.h"
 #endif
 
-#undef SKIP_TO_TIME
-//#define SKIP_TO_TIME 50000
+//#undef SKIP_TO_TIME
+#define SKIP_TO_TIME 15000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -61,7 +61,7 @@ uint64_t start_time;
 static do_thing_at sequence[] = {
  /*{      0, 300000, &parallax_mapping_methods, NULL, -1, 0 }*/
   {      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
-  {  15000,  50000, &bloom_methods, NULL, -1, 0 },
+  {  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
   {  95000, 110000, &tubes_methods, NULL, -1, 0 },

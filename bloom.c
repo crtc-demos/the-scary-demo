@@ -42,12 +42,7 @@ static scene_info scene =
   .camera_dirty = 1
 };
 
-static float phase = 0.0;
-static float phase2 = 0.0;
-
-static void *stage1_texture;
-static void *stage2_texture;
-static void *shadow_buf;
+bloom_data bloom_data_0;
 
 #define STAGE1_W 640
 #define STAGE1_H 480
@@ -61,33 +56,8 @@ static void *shadow_buf;
 #define SHADOW_TEX_H 256
 #define SHADOW_TEX_FMT GX_TF_I8
 
-static shadow_info *shadow_inf;
-
 static void
-bloom_init_effect (void *params)
-{
-  guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
-  
-  stage1_texture = memalign (32, GX_GetTexBufferSize (STAGE1_W, STAGE1_H,
-			     STAGE1_FMT, GX_FALSE, 0));
-  stage2_texture = memalign (32, GX_GetTexBufferSize (STAGE2_W, STAGE2_H,
-			     STAGE2_FMT, GX_FALSE, 0));
-  shadow_buf = memalign (32, GX_GetTexBufferSize (SHADOW_TEX_W, SHADOW_TEX_H,
-			 SHADOW_TEX_FMT, GX_FALSE, 0));
-  shadow_inf = create_shadow_info (8, &light0);
-}
-
-static void
-bloom_uninit_effect (void *params)
-{
-  free (stage1_texture);
-  free (stage2_texture);
-  free (shadow_buf);
-  destroy_shadow_info (shadow_inf);
-}
-
-static void
-cube_lighting (void)
+cube_lighting (void *dummy)
 {
   GXLightObj lo0/*, lo1*/;
   guVector ldir;
@@ -127,7 +97,49 @@ cube_lighting (void)
 }
 
 static void
-draw_textured_rect (int shader)
+load_texmtx_for_blur (int horizontal)
+{
+  int i;
+
+  for (i = 0; i < 8; i++)
+    {
+      Mtx texmtx;
+
+      guMtxIdentity (texmtx);
+      if (horizontal)
+	guMtxTransApply (texmtx, texmtx, (((float) i) - 3.5) / 80.0,
+			 0, 0);
+      else
+	guMtxTransApply (texmtx, texmtx, 0, (((float) i) - 3.5) / 60.0,
+			 0);
+      GX_LoadTexMtxImm (texmtx, GX_TEXMTX0 + i * 3, GX_MTX2x4);
+    }
+}
+
+static void
+bloom_composite_shader (void *dummy)
+{
+  #include "bloom-composite.inc"
+}
+
+static void
+bloom_gaussian_shader (void *dummy)
+{
+  #include "bloom-gaussian.inc"
+  GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
+  GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
+}
+
+static void
+bloom_gaussian2_shader (void *dummy)
+{
+  #include "bloom-gaussian2.inc"
+  GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
+  GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
+}
+
+static void
+draw_textured_rect (void)
 {
   Mtx mvtmp;
   object_loc reflection_loc;
@@ -149,62 +161,11 @@ draw_textured_rect (int shader)
   scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
 			 NULL, ortho, GX_ORTHOGRAPHIC);
 
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
   GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-  switch (shader)
-    {
-    case 0:
-      #include "bloom-composite.inc"
-      break;
-    
-    /* Horizontal blurring.  */
-    case 1:
-      #include "bloom-gaussian.inc"
-      goto gaussian1;
-
-    /* Vertical blurring.  */
-    case 2:
-      {
-        int i;
-	
-	#include "bloom-gaussian2.inc"
-	gaussian1:
-	
-	/* Create an 8-tap filter using texcoord0 & a texture matrix to offset
-	   the texture coordinates by small amounts.  */
-	GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
-	GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX1);
-	GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX2);
-	GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX3);
-	GX_SetTexCoordGen (GX_TEXCOORD4, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX4);
-	GX_SetTexCoordGen (GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX5);
-	GX_SetTexCoordGen (GX_TEXCOORD6, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX6);
-	GX_SetTexCoordGen (GX_TEXCOORD7, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX7);
-	
-	for (i = 0; i < 8; i++)
-	  {
-	    Mtx texmtx;
-	    
-	    guMtxIdentity (texmtx);
-	    if (shader == 1)
-	      guMtxTransApply (texmtx, texmtx, (((float) i) - 3.5) / 80.0,
-			       0, 0);
-	    else
-	      guMtxTransApply (texmtx, texmtx, 0, (((float) i) - 3.5) / 60.0,
-			       0);
-	    GX_LoadTexMtxImm (texmtx, GX_TEXMTX0 + i * 3, GX_MTX2x4);
-	  }
-	
-	GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
-	GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
-      }
-      break;
-    }
 
   GX_SetCullMode (GX_CULL_NONE);
 
@@ -226,20 +187,129 @@ draw_textured_rect (int shader)
 }
 
 static void
+bloom_init_effect (void *params)
+{
+  bloom_data *bdata = (bloom_data *) params;
+  
+  guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
+  
+  bdata->phase = 0.0;
+  bdata->phase2 = 0.0;
+  
+  bdata->stage1_texture = memalign (32, GX_GetTexBufferSize (STAGE1_W, STAGE1_H,
+			    STAGE1_FMT, GX_FALSE, 0));
+  bdata->stage2_texture = memalign (32, GX_GetTexBufferSize (STAGE2_W, STAGE2_H,
+			    STAGE2_FMT, GX_FALSE, 0));
+  bdata->shadow_buf = memalign (32, GX_GetTexBufferSize (SHADOW_TEX_W,
+			SHADOW_TEX_H, SHADOW_TEX_FMT, GX_FALSE, 0));
+  bdata->shadow_inf = create_shadow_info (8, &light0);
+
+  GX_InitTexObj (&bdata->stage1_tex_obj, bdata->stage1_texture, STAGE1_W,
+		 STAGE1_H, STAGE1_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  GX_InitTexObj (&bdata->stage2_tex_obj, bdata->stage2_texture, STAGE2_W,
+		 STAGE2_H, STAGE2_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  GX_InitTexObj (&bdata->shadowbuf_tex_obj, bdata->shadow_buf, SHADOW_TEX_W,
+		 SHADOW_TEX_H, SHADOW_TEX_FMT, GX_NEAR, GX_NEAR, GX_FALSE);
+
+  /* First-pass object shader.  */
+  bdata->cube_lighting_shader = create_shader (&cube_lighting, NULL);
+  shader_append_texmap (bdata->cube_lighting_shader,
+			get_utility_texture (bdata->shadow_inf->ramp_type),
+			GX_TEXMAP0);
+  shader_append_texmap (bdata->cube_lighting_shader,
+			&bdata->shadowbuf_tex_obj, GX_TEXMAP1);
+  shader_append_texcoordgen (bdata->cube_lighting_shader, GX_TEXCOORD0,
+			     GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
+  shader_append_texcoordgen (bdata->cube_lighting_shader, GX_TEXCOORD1,
+			     GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
+
+  /* Horizontal gaussian blur shader.  */
+  bdata->gaussian_blur_shader = create_shader (&bloom_gaussian_shader, NULL);
+  shader_append_texmap (bdata->gaussian_blur_shader,
+			&bdata->stage1_tex_obj, GX_TEXMAP0);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX0);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX1);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX2);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX3);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD4, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX4);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX5);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD6, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX6);
+  shader_append_texcoordgen (bdata->gaussian_blur_shader,
+			     GX_TEXCOORD7, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX7);
+  
+  /* Vertical gaussian blur shader.  */
+  bdata->gaussian_blur2_shader = create_shader (&bloom_gaussian2_shader, NULL);
+  shader_append_texmap (bdata->gaussian_blur2_shader,
+			&bdata->stage2_tex_obj, GX_TEXMAP0);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX0);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX1);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX2);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX3);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD4, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX4);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD5, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX5);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD6, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX6);
+  shader_append_texcoordgen (bdata->gaussian_blur2_shader,
+			     GX_TEXCOORD7, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_TEXMTX7);
+
+  bdata->composite_shader = create_shader (&bloom_composite_shader, NULL);
+  shader_append_texmap (bdata->composite_shader, &bdata->stage1_tex_obj,
+			GX_TEXMAP1);
+  shader_append_texcoordgen (bdata->composite_shader, GX_TEXCOORD0,
+			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+}
+
+static void
+bloom_uninit_effect (void *params)
+{
+  bloom_data *bdata = (bloom_data *) params;
+
+  free (bdata->stage1_texture);
+  free (bdata->stage2_texture);
+  free (bdata->shadow_buf);
+  free_shader (bdata->cube_lighting_shader);
+  free_shader (bdata->gaussian_blur_shader);
+  free_shader (bdata->gaussian_blur2_shader);
+  destroy_shadow_info (bdata->shadow_inf);
+}
+
+static void
 bloom_display_effect (uint32_t time_offset, void *params, int iparam,
 		      GXRModeObj *rmode)
 {
+  bloom_data *bdata = (bloom_data *) params;
   object_loc softcube_loc;
   Mtx modelview, rotmtx, rotmtx2, scale;
-  GXTexObj stage1_tex_obj, stage2_tex_obj, shadowbuf_tex_obj;
-  
-  GX_InitTexObj (&stage1_tex_obj, stage1_texture, STAGE1_W, STAGE1_H,
-		 STAGE1_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
-  GX_InitTexObj (&stage2_tex_obj, stage2_texture, STAGE2_W, STAGE2_H,
-		 STAGE2_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
-  GX_InitTexObj (&shadowbuf_tex_obj, shadow_buf, SHADOW_TEX_W, SHADOW_TEX_H,
-		 SHADOW_TEX_FMT, GX_NEAR, GX_NEAR, GX_FALSE);
-  
+    
   object_loc_initialise (&softcube_loc, GX_PNMTX0);
   
   scene_update_camera (&scene);
@@ -247,8 +317,8 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   light_update (scene.camera, &light1);
   
   guMtxIdentity (modelview);
-  guMtxRotAxisDeg (rotmtx, &((guVector) {0, 1, 0}), phase);
-  guMtxRotAxisDeg (rotmtx2, &((guVector) {1, 0, 0}), phase2);
+  guMtxRotAxisDeg (rotmtx, &((guVector) {0, 1, 0}), bdata->phase);
+  guMtxRotAxisDeg (rotmtx2, &((guVector) {1, 0, 0}), bdata->phase2);
   
   guMtxConcat (rotmtx, modelview, modelview);
   guMtxConcat (rotmtx2, modelview, modelview);
@@ -263,16 +333,17 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
 
     GX_SetCullMode (GX_CULL_FRONT);
     
-    shadow_set_bounding_radius (shadow_inf, 30.0);
-    shadow_setup_ortho (shadow_inf, 5.0f, 100.0f);
+    shadow_set_bounding_radius (bdata->shadow_inf, 30.0);
+    shadow_setup_ortho (bdata->shadow_inf, 5.0f, 100.0f);
     
     shadow_casting_tev_setup ();
     
     object_loc_initialise (&shadowcast_loc, GX_PNMTX0);
     
-    scene_update_matrices (&scene, &shadowcast_loc, shadow_inf->light_cam,
-			   modelview, scale, shadow_inf->shadow_projection,
-			   shadow_inf->projection_type);
+    scene_update_matrices (&scene, &shadowcast_loc,
+			   bdata->shadow_inf->light_cam, modelview, scale,
+			   bdata->shadow_inf->shadow_projection,
+			   bdata->shadow_inf->projection_type);
 
     GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
     GX_SetColorUpdate (GX_FALSE);
@@ -281,14 +352,12 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
     object_set_arrays (&knot_obj, OBJECT_POS, GX_VTXFMT0, 0);
     object_render (&knot_obj, OBJECT_POS, GX_VTXFMT0);
     
-    GX_CopyTex (shadow_buf, GX_TRUE);
+    GX_CopyTex (bdata->shadow_buf, GX_TRUE);
     GX_PixModeSync ();
   }
   
   /* Render knot, with shadowing from one light source and over-bright specular
      highlights in the alpha channel.  */
-  GX_LoadTexObj (get_utility_texture (shadow_inf->ramp_type), GX_TEXMAP0);
-  GX_LoadTexObj (&shadowbuf_tex_obj, GX_TEXMAP1);
   
   rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT);
   GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
@@ -297,10 +366,7 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
      lookup.  Object loc also stores a pointer to the shadow being cast onto
      the object.  */
   object_set_shadow_tex_matrix (&softcube_loc, GX_TEXMTX1, GX_TEXMTX0,
-				shadow_inf);
-  
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX0);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX1);
+				bdata->shadow_inf);
   
   scene_update_matrices (&scene, &softcube_loc, scene.camera, modelview, scale,
 			 proj, GX_PERSPECTIVE);
@@ -311,18 +377,17 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_TRUE);
   
-  cube_lighting ();
+  shader_load (bdata->cube_lighting_shader);
   
   object_set_arrays (&knot_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0);
   object_render (&knot_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
   
-  GX_CopyTex (stage1_texture, GX_TRUE);
+  GX_CopyTex (bdata->stage1_texture, GX_TRUE);
   GX_PixModeSync ();
 
   rendertarget_texture (STAGE2_W, STAGE2_H, STAGE2_FMT);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
-  GX_LoadTexObj (&stage1_tex_obj, GX_TEXMAP0);
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetCullMode (GX_CULL_NONE);
@@ -330,17 +395,15 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetAlphaUpdate (GX_FALSE);
 
   /* Draw highlights with horizontal blurring.  */
-  draw_textured_rect (1);
+  load_texmtx_for_blur (1);
+  shader_load (bdata->gaussian_blur_shader);
+  draw_textured_rect ();
 
   /* Copy to stage2_texture.  */
-  GX_CopyTex (stage2_texture, GX_TRUE);
+  GX_CopyTex (bdata->stage2_texture, GX_TRUE);
   GX_PixModeSync ();
   
   rendertarget_screen (rmode);
-  
-  //GX_InvalidateTexAll ();
-  GX_LoadTexObj (&stage1_tex_obj, GX_TEXMAP1);
-  GX_LoadTexObj (&stage2_tex_obj, GX_TEXMAP0);
   
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -348,13 +411,17 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  draw_textured_rect (0);
+  load_texmtx_for_blur (0);
+  shader_load (bdata->gaussian_blur2_shader);
+  draw_textured_rect ();
+
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 
-  draw_textured_rect (2);
+  shader_load (bdata->composite_shader);
+  draw_textured_rect ();
 
-  phase += 1;
-  phase2 += 3.0 * sinf (phase * M_PI / 180.0);
+  bdata->phase += 1;
+  bdata->phase2 += 3.0 * sinf (bdata->phase * M_PI / 180.0);
 }
 
 effect_methods bloom_methods =
