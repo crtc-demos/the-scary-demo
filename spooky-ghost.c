@@ -53,22 +53,12 @@ static scene_info scene =
   .camera_dirty = 1
 };
 
-static object_loc obj_loc;
-static lighting_texture_info *lighting_texture;
-
-/*static Mtx viewmat;
-static guVector pos = {0, 0, 30};
-static guVector up = {0, 1, 0};
-static guVector lookat = {0, 0, 0};*/
-
-static float deg = 0.0;
-static float deg2 = 0.0;
-static float lightdeg = 0.0;
+spooky_ghost_data spooky_ghost_data_0;
 
 int switch_ghost_lighting = 1;
 
 static void
-tunnel_lighting (void)
+tunnel_lighting (void *dummy)
 {
   GXLightObj lo0;
   guVector ldir;
@@ -98,7 +88,7 @@ tunnel_lighting (void)
 }
 
 static void
-bump_mapping_tev_setup (void)
+bump_mapping_tev_setup (void *dummy)
 {
   f32 indmtx[2][3] = { { 0.5, 0.0, 0.0 },
 		       { 0.0, 0.5, 0.0 } };
@@ -112,37 +102,77 @@ bump_mapping_tev_setup (void)
 		  GX_DF_NONE, GX_AF_NONE);
 }
 
-void *lightmap;
-void *reflection;
+static void
+water_setup (void *dummy)
+{
+  #include "water-texture.inc"
+}
 
 static void
 spooky_ghost_init_effect (void *params)
 {
+  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
+
   guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
   scene_update_camera (&scene);
   
-  object_loc_initialise (&obj_loc, GX_PNMTX0);
-  object_set_tex_norm_binorm_matrices (&obj_loc, GX_TEXMTX1, GX_TEXMTX2);
+  object_loc_initialise (&sdata->obj_loc, GX_PNMTX0);
+  object_set_tex_norm_binorm_matrices (&sdata->obj_loc, GX_TEXMTX1, GX_TEXMTX2);
   
   TPL_OpenTPLFromMemory (&stone_textureTPL, (void *) more_stones_tpl,
 			 more_stones_tpl_size);
   TPL_OpenTPLFromMemory (&stone_bumpTPL, (void *) stones_bump_tpl,
 			 stones_bump_tpl_size);
 
-  lighting_texture = create_lighting_texture ();
+  sdata->lighting_texture = create_lighting_texture ();
 
-  reflection = memalign (32, GX_GetTexBufferSize (REFLECTION_W, REFLECTION_H,
-			 REFLECTION_TEXFMT, GX_FALSE, 0));
+  sdata->reflection = memalign (32, GX_GetTexBufferSize (REFLECTION_W,
+			 REFLECTION_H, REFLECTION_TEXFMT, GX_FALSE, 0));
+
+  /* Set up bump mapping shader.  */
+  TPL_GetTexture (&stone_textureTPL, stone_texture, &sdata->texture);
+  TPL_GetTexture (&stone_bumpTPL, stone_bump, &sdata->bumpmap);
+
+  sdata->bump_mapping_shader = create_shader (&bump_mapping_tev_setup, NULL);
+  shader_append_texmap (sdata->bump_mapping_shader, &sdata->texture,
+			GX_TEXMAP0);
+  shader_append_texmap (sdata->bump_mapping_shader,
+			&sdata->lighting_texture->texobj, GX_TEXMAP1);
+  shader_append_texmap (sdata->bump_mapping_shader, &sdata->bumpmap,
+			GX_TEXMAP2);
+  shader_append_texcoordgen (sdata->bump_mapping_shader, GX_TEXCOORD0,
+			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+  shader_append_texcoordgen (sdata->bump_mapping_shader, GX_TEXCOORD1,
+			     GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX2);
+  shader_append_texcoordgen (sdata->bump_mapping_shader, GX_TEXCOORD2,
+			     GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX2);
+  shader_append_texcoordgen (sdata->bump_mapping_shader, GX_TEXCOORD3,
+			     GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX1);
+
+  /* Plain lighting.  */
+  sdata->tunnel_lighting_shader = create_shader (&tunnel_lighting, NULL);
+  
+  /* Water shader.  */
+  GX_InitTexObj (&sdata->reflection_obj, sdata->reflection, REFLECTION_W,
+		 REFLECTION_H, REFLECTION_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+  sdata->water_shader = create_shader (&water_setup, NULL);
+  shader_append_texmap (sdata->water_shader, &sdata->reflection_obj,
+			GX_TEXMAP3);
+  shader_append_texcoordgen (sdata->water_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
+			     GX_TG_TEX0, GX_IDENTITY);
 }
 
 static void
 spooky_ghost_uninit_effect (void *params)
 {
-  free_lighting_texture (lighting_texture);
-  free (reflection);
-}
+  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
 
-static float bla = 0.0;
+  free_lighting_texture (sdata->lighting_texture);
+  free_shader (sdata->bump_mapping_shader);
+  free_shader (sdata->tunnel_lighting_shader);
+  free_shader (sdata->water_shader);
+  free (sdata->reflection);
+}
 
 #if 0
 #define WAVES 5
@@ -242,17 +272,19 @@ draw_waves (void)
 static void
 spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
-  light0.pos.x = cos (lightdeg) * 500.0;
+  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
+
+  light0.pos.x = cos (sdata->lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
-  light0.pos.z = sin (lightdeg) * 500.0;
+  light0.pos.z = sin (sdata->lightdeg) * 500.0;
   
-  lightdeg += 0.03;
+  sdata->lightdeg += 0.03;
 
   if (switch_ghost_lighting)
     {
-      tunnel_lighting ();
+      shader_load (sdata->tunnel_lighting_shader);
       light_update (scene.camera, &light0);
-      update_lighting_texture (&scene, lighting_texture);
+      update_lighting_texture (&scene, sdata->lighting_texture);
     }
 }
 
@@ -307,7 +339,6 @@ draw_reflection (void)
   scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
 			 NULL, ortho, GX_ORTHOGRAPHIC);
 
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
   GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
@@ -316,7 +347,6 @@ draw_reflection (void)
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
-#include "water-texture.inc"
   //GX_SetTevColor (0, (GXColor) { 0, 0, 0 });
 
   GX_SetCullMode (GX_CULL_NONE);
@@ -380,32 +410,20 @@ static void
 spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
 			     GXRModeObj *rmode)
 {
-  Mtx modelView, mvtmp;
-  GXTexObj texture;
-  GXTexObj bumpmap;
-  GXTexObj reflection_obj;
+  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
+  Mtx modelView, mvtmp, sep_scale;
   int i;
 
-  scene_set_pos (&scene, (guVector) { bla, 0.0, 0.0 });
+  scene_set_pos (&scene, (guVector) { sdata->bla, 0.0, 0.0 });
   scene_set_lookat (&scene, (guVector)
-		    { bla + 5, cos (deg) * 0.2 + cos (deg2) * 0.1,
-		      sin (deg2) * 0.2 + sin (deg) * 0.1 });
+		    { sdata->bla + 5,
+		      cos (sdata->deg) * 0.2 + cos (sdata->deg2) * 0.1,
+		      sin (sdata->deg2) * 0.2 + sin (sdata->deg) * 0.1 });
 
   //guLookAt (viewmat, &pos, &up, &lookat);
 
-  TPL_GetTexture (&stone_textureTPL, stone_texture, &texture);
-  TPL_GetTexture (&stone_bumpTPL, stone_bump, &bumpmap);
-
-  GX_InitTexObj (&reflection_obj, reflection, REFLECTION_W, REFLECTION_H,
-		 REFLECTION_TEXFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
-
   GX_InvalidateTexAll ();
   
-  GX_LoadTexObj (&texture, GX_TEXMAP0);
-  GX_LoadTexObj (&lighting_texture->texobj, GX_TEXMAP1);
-  GX_LoadTexObj (&bumpmap, GX_TEXMAP2);
-  GX_LoadTexObj (&reflection_obj, GX_TEXMAP3);
-
   scene_update_camera (&scene);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
@@ -420,22 +438,9 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   light_update (scene.camera, &light0);
 
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView, NULL,
-			 perspmat, GX_PERSPECTIVE);
-
-  /* I want it bigger, but I don't want to fuck up the normals!
-     This is stupid, fix it.  */
-  {
-    Mtx vertex;
-    
-    guMtxIdentity (modelView);
-
-    guMtxScaleApply (modelView, mvtmp, 25.0, 25.0, 25.0);
-    
-    guMtxConcat (scene.camera, mvtmp, vertex);
-
-    GX_LoadPosMtxImm (vertex, GX_PNMTX0);
-  }
+  guMtxScale (sep_scale, 25.0, 25.0, 25.0);
+  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
+			 sep_scale, perspmat, GX_PERSPECTIVE);
 
   light_update (scene.camera, &light0);
 
@@ -444,15 +449,10 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
   if (switch_ghost_lighting)
-    bump_mapping_tev_setup ();
+    shader_load (sdata->bump_mapping_shader);
   else
-    tunnel_lighting ();
-  
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX2);
-  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX2);
-  GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX1);
-  
+    shader_load (sdata->tunnel_lighting_shader);
+    
   GX_SetCurrentMtx (GX_PNMTX0);
   
   rendertarget_texture (REFLECTION_W, REFLECTION_H, REFLECTION_TEXFMT);
@@ -486,43 +486,42 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxIdentity (modelView);
   
   guMtxScaleApply (modelView, mvtmp, 5.0, 5.0, 5.0);
-  guMtxTransApply (mvtmp, mvtmp, 64.4, -16, ((int) (bla + 32) % 32) - 16.0);
+  guMtxTransApply (mvtmp, mvtmp, 64.4, -16,
+		   ((int) (sdata->bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, NULL, NULL, 0);
+  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
+			 NULL, 0);
 
   /* Override position to make it reflected.  (Ew!).  */
   guMtxIdentity (modelView);
   guMtxScaleApply (modelView, mvtmp, 5.0, -5.0, 5.0);
-  guMtxTransApply (mvtmp, mvtmp, 64.4, -16, ((int) (bla + 32) % 32) - 16.0);
+  guMtxTransApply (mvtmp, mvtmp, 64.4, -16,
+		   ((int) (sdata->bla + 32) % 32) - 16.0);
   guMtxConcat (scene.camera, mvtmp, mvtmp);
-  GX_LoadPosMtxImm (mvtmp, obj_loc.pnmtx);
+  GX_LoadPosMtxImm (mvtmp, sdata->obj_loc.pnmtx);
 
-  tunnel_lighting ();
+  shader_load (sdata->tunnel_lighting_shader);
 
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
-  GX_CopyTex (reflection, GX_TRUE);
+  GX_CopyTex (sdata->reflection, GX_TRUE);
   GX_PixModeSync ();
 
   rendertarget_screen (rmode);
 
   /* Might be unnecessary.  */
   GX_InvalidateTexAll ();
-  
-  GX_LoadTexObj (&texture, GX_TEXMAP0);
-  GX_LoadTexObj (&lighting_texture->texobj, GX_TEXMAP1);
-  GX_LoadTexObj (&bumpmap, GX_TEXMAP2);
-  GX_LoadTexObj (&reflection_obj, GX_TEXMAP3);
 
   /* Draw "water".  */
 #if 1
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
+  shader_load (sdata->water_shader);
   draw_reflection ();
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
 #else
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView);
-  tunnel_lighting ();
+  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView);
+  shader_load (sdata->tunnel_lighting_shader);
   draw_waves ();
 #endif
 
@@ -530,32 +529,13 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   const float size = 28.0;
 
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &obj_loc, scene.camera, modelView, NULL,
-			 perspmat, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
+			 sep_scale, perspmat, GX_PERSPECTIVE);
 
   if (switch_ghost_lighting)
-    bump_mapping_tev_setup ();
+    shader_load (sdata->bump_mapping_shader);
   else
-    tunnel_lighting ();
-  
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_SetTexCoordGen (GX_TEXCOORD1, GX_TG_MTX2x4, GX_TG_BINRM, GX_TEXMTX2);
-  GX_SetTexCoordGen (GX_TEXCOORD2, GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX2);
-  GX_SetTexCoordGen (GX_TEXCOORD3, GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX1);
-
-  /* I want it bigger, but I don't want to fuck up the normals!
-     This is stupid, fix it.  */
-  {
-    Mtx vertex;
-    
-    guMtxIdentity (modelView);
-
-    guMtxScaleApply (modelView, mvtmp, 25.0, 25.0, 25.0);
-    
-    guMtxConcat (scene.camera, mvtmp, vertex);
-
-    GX_LoadPosMtxImm (vertex, GX_PNMTX0);
-  }
+    shader_load (sdata->tunnel_lighting_shader);
 
   object_set_arrays (&tunnel_section_obj,
 		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
@@ -583,8 +563,9 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
 		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD, GX_VTXFMT0);
     }
 
-  bla += 0.15;
-  if (bla >= size * fudge_factor) bla -= size * fudge_factor;
+  sdata->bla += 0.15;
+  if (sdata->bla >= size * fudge_factor)
+    sdata->bla -= size * fudge_factor;
 
   GX_SetCullMode (GX_CULL_BACK);
 
@@ -594,16 +575,18 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxIdentity (modelView);
   
   guMtxScaleApply (modelView, mvtmp, 5.0, 5.0, 5.0);
-  guMtxTransApply (mvtmp, mvtmp, 64.4, -14, ((int) (bla + 32) % 32) - 16.0);
+  guMtxTransApply (mvtmp, mvtmp, 64.4, -14,
+		   ((int) (sdata->bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &obj_loc, scene.camera, mvtmp, NULL, NULL, 0);
+  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
+			 NULL, 0);
 
-  tunnel_lighting ();
+  shader_load (sdata->tunnel_lighting_shader);
 
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
-  deg += 0.012;
-  deg2 += 0.05;
+  sdata->deg += 0.012;
+  sdata->deg2 += 0.05;
 }
 
 effect_methods spooky_ghost_methods =

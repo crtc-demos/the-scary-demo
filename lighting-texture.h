@@ -1,6 +1,8 @@
 #ifndef LIGHTING_TEXTURE_H
 #define LIGHTING_TEXTURE_H 1
 
+#include "scene.h"
+
 typedef struct {
   GXTexObj texobj;
   void *texbuf;

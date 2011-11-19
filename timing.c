@@ -46,7 +46,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #endif
 
 //#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 15000
+#define SKIP_TO_TIME 110000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -65,7 +65,7 @@ static do_thing_at sequence[] = {
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
   {  95000, 110000, &tubes_methods, NULL, -1, 0 },
-  { 110000, 300000, &spooky_ghost_methods, NULL, -1, 0 }
+  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
