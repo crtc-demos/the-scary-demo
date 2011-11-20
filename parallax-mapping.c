@@ -285,17 +285,6 @@ parallax_mapping_uninit_effect (void *params)
 }
 
 static void
-parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
-{
-  parallax_mapping_data *pdata = (parallax_mapping_data *) params;
-  scene_update_camera (&scene);
-
-  shader_load (pdata->tunnel_lighting_shader);
-  light_update (scene.camera, &light0);
-  update_lighting_texture (&scene, pdata->lighting_texture);
-}
-
-static void
 draw_flat_texture (void)
 {
   Mtx mvtmp;
@@ -352,14 +341,11 @@ draw_flat_texture (void)
 }
 
 static void
-parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
-				 GXRModeObj *rmode)
+parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
-  Mtx modelview, rot;
-  Mtx scale;
-  object_loc map_flat_loc;
   object_info *render_object;
+  Mtx rot;
 
 #ifdef TUNNEL_SECTION
   render_object = &tunnel_section_obj;
@@ -367,26 +353,33 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   render_object = &plane_obj;
 #endif
 
+  scene_update_camera (&scene);
+
+  shader_load (pdata->tunnel_lighting_shader);
+  light_update (scene.camera, &light0);
+  update_lighting_texture (&scene, pdata->lighting_texture);
+
   rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
       
   pdata->phase += (float) PAD_StickX (0) / 100.0;
   pdata->phase2 += (float) PAD_StickY (0) / 100.0;
   
-  guMtxIdentity (modelview);
+  guMtxIdentity (pdata->modelview);
   guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), pdata->phase);
-  guMtxConcat (rot, modelview, modelview);
+  guMtxConcat (rot, pdata->modelview, pdata->modelview);
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), pdata->phase2);
-  guMtxConcat (rot, modelview, modelview);
+  guMtxConcat (rot, pdata->modelview, pdata->modelview);
 
 #ifdef TUNNEL_SECTION
-  guMtxScale (scale, 20.0, 20.0, 20.0);
+  guMtxScale (pdata->scale, 20.0, 20.0, 20.0);
 #else
-  guMtxScale (scale, 10.0, 10.0, 10.0);
+  guMtxScale (pdata->scale, 10.0, 10.0, 10.0);
 #endif
   
-  scene_update_matrices (&scene, &pdata->obj_loc, scene.camera, modelview,
-			 scale, perspmat, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &pdata->obj_loc, scene.camera,
+			 pdata->modelview, pdata->scale, perspmat,
+			 GX_PERSPECTIVE);
   
   object_set_arrays (render_object,
 		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
@@ -400,17 +393,6 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   texturing_unlit (0);
 #endif
 
-/*
-#ifdef USE_GRID
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
-# ifdef WITH_LIGHTING
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE1, GX_ITS_1, GX_ITS_1);
-# endif
-#else
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
-  GX_SetIndTexCoordScale (GX_INDTEXSTAGE1, GX_ITS_4, GX_ITS_4);
-#endif
-*/
   {
     f32 indmtx[2][3] = { { 0, 0, 0 }, { 0, 0, 0 } };
     int scale;
@@ -453,17 +435,28 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
   
   rendertarget_texture (TEXCOORD_MAP2_W, TEXCOORD_MAP2_H, GX_CTF_GB8);
 
-  /*rendertarget_screen (rmode);*/
-
   shader_load (pdata->parallax_lit_phase2_shader);
   draw_flat_texture ();
 
   GX_CopyTex (pdata->texcoord_map2, GX_TRUE);
   GX_PixModeSync ();
+}
+
+static void
+parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
+				 GXRModeObj *rmode)
+{
+  parallax_mapping_data *pdata = (parallax_mapping_data *) params;
+  object_loc map_flat_loc;
+  object_info *render_object;
+
+#ifdef TUNNEL_SECTION
+  render_object = &tunnel_section_obj;
+#else
+  render_object = &plane_obj;
+#endif
   
   /* Phase 3.  Put things on the screen.  */
-  
-  rendertarget_screen (rmode);
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
@@ -472,8 +465,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
 
   shader_load (pdata->parallax_lit_phase3_shader);
 
-  scene_update_matrices (&scene, &map_flat_loc, scene.camera, modelview, scale,
-			 perspmat, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &map_flat_loc, scene.camera, pdata->modelview,
+			 pdata->scale, perspmat, GX_PERSPECTIVE);
   object_set_arrays (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
   object_render (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,

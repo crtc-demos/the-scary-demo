@@ -18,6 +18,9 @@ typedef struct
   float phase;
   float phase2;
 
+  Mtx modelview;
+  Mtx scale;
+
   GXTexObj stone_tex_obj;
   GXTexObj stone_depth_obj;
   GXTexObj height_bump_obj;
