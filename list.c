@@ -7,7 +7,7 @@ list_cons_internal (void *data, void *prevheadv, size_t nodesize)
 {
   generic_list *prevhead = (generic_list *) prevheadv;
   generic_list *newnode = malloc (nodesize);
-  ptrdiff_t dsize = nodesize - sizeof (generic_list);
+  size_t dsize = nodesize - sizeof (generic_list);
   
   memcpy (&newnode->data[0], data, dsize);
   newnode->prev = prevhead;
