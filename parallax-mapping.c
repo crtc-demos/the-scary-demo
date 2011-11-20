@@ -318,7 +318,6 @@ draw_flat_texture (void)
   scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
 			 NULL, ortho, GX_ORTHOGRAPHIC);
 
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
   GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
