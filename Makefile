@@ -23,7 +23,7 @@ OBJS :=		list.o server.o rendertarget.o object.o tracking-obj.o \
 		cam-path.o shader.o scene.o light.o lighting-texture.o \
 		utility-texture.o spline.o shadow.o world.o pumpkin.o \
 		soft-crtc.o tubes.o ghost-obj.o spooky-ghost.o bloom.o \
-		glass.o parallax-mapping.o timing.o
+		glass.o parallax-mapping.o tentacles.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -53,7 +53,8 @@ GENERATED_IMAGES :=	images/stones_bump.png
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
 		objects/pumpkin.inc objects/softcube.inc \
-		objects/plane.inc objects/textured-cube.inc
+		objects/plane.inc objects/textured-cube.inc \
+		objects/tentacles.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -141,6 +142,9 @@ objects/plane.inc:	objects/plane.dae
 
 objects/textured-cube.inc:	objects/textured-cube.dae
 	$(OBJCONVERT) -c -t -n tex_cube $< -o $@
+
+objects/tentacles.inc:	objects/tentacles.dae
+	$(OBJCONVERT) -c -yz -i -n tentacles $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

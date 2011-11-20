@@ -4,9 +4,8 @@
 
 FREE_NODE (standard_object, node)
 {
-  /* Note: We free the shader, but not the object!  That's because a standard
-     object probably isn't dynamically allocated.  */
-  free_shader (node->shader);
+  /* Note: We don't own any of the object's linked data.  Don't free
+     anything.  */
 }
 
 world_info *
@@ -59,7 +58,7 @@ world_set_light_pos_lookat_up (world_info *world, int num, guVector pos,
   world->light[num].up = up;
 }
 
-void
+standard_object *
 world_add_standard_object (world_info *world, object_info *object,
 			   object_loc *loc, unsigned int object_flags,
 			   unsigned int vtxfmt, unsigned int texture_coord,
@@ -77,6 +76,8 @@ world_add_standard_object (world_info *world, object_info *object,
   obj.shader = shader;
   
   world->standard_objects = list_cons (obj, world->standard_objects);
+  
+  return &world->standard_objects->data;
 }
 
 void

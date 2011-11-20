@@ -51,13 +51,10 @@ extern void world_set_pos_lookat_up (world_info *world, guVector pos,
 extern void world_set_light_pos_lookat_up (world_info *world, int num,
 					   guVector pos, guVector lookat,
 					   guVector up);
-extern void world_add_standard_object (world_info *world, object_info *object,
-				       object_loc *loc,
-				       unsigned int object_flags,
-				       unsigned int vtxfmt,
-				       unsigned int texture_coord,
-				       Mtx *modelview, Mtx *sep_scale,
-				       shader_info *shader);
+extern standard_object *world_add_standard_object (world_info *world,
+  object_info *object, object_loc *loc, unsigned int object_flags,
+  unsigned int vtxfmt, unsigned int texture_coord, Mtx *modelview,
+  Mtx *sep_scale, shader_info *shader);
 extern void world_display (world_info *world);
 
 #endif
