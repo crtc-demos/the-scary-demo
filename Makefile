@@ -9,7 +9,8 @@ BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall -std=gnu99 $(MACHDEP) $(INCLUDE)
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
-LIBS :=		-ldb -lbba -lmodplay -laesnd -logc -lm
+#LIBS :=		-ldb -lbba -lext2fs -lmodplay -laesnd -logc -lm
+LIBS :=		-ldb -lbba -lext2fs -lmad -lasnd -logc -lm
 INCLUDE :=	-I$(LIBOGC_INC)
 LIBPATHS :=	-L$(LIBOGC_LIB)
 LD :=		$(CC)
@@ -20,10 +21,11 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
 OBJS :=		list.o server.o rendertarget.o object.o tracking-obj.o \
-		cam-path.o shader.o scene.o light.o lighting-texture.o \
-		utility-texture.o spline.o shadow.o world.o pumpkin.o \
-		soft-crtc.o tubes.o ghost-obj.o spooky-ghost.o bloom.o \
-		glass.o parallax-mapping.o tentacles.o timing.o
+		cam-path.o shader.o scene.o screenspace.o light.o \
+		lighting-texture.o utility-texture.o spline.o shadow.o \
+		world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
+		spooky-ghost.o bloom.o glass.o parallax-mapping.o \
+		tentacles.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \

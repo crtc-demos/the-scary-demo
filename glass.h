@@ -10,6 +10,8 @@ typedef struct
   int thr;
   void *grabbed_texture;
 
+  shader_info *plain_texture_shader;
+
   shader_info *refraction_shader;
   shader_info *refraction_postpass_shader;
   GXTexObj grabbed_tex_obj;

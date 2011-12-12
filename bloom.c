@@ -11,6 +11,7 @@
 #include "scene.h"
 #include "rendertarget.h"
 #include "shadow.h"
+#include "screenspace.h"
 
 #include "objects/knot.inc"
 
@@ -136,54 +137,6 @@ bloom_gaussian2_shader (void *dummy)
   #include "bloom-gaussian2.inc"
   GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
   GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
-}
-
-static void
-draw_textured_rect (void)
-{
-  Mtx mvtmp;
-  object_loc reflection_loc;
-  scene_info reflscene;
-  Mtx44 ortho;
-
-  /* "Straight" camera.  */
-  scene_set_pos (&reflscene, (guVector) { 0, 0, 0 });
-  scene_set_lookat (&reflscene, (guVector) { 5, 0, 0 });
-  scene_set_up (&reflscene, (guVector) { 0, 1, 0 });
-  scene_update_camera (&reflscene);
-
-  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  
-  object_loc_initialise (&reflection_loc, GX_PNMTX0);
-  
-  guMtxIdentity (mvtmp);
-
-  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
-			 NULL, ortho, GX_ORTHOGRAPHIC);
-
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-  GX_SetCullMode (GX_CULL_NONE);
-
-  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT1, 4);
-
-  GX_Position3f32 (3, -1, 1);
-  GX_TexCoord2f32 (1, 0);
-
-  GX_Position3f32 (3, -1, -1);
-  GX_TexCoord2f32 (0, 0);
-
-  GX_Position3f32 (3, 1, 1);
-  GX_TexCoord2f32 (1, 1);
-
-  GX_Position3f32 (3, 1, -1);
-  GX_TexCoord2f32 (0, 1);
-
-  GX_End ();
 }
 
 static void
@@ -397,7 +350,7 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   /* Draw highlights with horizontal blurring.  */
   load_texmtx_for_blur (1);
   shader_load (bdata->gaussian_blur_shader);
-  draw_textured_rect ();
+  screenspace_rect (bdata->gaussian_blur_shader, GX_VTXFMT1, 0);
 
   /* Copy to stage2_texture.  */
   GX_CopyTex (bdata->stage2_texture, GX_TRUE);
@@ -412,13 +365,11 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetAlphaUpdate (GX_FALSE);
 
   load_texmtx_for_blur (0);
-  shader_load (bdata->gaussian_blur2_shader);
-  draw_textured_rect ();
+  screenspace_rect (bdata->gaussian_blur2_shader, GX_VTXFMT1, 0);
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 
-  shader_load (bdata->composite_shader);
-  draw_textured_rect ();
+  screenspace_rect (bdata->composite_shader, GX_VTXFMT1, 0);
 
   bdata->phase += 1;
   bdata->phase2 += 3.0 * sinf (bdata->phase * M_PI / 180.0);

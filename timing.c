@@ -11,14 +11,18 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <time.h>
+#include <errno.h>
+#include <ext2.h>
+#include <sdcard/gcsd.h>
+#include <dirent.h>
 
 #include <ogcsys.h>
 #include <gccore.h>
+#include <gctypes.h>
 #include <network.h>
 #include <debug.h>
 #include <malloc.h>
 
-#include <aesndlib.h>
 #include <gcmodplay.h>
 
 #include "server.h"
@@ -40,9 +44,16 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef HOLD
 #undef DEBUG
 
-#undef SOUND
+#define PLAY_MP3
+#undef PLAY_MOD
 
-#ifdef SOUND
+#ifdef PLAY_MP3
+#include <asndlib.h>
+#include <mp3player.h>
+#endif
+
+#ifdef PLAY_MOD
+#include <aesndlib.h>
 #include "back_to_my_roots_mod.h"
 #endif
 
@@ -60,9 +71,9 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
- /*{      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }*/
-  {      0, 300000, &tentacle_methods, &tentacle_data_0, -1, 0 }
- /* {      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
+ {      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }
+ /* {      0, 300000, &tentacle_methods, &tentacle_data_0, -1, 0 }*/
+  /*{      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
   {  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
@@ -169,6 +180,24 @@ return_to_loader (void)
 
 extern int switch_ghost_lighting;
 
+#define MAX_ARAM_BLOCKS 1
+u32 aram_blocks[MAX_ARAM_BLOCKS];
+
+#ifdef PLAY_MP3
+static s32
+mp3_reader (void *data, void* readstart, s32 readsize)
+{
+  FILE *fh = (FILE *) data;
+  size_t bytesread;
+  
+  // srv_printf ("mp3 reader callback: requesting %d bytes\n", (int) readsize);
+  
+  bytesread = fread (readstart, 1, readsize, fh);
+  
+  return bytesread;
+}
+#endif
+
 int
 main (int argc, char *argv[])
 {
@@ -187,8 +216,11 @@ main (int argc, char *argv[])
   guVector pos = {0, 0, 50};
   guVector up = {0, 1, 0};
   guVector lookat = {0, 0, 0};
-#ifdef SOUND
+#ifdef PLAY_MOD
   MODPlay modplay;
+#endif
+#ifdef PLAY_MP3
+  FILE *mp3_fh = NULL;
 #endif
 
   xfb = initialise ();
@@ -232,7 +264,94 @@ main (int argc, char *argv[])
   num_active_effects = 0;
   next_effect = 0;
 
-#ifdef SOUND
+#ifdef PLAY_MP3
+  srv_printf ("ARAM init\n");
+  AR_Init (aram_blocks, MAX_ARAM_BLOCKS);
+    
+  do {
+    struct stat buf;
+    int ret;
+    sec_t *partitions;
+    int parts;
+    
+    if ((parts = ext2FindPartitions (&__io_gcsda, &partitions)) == -1)
+      {
+        srv_printf ("ext2FindPartitions error\n");
+	break;
+      }
+
+    srv_printf ("Found %d partitions\n", parts);
+    
+    if (ext2Mount ("sd", &__io_gcsda, partitions[0],
+		   EXT2_CACHE_DEFAULT_PAGE_COUNT, EXT2_CACHE_DEFAULT_PAGE_SIZE,
+		   EXT2_FLAG_DEFAULT))
+      srv_printf ("Mounted ext2 OK.\n");
+    else
+      {
+        srv_printf ("Mounting ext2 failed!\n");
+	break;
+      }
+    
+    /*if (fatInitDefault ())
+      srv_printf ("FAT init success\n");
+    else
+      srv_printf ("FAT init failure\n");*/
+    
+    /*if (fatMountSimple ("sd", &__io_gcsda))
+      srv_printf ("FAT mount returned non-zero (mounted?)\n");
+    else
+      srv_printf ("FAT mount returned zero\n");*/
+    
+    srv_printf ("files in sd:/...\n");
+    
+    {
+      DIR *dir = opendir ("sd:/");
+      
+      if (!dir)
+        srv_printf ("opendir returned NULL\n");
+      
+      while (1)
+        {
+	  struct dirent *ent = readdir (dir);
+	  
+	  if (!ent)
+	    break;
+	  
+	  srv_printf ("%s\n", ent->d_name);
+	}
+      
+      closedir (dir);
+    }
+    
+    mp3_fh = fopen ("sd:/test2.mp3", "r");
+    
+    if (mp3_fh != 0)
+      {
+	srv_printf ("opened file\n");
+
+	ret = fstat (fileno (mp3_fh), &buf);
+
+	if (ret != 0)
+	  srv_printf ("stat gave error, '%s'\n", strerror (errno));
+	else
+	  srv_printf ("size of stat'd file: %d\n", (int) buf.st_size);
+
+	/*fclose (fh);*/
+
+	srv_printf ("Init ASND\n");
+	ASND_Init ();
+	
+	srv_printf ("Init MP3 player\n");
+	MP3Player_Init ();
+	
+	MP3Player_PlayFile (mp3_fh, mp3_reader, NULL);
+      }
+    else
+      srv_printf ("couldn't open file\n");
+  } while (0);
+#endif
+
+#ifdef PLAY_MOD
   srv_printf ("AESND Init\n");
 
   AESND_Init (NULL);
@@ -399,8 +518,15 @@ main (int argc, char *argv[])
 #endif
     }
 
-#ifdef SOUND
+#ifdef PLAY_MOD
   MODPlay_Stop (&modplay);
+#endif
+
+#ifdef PLAY_MP3
+  MP3Player_Stop ();
+  if (mp3_fh)
+    fclose (mp3_fh);
+  ASND_End ();
 #endif
 
   return_to_loader ();

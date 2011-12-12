@@ -15,6 +15,7 @@
 #include "utility-texture.h"
 #include "rendertarget.h"
 #include "shader.h"
+#include "screenspace.h"
 
 #include "images/pumpkin_skin.h"
 #include "pumpkin_skin_tpl.h"
@@ -192,69 +193,6 @@ pumpkin_uninit_effect (void *params)
   free_shader (pdata->pumpkin_lighting_shader);
   free_shader (pdata->beam_z_render_shader);
   free_shader (pdata->beam_lighting_shader);
-}
-
-static void
-draw_beams (int shader)
-{
-  Mtx mvtmp;
-  object_loc reflection_loc;
-  scene_info reflscene;
-  Mtx44 ortho;
-
-  /* "Straight" camera.  */
-  scene_set_pos (&reflscene, (guVector) { 0, 0, 0 });
-  scene_set_lookat (&reflscene, (guVector) { 5, 0, 0 });
-  scene_set_up (&reflscene, (guVector) { 0, 1, 0 });
-  scene_update_camera (&reflscene);
-
-  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  
-  object_loc_initialise (&reflection_loc, GX_PNMTX0);
-  
-  guMtxIdentity (mvtmp);
-
-  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
-			 NULL, ortho, GX_ORTHOGRAPHIC);
-
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-  switch (shader)
-    {
-    case 0:
-      {
-        #include "remap-texchans.inc"
-      }
-      break;
-    
-    case 1:
-      {
-      }
-      break;
-    }
-
-  GX_SetCullMode (GX_CULL_NONE);
-
-  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT1, 4);
-
-  GX_Position3f32 (3, -1, 1);
-  GX_TexCoord2f32 (1, 0);
-
-  GX_Position3f32 (3, -1, -1);
-  GX_TexCoord2f32 (0, 0);
-
-  GX_Position3f32 (3, 1, 1);
-  GX_TexCoord2f32 (1, 1);
-
-  GX_Position3f32 (3, 1, -1);
-  GX_TexCoord2f32 (0, 1);
-
-  GX_End ();
 }
 
 static void
@@ -496,8 +434,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  shader_load (pdata->beam_z_render_shader);
-  draw_beams (1);
+  screenspace_rect (pdata->beam_z_render_shader, GX_VTXFMT1, 0);
 
   phase += 0.01;
   phase2 += 0.008;

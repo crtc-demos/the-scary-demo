@@ -15,6 +15,7 @@
 #include "server.h"
 #include "ghost-obj.h"
 #include "lighting-texture.h"
+#include "screenspace.h"
 
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
@@ -316,63 +317,6 @@ draw_square (void)
 
 #endif
 
-static void
-draw_reflection (void)
-{
-  Mtx mvtmp;
-  object_loc reflection_loc;
-  scene_info reflscene;
-  Mtx44 ortho;
-
-  /* "Straight" camera.  */
-  scene_set_pos (&reflscene, (guVector) { 0, 0, 0 });
-  scene_set_lookat (&reflscene, (guVector) { 5, 0, 0 });
-  scene_set_up (&reflscene, (guVector) { 0, 1, 0 });
-  scene_update_camera (&reflscene);
-
-  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  
-  object_loc_initialise (&reflection_loc, GX_PNMTX0);
-  
-  guMtxIdentity (mvtmp);
-
-  scene_update_matrices (&reflscene, &reflection_loc, reflscene.camera, mvtmp,
-			 NULL, ortho, GX_ORTHOGRAPHIC);
-
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-  //GX_SetTevColor (0, (GXColor) { 0, 0, 0 });
-
-  GX_SetCullMode (GX_CULL_NONE);
-
-  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT1, 4);
-
-  GX_Position3f32 (3, -1, 1);
-  GX_Normal3f32 (-1, 0, 0);
-  GX_TexCoord2f32 (1, 0);
-
-  GX_Position3f32 (3, -1, -1);
-  GX_Normal3f32 (-1, 0, 0);
-  GX_TexCoord2f32 (0, 0);
-
-  GX_Position3f32 (3, 1, 1);
-  GX_Normal3f32 (-1, 0, 0);
-  GX_TexCoord2f32 (1, 1);
-
-  GX_Position3f32 (3, 1, -1);
-  GX_Normal3f32 (-1, 0, 0);
-  GX_TexCoord2f32 (0, 1);
-
-  GX_End ();
-}
-
-
 #ifdef SEE_TEXTURES
 void dummy ()
 {
@@ -515,8 +459,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   /* Draw "water".  */
 #if 1
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
-  shader_load (sdata->water_shader);
-  draw_reflection ();
+  screenspace_rect (sdata->water_shader, GX_VTXFMT1, 0);
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
 #else
   guMtxIdentity (modelView);

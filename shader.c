@@ -1,12 +1,16 @@
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 #include "shader.h"
+#include "server.h"
 
 shader_info *
 create_shader (tev_setup_fn setup_tev, void *private_data)
 {
   shader_info *shinf = malloc (sizeof (shader_info));
+  
+  memset (shinf, 0, sizeof (shader_info));
   
   shinf->setup_tev = setup_tev;
   shinf->tev_private_data = private_data;

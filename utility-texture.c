@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "utility-texture.h"
+#include "server.h"
 
 static utility_texture_info util_textures[UTIL_TEX_MAX] = { { 0 } };
 

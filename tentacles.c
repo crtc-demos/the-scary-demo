@@ -71,10 +71,10 @@ tentacle_uninit_effect (void *params)
 }
 
 static void
-tentacle_display_effect (uint32_t time_offset, void *params, int iparam,
-			 GXRModeObj *rmode)
+tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
+
   Mtx rotmtx;
   guVector around = { 0, 1, 0 };
   int verts;
@@ -101,6 +101,15 @@ tentacle_display_effect (uint32_t time_offset, void *params, int iparam,
   
   tentacles_obj.positions = tdata->tentacle_wavey_pos;
   world_display (tdata->world);
+}
+
+static void
+tentacle_display_effect (uint32_t time_offset, void *params, int iparam,
+			 GXRModeObj *rmode)
+{
+  tentacle_data *tdata = (tentacle_data *) params;
+  
+  
   
   tdata->rot++;
   tdata->wave += 0.1;

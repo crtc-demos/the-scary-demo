@@ -10,6 +10,7 @@
 #include "glass.h"
 #include "ghost-obj.h"
 #include "shader.h"
+#include "screenspace.h"
 
 /*
 #include "images/primary.h"
@@ -58,84 +59,9 @@ static light_info light0 =
 glass_data glass_data_0;
 
 static void
-draw_square (int shader, int threshold, int threshold2)
+plain_texture_setup (void *dummy)
 {
-  Mtx mvtmp;
-  object_loc square_loc;
-  scene_info square_scene;
-  Mtx44 ortho;
-  
-  /* "Straight" camera.  */
-  scene_set_pos (&square_scene, (guVector) { 0, 0, 0 });
-  scene_set_lookat (&square_scene, (guVector) { 5, 0, 0 });
-  scene_set_up (&square_scene, (guVector) { 0, 1, 0 });
-  scene_update_camera (&square_scene);
-  
-  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
-  
-  object_loc_initialise (&square_loc, GX_PNMTX0);
-  
-  guMtxIdentity (mvtmp);
-  
-  scene_update_matrices (&square_scene, &square_loc, square_scene.camera, mvtmp,
-			 NULL, ortho, GX_ORTHOGRAPHIC);
-
-  /*GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);*/
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-  switch (shader)
-    {
-    case 0:
-      {
-	#include "plain-texturing.inc"
-      }
-      break;
-
-    case 1:
-      {
-        #include "alpha-test.inc"
-      }
-      break;
-      
-    case 2:
-      {
-	/* Urgh, we want the same texcoord for direct & indirect matrices, but
-	   our textures are different sizes, so we can't.  */
-	GX_SetVtxDesc (GX_VA_TEX1, GX_DIRECT);
-	GX_SetVtxAttrFmt (GX_VTXFMT1, GX_VA_TEX1, GX_TEX_ST, GX_F32, 0);
-      }
-      break;
-    }
-
-  GX_SetCullMode (GX_CULL_NONE);
-
-  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT1, 4);
-
-  GX_Position3f32 (3, -1, 1);
-  GX_TexCoord2f32 (1, 0);
-  if (shader == 2)
-    GX_TexCoord2f32 (1, 0);
-
-  GX_Position3f32 (3, -1, -1);
-  GX_TexCoord2f32 (0, 0);
-  if (shader == 2)
-    GX_TexCoord2f32 (0, 0);
-
-  GX_Position3f32 (3, 1, 1);
-  GX_TexCoord2f32 (1, 1);
-  if (shader == 2)
-    GX_TexCoord2f32 (1, 1);
-
-  GX_Position3f32 (3, 1, -1);
-  GX_TexCoord2f32 (0, 1);
-  if (shader == 2)
-    GX_TexCoord2f32 (0, 1);
-
-  GX_End ();
+  #include "plain-texturing.inc"
 }
 
 static void
@@ -183,6 +109,8 @@ ghost_init_effect (void *params)
   scene_update_camera (&scene);
   
   object_loc_initialise (&gdata->obj_loc, GX_PNMTX0);
+
+  gdata->plain_texture_shader = create_shader (&plain_texture_setup, NULL);
 
   TPL_OpenTPLFromMemory (&mighty_zebuTPL, (void *) mighty_zebu_tpl,
 			 mighty_zebu_tpl_size);
@@ -261,7 +189,7 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
-  draw_square (0, 0, 0);
+  screenspace_rect (gdata->plain_texture_shader, GX_VTXFMT1, 0);
   
   GX_SetCopyClear ((GXColor) { 128, 128, 128, 0 }, 0x00ffffff);
   
@@ -344,8 +272,7 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetAlphaUpdate (GX_FALSE);
   GX_SetCullMode (GX_CULL_NONE);
 
-  shader_load (gdata->refraction_postpass_shader);
-  draw_square (2, 0, 0);
+  screenspace_rect (gdata->refraction_postpass_shader, GX_VTXFMT1, 1);
   
   /*GX_LoadTexObj (&spiderweb_tex_obj, GX_TEXMAP1);
   
