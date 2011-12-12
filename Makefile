@@ -20,10 +20,10 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=		list.o server.o rendertarget.o object.o tracking-obj.o \
-		cam-path.o shader.o scene.o screenspace.o light.o \
-		lighting-texture.o utility-texture.o spline.o shadow.o \
-		world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
+OBJS :=		sintab.o list.o server.o rendertarget.o object.o \
+		tracking-obj.o cam-path.o shader.o scene.o screenspace.o \
+		light.o lighting-texture.o utility-texture.o spline.o \
+		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
 		spooky-ghost.o bloom.o glass.o parallax-mapping.o \
 		tentacles.o timing.o
 
@@ -39,7 +39,7 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		alpha-test.inc refraction.inc do-refraction.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
-		parallax-lit-phase3.inc
+		parallax-lit-phase3.inc channelsplit.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
@@ -56,7 +56,7 @@ OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
 		objects/pumpkin.inc objects/softcube.inc \
 		objects/plane.inc objects/textured-cube.inc \
-		objects/tentacles.inc
+		objects/tentacles.inc objects/cross-cube.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -147,6 +147,9 @@ objects/textured-cube.inc:	objects/textured-cube.dae
 
 objects/tentacles.inc:	objects/tentacles.dae
 	$(OBJCONVERT) -c -yz -i -n tentacles $< -o $@
+
+objects/cross-cube.inc:	objects/cross-cube.dae
+	$(OBJCONVERT) -c -yz -i -n cross_cube $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

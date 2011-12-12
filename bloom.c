@@ -162,7 +162,7 @@ bloom_init_effect (void *params)
   GX_InitTexObj (&bdata->stage2_tex_obj, bdata->stage2_texture, STAGE2_W,
 		 STAGE2_H, STAGE2_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
   GX_InitTexObj (&bdata->shadowbuf_tex_obj, bdata->shadow_buf, SHADOW_TEX_W,
-		 SHADOW_TEX_H, SHADOW_TEX_FMT, GX_NEAR, GX_NEAR, GX_FALSE);
+		 SHADOW_TEX_H, SHADOW_TEX_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
 
   /* First-pass object shader.  */
   bdata->cube_lighting_shader = create_shader (&cube_lighting, NULL);

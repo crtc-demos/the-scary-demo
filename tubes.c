@@ -7,6 +7,7 @@
 #include "timing.h"
 #include "tubes.h"
 #include "light.h"
+#include "sintab.h"
 
 #include "images/snakeskin.h"
 #include "snakeskin_tpl.h"
@@ -83,20 +84,20 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   for (i = 0; i < along_steps; i++)
     {
       float x_pos = ((float) i / (float) (along_steps - 1)) * 100.0 - 50.0;
-      float y_offset = 6 * cos (phase1 + x_pos * 0.2);
-      float z_offset = 6 * sin (phase1 + x_pos * 0.2);
+      float y_offset = 6 * FASTCOS (phase1 + x_pos * 0.2);
+      float z_offset = 6 * FASTSIN (phase1 + x_pos * 0.2);
       guVector along, up = { 0.0, 1.0, 0.0 }, side;
       Mtx circ_mat;
       
-      y_offset += 15 * cos (phase2 + x_pos * 3.0 / 50.0);
-      z_offset += 15 * sin (phase2 + x_pos * 3.0 / 50.0);
+      y_offset += 15 * FASTCOS (phase2 + x_pos * 3.0 / 50.0);
+      z_offset += 15 * FASTSIN (phase2 + x_pos * 3.0 / 50.0);
       
       /* Differentiate the offset to get a gradient along y & z...  */
       along.x = 1.0;
-      along.y = -(6.0 / 5.0) * sin (x_pos * 0.2 + phase1)
-		- 0.9 * sin (x_pos * 3.0 / 50.0 + phase2);
-      along.z = (6.0 / 5.0) * cos (x_pos * 0.2 + phase1)
-		+ 0.9 * cos (x_pos * 3.0 / 50.0 + phase2);
+      along.y = -(6.0 / 5.0) * FASTSIN (x_pos * 0.2 + phase1)
+		- 0.9 * FASTSIN (x_pos * 3.0 / 50.0 + phase2);
+      along.z = (6.0 / 5.0) * FASTCOS (x_pos * 0.2 + phase1)
+		+ 0.9 * FASTCOS (x_pos * 3.0 / 50.0 + phase2);
       
       guVecCross (&along, &up, &side);
       guVecNormalize (&side);
@@ -120,8 +121,8 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
       for (j = 0; j < around_steps; j++)
         {
 	  float angle = (float) j * 2 * M_PI / (float) around_steps;
-	  float z_pos = radius * cos (angle);
-	  float y_pos = radius * sin (angle);
+	  float z_pos = radius * FASTCOS (angle);
+	  float y_pos = radius * FASTSIN (angle);
 	  unsigned int pt_idx = (i * around_steps + j) * 3;
 	  guVector circ_point;
 	  
@@ -267,9 +268,9 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
   GX_InvVtxCache ();
   GX_InvalidateTexAll ();
   
-  light0.pos.x = cos ((lightdeg * 4) / 180.0 * M_PI) * 30.0;
-  light0.pos.y = cos (lightdeg / 180.0 * M_PI) * 25.0;
-  light0.pos.z = sin (lightdeg / 180.0 * M_PI) * 25.0;
+  light0.pos.x = FASTCOS ((lightdeg * 4) / 180.0 * M_PI) * 30.0;
+  light0.pos.y = FASTCOS (lightdeg / 180.0 * M_PI) * 25.0;
+  light0.pos.z = FASTSIN (lightdeg / 180.0 * M_PI) * 25.0;
 
   light_update (viewmat, &light0);
   light_update (viewmat, &light1);

@@ -36,6 +36,7 @@
 #include "glass.h"
 #include "parallax-mapping.h"
 #include "tentacles.h"
+#include "sintab.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -44,7 +45,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef HOLD
 #undef DEBUG
 
-#define PLAY_MP3
+#undef PLAY_MP3
 #undef PLAY_MOD
 
 #ifdef PLAY_MP3
@@ -58,7 +59,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #endif
 
 #undef SKIP_TO_TIME
-//#define SKIP_TO_TIME 110000
+//#define SKIP_TO_TIME 95000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -71,14 +72,14 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
- {      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }
- /* {      0, 300000, &tentacle_methods, &tentacle_data_0, -1, 0 }*/
-  /*{      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
-  {  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 },
+/* {      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }*/
+  {      0, 50000, &tentacle_methods, &tentacle_data_0, -1, 0 },
+  /*{      0,  15000, &glass_methods, &glass_data_0, -1, 0 },*/
+  /*{  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 }*/
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
   {  95000, 110000, &tubes_methods, NULL, -1, 0 },
-  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }*/
+  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -223,6 +224,9 @@ main (int argc, char *argv[])
   FILE *mp3_fh = NULL;
 #endif
 
+  /* Initialise global tables.  */
+  fastsin_init ();
+
   xfb = initialise ();
 
   /* Hopefully this will trigger if we exit unexpectedly...  */
@@ -265,8 +269,8 @@ main (int argc, char *argv[])
   next_effect = 0;
 
 #ifdef PLAY_MP3
-  srv_printf ("ARAM init\n");
-  AR_Init (aram_blocks, MAX_ARAM_BLOCKS);
+  /*srv_printf ("ARAM init\n");
+  AR_Init (aram_blocks, MAX_ARAM_BLOCKS);*/
     
   do {
     struct stat buf;
@@ -491,6 +495,9 @@ main (int argc, char *argv[])
 
       rendertarget_screen (rmode);
 
+      /* The "display_effect" callback should just do final rendering to
+         screen, no back-buffer rendering.  This doesn't allow for transparency
+	 or complex compositing on the final render though... maybe rethink.  */
       for (i = 0; i < num_active_effects; i++)
         {
 	  if (active_effects[i]->methods->display_effect)
@@ -527,6 +534,8 @@ main (int argc, char *argv[])
   if (mp3_fh)
     fclose (mp3_fh);
   ASND_End ();
+  srv_printf ("Unmount ext2\n");
+  ext2Unmount ("sd");
 #endif
 
   return_to_loader ();

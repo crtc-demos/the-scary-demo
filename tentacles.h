@@ -13,9 +13,17 @@ typedef struct
   Mtx tentacle_modelview;
   Mtx tentacle_scale;
   
+  Mtx box_scale;
+  
+  shader_info *channelsplit_shader;
+  void *back_buffer;
+  GXTexObj backbuffer_texobj;
+  
   float *tentacle_wavey_pos;
   
   float rot;
+  float rot2;
+  float rot3;
   
   float wave;
 } tentacle_data;

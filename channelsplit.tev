@@ -1,0 +1,8 @@
+stage 0:
+  tev.rgb = texmap0[texcoord0].rrr * k0.rgb;
+
+stage 1:
+  tev.rgb = tev.rgb + texmap0[texcoord1].ggg * k1.rgb;
+
+stage 2:
+  tev.rgb = tev.rgb + texmap0[texcoord2].bbb * k2.rgb;
