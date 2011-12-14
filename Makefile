@@ -9,8 +9,8 @@ BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall -std=gnu99 $(MACHDEP) $(INCLUDE)
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
-#LIBS :=		-ldb -lbba -lext2fs -lmodplay -laesnd -logc -lm
-LIBS :=		-ldb -lbba -lext2fs -lmad -lasnd -logc -lm
+LIBS :=		-ldb -lbba -lext2fs -lmodplay -laesnd -logc -lm
+#LIBS :=		-ldb -lbba -lext2fs -lmad -lasnd -logc -lm
 INCLUDE :=	-I$(LIBOGC_INC)
 LIBPATHS :=	-L$(LIBOGC_LIB)
 LD :=		$(CC)
@@ -48,7 +48,7 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
 		images/height.tpl.o images/height_bump.tpl.o
 
-MODS :=		back_to_my_roots.mod.o
+MODS :=		back_to_my_roots.mod.o to_back.xm.o its_3.a.e.a.m.mod.o
 
 GENERATED_IMAGES :=	images/stones_bump.png
 
@@ -112,6 +112,10 @@ images/height_bump.png: images/height.png
 	@$(bin2o)
 
 %.mod.o:	%.mod
+	@echo $(notdir $<)
+	@$(bin2o)
+
+%.xm.o:	%.xm
 	@echo $(notdir $<)
 	@$(bin2o)
 

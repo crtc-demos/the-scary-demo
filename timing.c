@@ -46,7 +46,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef DEBUG
 
 #undef PLAY_MP3
-#undef PLAY_MOD
+#define PLAY_MOD
 
 #ifdef PLAY_MP3
 #include <asndlib.h>
@@ -55,7 +55,9 @@ extern u32 diff_msec (u64 start, u64 end);
 
 #ifdef PLAY_MOD
 #include <aesndlib.h>
-#include "back_to_my_roots_mod.h"
+//#include "back_to_my_roots_mod.h"
+//#include "to_back_xm.h"
+#include "its_3_a_e_a_m_mod.h"
 #endif
 
 #undef SKIP_TO_TIME
@@ -365,7 +367,14 @@ main (int argc, char *argv[])
   MODPlay_Init (&modplay);
   ret = MODPlay_SetFrequency (&modplay, 48000);
   srv_printf ("  (Set frequency... %s)\n", ret == 0 ? "successful" : "failed");
-  ret = MODPlay_SetMOD (&modplay, back_to_my_roots_mod);
+  MODPlay_SetVolume (&modplay, 64, 64);
+#if 0
+  ret = MODPlay_SetMOD (&modplay, back_to_my_roots_mod_size,
+			back_to_my_roots_mod);
+#else
+  ret = MODPlay_SetMOD (&modplay, its_3_a_e_a_m_mod_size,
+			its_3_a_e_a_m_mod);
+#endif
   srv_printf ("  (Set MOD... %s)\n", ret == 0 ? "successful" : "failed");
   ret = MODPlay_Start (&modplay);
   srv_printf ("  (Start playback... %s)\n", ret == 0 ? "successful" : "failed");
