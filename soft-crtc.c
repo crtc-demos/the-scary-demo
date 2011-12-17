@@ -187,7 +187,7 @@ delete_grid (char *grid, grid_list *oldhead)
 }
 
 static void
-soft_crtc_init_effect (void *params)
+soft_crtc_init_effect (void *params, backbuffer_info *bbuf)
 {
   unsigned int i, j;
   static const char logo[7][7] =
@@ -216,7 +216,7 @@ soft_crtc_init_effect (void *params)
 }
 
 static void
-soft_crtc_uninit_effect (void *params)
+soft_crtc_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   free (grid[0]);
   free (grid[1]);
@@ -258,8 +258,7 @@ do_life_step (unsigned int new_idx)
 }
 
 static void
-soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam,
-			  GXRModeObj *rmode)
+soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   Mtx modelView, mvi, mvitmp, rotmtx, rotmtx2;
   guVector axis = {0, 1, 0};

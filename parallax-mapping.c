@@ -146,7 +146,7 @@ tunnel_lighting (void *dummy)
 }
 
 static void
-parallax_mapping_init_effect (void *params)
+parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   unsigned int tex_edge_length;
@@ -272,7 +272,7 @@ parallax_mapping_init_effect (void *params)
 }
 
 static void
-parallax_mapping_uninit_effect (void *params)
+parallax_mapping_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
 
@@ -285,7 +285,7 @@ parallax_mapping_uninit_effect (void *params)
   free_shader (pdata->parallax_lit_phase3_shader);
 }
 
-static void
+static display_target
 parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
@@ -384,11 +384,12 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   GX_CopyTex (pdata->texcoord_map2, GX_TRUE);
   GX_PixModeSync ();
+  
+  return MAIN_BUFFER;
 }
 
 static void
-parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam,
-				 GXRModeObj *rmode)
+parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_loc map_flat_loc;

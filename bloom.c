@@ -140,7 +140,7 @@ bloom_gaussian2_shader (void *dummy)
 }
 
 static void
-bloom_init_effect (void *params)
+bloom_init_effect (void *params, backbuffer_info *bbuf)
 {
   bloom_data *bdata = (bloom_data *) params;
   
@@ -242,7 +242,7 @@ bloom_init_effect (void *params)
 }
 
 static void
-bloom_uninit_effect (void *params)
+bloom_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   bloom_data *bdata = (bloom_data *) params;
 
@@ -255,14 +255,13 @@ bloom_uninit_effect (void *params)
   destroy_shadow_info (bdata->shadow_inf);
 }
 
-static void
-bloom_display_effect (uint32_t time_offset, void *params, int iparam,
-		      GXRModeObj *rmode)
+static display_target
+bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   bloom_data *bdata = (bloom_data *) params;
   object_loc softcube_loc;
   Mtx modelview, rotmtx, rotmtx2, scale;
-    
+
   object_loc_initialise (&softcube_loc, GX_PNMTX0);
   
   scene_update_camera (&scene);
@@ -356,8 +355,16 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_CopyTex (bdata->stage2_texture, GX_TRUE);
   GX_PixModeSync ();
   
-  rendertarget_screen (rmode);
-  
+  return MAIN_BUFFER;
+}
+
+static void
+bloom_display_effect (uint32_t time_offset, void *params, int iparam)
+{
+  bloom_data *bdata = (bloom_data *) params;
+  object_loc softcube_loc;
+  Mtx modelview, rotmtx, rotmtx2, scale;
+    
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetCullMode (GX_CULL_NONE);
@@ -379,7 +386,7 @@ effect_methods bloom_methods =
 {
   .preinit_assets = NULL,
   .init_effect = &bloom_init_effect,
-  .prepare_frame = NULL,
+  .prepare_frame = &bloom_prepare_frame,
   .display_effect = &bloom_display_effect,
   .uninit_effect = &bloom_uninit_effect,
   .finalize = NULL

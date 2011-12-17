@@ -20,7 +20,7 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=		sintab.o list.o server.o rendertarget.o object.o \
+OBJS :=		sintab.o backbuffer.o list.o server.o rendertarget.o object.o \
 		tracking-obj.o cam-path.o shader.o scene.o screenspace.o \
 		light.o lighting-texture.o utility-texture.o spline.o \
 		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \

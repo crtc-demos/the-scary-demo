@@ -110,7 +110,7 @@ water_setup (void *dummy)
 }
 
 static void
-spooky_ghost_init_effect (void *params)
+spooky_ghost_init_effect (void *params, backbuffer_info *bbuf)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
 
@@ -164,7 +164,7 @@ spooky_ghost_init_effect (void *params)
 }
 
 static void
-spooky_ghost_uninit_effect (void *params)
+spooky_ghost_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
 
@@ -270,10 +270,12 @@ draw_waves (void)
 }
 #endif
 
-static void
+static display_target
 spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
+  Mtx modelView, mvtmp, sep_scale;
+  int i;
 
   light0.pos.x = cos (sdata->lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
@@ -287,76 +289,6 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
       light_update (scene.camera, &light0);
       update_lighting_texture (&scene, sdata->lighting_texture);
     }
-}
-
-#ifdef SEE_TEXTURES
-
-static void
-draw_square (void)
-{
-  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
-
-  GX_Position3f32 (1, -1, 0);
-  GX_Normal3f32 (0, 0, -1);
-  GX_TexCoord2f32 (1, 0);
-
-  GX_Position3f32 (-1, -1, 0);
-  GX_Normal3f32 (0, 0, -1);
-  GX_TexCoord2f32 (0, 0);
-
-  GX_Position3f32 (1, 1, 0);
-  GX_Normal3f32 (0, 0, -1);
-  GX_TexCoord2f32 (1, 1);
-
-  GX_Position3f32 (-1, 1, 0);
-  GX_Normal3f32 (0, 0, -1);
-  GX_TexCoord2f32 (0, 1);
-
-  GX_End ();
-}
-
-#endif
-
-#ifdef SEE_TEXTURES
-void dummy ()
-{
-  /* Draw an square in space.  */
-  {
-    Mtx mvtmpx;
-    
-    guMtxTransApply (mvtmp, mvtmpx, -5.0, 12.0, 0.0);
-    update_matrices (mvtmpx, viewmat);
-    
-    GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
-    GX_ClearVtxDesc ();
-    GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
-    GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
-    GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-    
-    #include "just-texture.inc"
-    
-    draw_square ();
-
-    #include "alpha-texture.inc"
-
-    guMtxTransApply (mvtmp, mvtmpx, 5.0, 12.0, 0.0);
-    update_matrices (mvtmpx, viewmat);
-    draw_square ();
-  }
-}
-#endif
-
-
-static void
-spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
-			     GXRModeObj *rmode)
-{
-  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
-  Mtx modelView, mvtmp, sep_scale;
-  int i;
 
   scene_set_pos (&scene, (guVector) { sdata->bla, 0.0, 0.0 });
   scene_set_lookat (&scene, (guVector)
@@ -451,10 +383,76 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_CopyTex (sdata->reflection, GX_TRUE);
   GX_PixModeSync ();
 
-  rendertarget_screen (rmode);
+  return MAIN_BUFFER;
+}
 
-  /* Might be unnecessary.  */
-  GX_InvalidateTexAll ();
+#ifdef SEE_TEXTURES
+
+static void
+draw_square (void)
+{
+  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+
+  GX_Position3f32 (1, -1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (1, 0);
+
+  GX_Position3f32 (-1, -1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (0, 0);
+
+  GX_Position3f32 (1, 1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (1, 1);
+
+  GX_Position3f32 (-1, 1, 0);
+  GX_Normal3f32 (0, 0, -1);
+  GX_TexCoord2f32 (0, 1);
+
+  GX_End ();
+}
+
+#endif
+
+#ifdef SEE_TEXTURES
+void dummy ()
+{
+  /* Draw an square in space.  */
+  {
+    Mtx mvtmpx;
+    
+    guMtxTransApply (mvtmp, mvtmpx, -5.0, 12.0, 0.0);
+    update_matrices (mvtmpx, viewmat);
+    
+    GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+    GX_ClearVtxDesc ();
+    GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
+    GX_SetVtxDesc (GX_VA_NRM, GX_DIRECT);
+    GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+    GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+    
+    #include "just-texture.inc"
+    
+    draw_square ();
+
+    #include "alpha-texture.inc"
+
+    guMtxTransApply (mvtmp, mvtmpx, 5.0, 12.0, 0.0);
+    update_matrices (mvtmpx, viewmat);
+    draw_square ();
+  }
+}
+#endif
+
+
+static void
+spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
+{
+  spooky_ghost_data *sdata = (spooky_ghost_data *) params;
+  Mtx modelView, mvtmp, sep_scale;
+  int i;
 
   /* Draw "water".  */
 #if 1

@@ -54,7 +54,7 @@ channel_split (void *dummy)
 }
 
 static void
-tentacle_init_effect (void *params)
+tentacle_init_effect (void *params, backbuffer_info *bbuf)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   
@@ -104,7 +104,7 @@ tentacle_init_effect (void *params)
 
 
 static void
-tentacle_uninit_effect (void *params)
+tentacle_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   tentacle_data *tdata = (tentacle_data *) params;
 
@@ -115,7 +115,7 @@ tentacle_uninit_effect (void *params)
   free (tdata->tentacle_wavey_pos);
 }
 
-static void
+static display_target
 tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
@@ -161,11 +161,12 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   GX_CopyTex (tdata->back_buffer, GX_TRUE);
   GX_PixModeSync ();
+  
+  return MAIN_BUFFER;
 }
 
 static void
-tentacle_display_effect (uint32_t time_offset, void *params, int iparam,
-			 GXRModeObj *rmode)
+tentacle_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   Mtx texoffset;

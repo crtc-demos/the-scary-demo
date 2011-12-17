@@ -219,7 +219,7 @@ render_tube (unsigned int around_steps, unsigned int along_steps)
 }
 
 static void
-tubes_init_effect (void *params)
+tubes_init_effect (void *params, backbuffer_info *bbuf)
 {
   unsigned int i;
 
@@ -243,7 +243,7 @@ tubes_init_effect (void *params)
 }
 
 static void
-tubes_uninit_effect (void *params)
+tubes_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   unsigned int i;
 
@@ -260,7 +260,7 @@ update_anim (void)
   phase += 0.1;
 }
 
-static void
+static display_target
 tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   unsigned int i;
@@ -279,6 +279,8 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
     fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
   
   update_anim ();
+  
+  return MAIN_BUFFER;
 }
 
 static void
@@ -322,8 +324,7 @@ specular_lighting_1light (void)
 }
 
 static void
-tubes_display_effect (uint32_t time_offset, void *params, int iparam,
-		      GXRModeObj *rmode)
+tubes_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   unsigned int i;
   GXTexObj texture;

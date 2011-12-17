@@ -2,6 +2,7 @@
 #define PUMPKIN_H 1
 
 #include "shader.h"
+#include "object.h"
 
 typedef struct
 {
@@ -16,6 +17,10 @@ typedef struct
   GXTexObj beams_r_tex_obj;
   GXTexObj beams_z_tex_obj;
   GXTexObj gradient_tex_obj;
+  
+  Mtx modelview;
+  object_loc pumpkin_loc;
+  object_loc beam_loc;
   
   shader_info *beam_lighting_shader;
 } pumpkin_data;

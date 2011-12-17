@@ -55,9 +55,9 @@ extern u32 diff_msec (u64 start, u64 end);
 
 #ifdef PLAY_MOD
 #include <aesndlib.h>
-//#include "back_to_my_roots_mod.h"
+#include "back_to_my_roots_mod.h"
 //#include "to_back_xm.h"
-#include "its_3_a_e_a_m_mod.h"
+//#include "its_3_a_e_a_m_mod.h"
 #endif
 
 #undef SKIP_TO_TIME
@@ -74,14 +74,14 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-/* {      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }*/
-  {      0, 50000, &tentacle_methods, &tentacle_data_0, -1, 0 },
-  /*{      0,  15000, &glass_methods, &glass_data_0, -1, 0 },*/
-  /*{  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 }*/
+ /*{      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }*/
+  /*{      0, 50000, &tentacle_methods, &tentacle_data_0, -1, 0 },*/
+  /*{      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
+  {  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
   {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
   {  95000, 110000, &tubes_methods, NULL, -1, 0 },
-  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
+  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }*/
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -209,6 +209,8 @@ main (int argc, char *argv[])
   int i;
   unsigned int next_effect;
   do_thing_at *active_effects[MAX_ACTIVE];
+  display_target target_for_active_effect[MAX_ACTIVE];
+  backbuffer_info backbuffers[MAX_BACKBUFFERS];
   unsigned int num_active_effects;
   const int num_effects = ARRAY_SIZE (sequence);
   char localip[16] = {0};
@@ -225,6 +227,8 @@ main (int argc, char *argv[])
 #ifdef PLAY_MP3
   FILE *mp3_fh = NULL;
 #endif
+
+  memset (backbuffers, 0, sizeof (backbuffers));
 
   /* Initialise global tables.  */
   fastsin_init ();
@@ -368,7 +372,7 @@ main (int argc, char *argv[])
   ret = MODPlay_SetFrequency (&modplay, 48000);
   srv_printf ("  (Set frequency... %s)\n", ret == 0 ? "successful" : "failed");
   MODPlay_SetVolume (&modplay, 64, 64);
-#if 0
+#if 1
   ret = MODPlay_SetMOD (&modplay, back_to_my_roots_mod_size,
 			back_to_my_roots_mod);
 #else
@@ -390,6 +394,7 @@ main (int argc, char *argv[])
     {
       u32 current_time;
       int i, j;
+      int compositors_active;
 
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
@@ -408,7 +413,7 @@ main (int argc, char *argv[])
 	      if (active_effects[i]->methods->uninit_effect)
 	        {
 	          active_effects[i]->methods->uninit_effect (
-		    active_effects[i]->params);
+		    active_effects[i]->params, backbuffers);
 		}
 	      /* If we're not going to use this one any more, release any
 	         global resources (etc.).  */
@@ -457,7 +462,7 @@ main (int argc, char *argv[])
 	      if (sequence[next_effect].methods->init_effect)
 		{
 		  sequence[next_effect].methods->init_effect (
-		    sequence[next_effect].params);
+		    sequence[next_effect].params, backbuffers);
 		}
 
 	      num_active_effects++;
@@ -478,7 +483,9 @@ main (int argc, char *argv[])
       if (next_effect == num_effects && num_active_effects == 0)
         quit = 1;
 
-      /* Do things we need to do before starting to send stuff to the PVR.  */
+      for (compositors_active = 0, i = 0; i < num_active_effects; i++)
+        if (active_effects[i]->methods->composite_effect)
+	  compositors_active++;
 
 #ifdef DEBUG
       srv_printf ("prepare frame (active effects=%d)\n", num_active_effects);
@@ -488,13 +495,21 @@ main (int argc, char *argv[])
         {
 	  if (active_effects[i]->methods->prepare_frame)
 	    {
+	      int target;
 #ifdef DEBUG
 	      srv_printf ("prepare frame: %p\n",
 		      active_effects[i]->methods->prepare_frame);
 #endif
-	      active_effects[i]->methods->prepare_frame (
-		current_time - active_effects[i]->start_time,
-		active_effects[i]->params, active_effects[i]->iparam);
+	      target = active_effects[i]->methods->prepare_frame (
+		    current_time - active_effects[i]->start_time,
+		    active_effects[i]->params, active_effects[i]->iparam);
+
+	      /* If there aren't any compositing effects active, render direct
+		 to the main buffer.  */
+	      if (compositors_active == 0)
+	        target = MAIN_BUFFER;
+
+	      target_for_active_effect[i] = target;
 	    }
 	}
 
@@ -502,18 +517,48 @@ main (int argc, char *argv[])
       srv_printf ("begin frame\n");
 #endif
 
+      /* Render back-buffer screens.  */
+
+      for (j = BACKBUFFER_0; j <= BACKBUFFER_3; j++)
+        {
+	  int idx = j - BACKBUFFER_0;
+
+	  if (!backbuffers[idx].initialized)
+	    continue;
+
+	  rendertarget_texture (backbuffers[idx].width, backbuffers[idx].height,
+				backbuffers[idx].copyfmt);
+	  
+          for (i = 0; i < num_active_effects; i++)
+	    if (active_effects[i]->methods->display_effect
+	        && target_for_active_effect[i] == j)
+	      active_effects[i]->methods->display_effect (
+	        current_time - active_effects[i]->start_time,
+		active_effects[i]->params, active_effects[i]->iparam);
+	  
+	  GX_CopyTex (backbuffers[idx].pixels, GX_TRUE);
+	}
+
+      GX_PixModeSync ();
+
       rendertarget_screen (rmode);
 
-      /* The "display_effect" callback should just do final rendering to
-         screen, no back-buffer rendering.  This doesn't allow for transparency
-	 or complex compositing on the final render though... maybe rethink.  */
+      /* If we're not using compositing, render the set of currently-active
+         effects to the screen.  */
       for (i = 0; i < num_active_effects; i++)
-        {
-	  if (active_effects[i]->methods->display_effect)
-	    active_effects[i]->methods->display_effect (
-	      current_time - active_effects[i]->start_time,
-	      active_effects[i]->params, active_effects[i]->iparam, rmode);
-	}
+	if (active_effects[i]->methods->display_effect
+	    && target_for_active_effect[i] == MAIN_BUFFER)
+	  active_effects[i]->methods->display_effect (
+	    current_time - active_effects[i]->start_time,
+	    active_effects[i]->params, active_effects[i]->iparam);
+
+      /* And if we are using compositing, do that.  */
+      for (i = 0; i < num_active_effects; i++)
+	if (active_effects[i]->methods->composite_effect)
+	  active_effects[i]->methods->composite_effect (
+	    current_time - active_effects[i]->start_time,
+	    active_effects[i]->params, active_effects[i]->iparam,
+	    backbuffers);
 
       GX_DrawDone ();
       do_copy = GX_TRUE;

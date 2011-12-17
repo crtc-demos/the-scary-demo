@@ -4,13 +4,25 @@
 #include <stdint.h>
 #include <ogcsys.h>
 
+#include "backbuffer.h"
+
+typedef enum {
+  MAIN_BUFFER,
+  BACKBUFFER_0,
+  BACKBUFFER_1,
+  BACKBUFFER_2,
+  BACKBUFFER_3
+} display_target;
+
 typedef struct {
   void (*preinit_assets) (void);
-  void (*init_effect) (void *params);
-  void (*prepare_frame) (uint32_t time_offset, void *params, int iparam);
-  void (*display_effect) (uint32_t time_offset, void *params, int iparam,
-			  GXRModeObj *rmode);
-  void (*uninit_effect) (void *params);
+  void (*init_effect) (void *params, backbuffer_info *bbufs);
+  display_target (*prepare_frame) (uint32_t time_offset, void *params,
+				   int iparam);
+  void (*display_effect) (uint32_t time_offset, void *params, int iparam);
+  void (*composite_effect) (uint32_t time_offset, void *params, int iparam,
+			    backbuffer_info *);
+  void (*uninit_effect) (void *params, backbuffer_info *bbufs);
   void (*finalize) (void *params);
 } effect_methods;
 

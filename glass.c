@@ -101,7 +101,7 @@ glass_postpass (void *dummy)
 
 
 static void
-ghost_init_effect (void *params)
+ghost_init_effect (void *params, backbuffer_info *bbuf)
 {
   glass_data *gdata = (glass_data *) params;
 
@@ -109,8 +109,7 @@ ghost_init_effect (void *params)
   scene_update_camera (&scene);
   
   object_loc_initialise (&gdata->obj_loc, GX_PNMTX0);
-
-  gdata->plain_texture_shader = create_shader (&plain_texture_setup, NULL);
+  object_set_tex_norm_matrix (&gdata->obj_loc, GX_TEXMTX0);
 
   TPL_OpenTPLFromMemory (&mighty_zebuTPL, (void *) mighty_zebu_tpl,
 			 mighty_zebu_tpl_size);
@@ -119,7 +118,7 @@ ghost_init_effect (void *params)
 			 spiderweb_tpl_size);
   
   gdata->grabbed_texture = memalign (32, GX_GetTexBufferSize (RTT_WIDTH,
-			      RTT_HEIGHT, USEFMT, GX_FALSE, 0));
+				     RTT_HEIGHT, USEFMT, GX_FALSE, 0));
   
   /* Set up refraction shader.  */
   gdata->refraction_shader = create_shader (&refraction_setup, NULL);
@@ -134,6 +133,13 @@ ghost_init_effect (void *params)
 
   GX_InitTexObjWrapMode (&gdata->mighty_zebu_tex_obj, GX_CLAMP, GX_CLAMP);
   GX_InitTexObjFilterMode (&gdata->mighty_zebu_tex_obj, GX_LINEAR, GX_LINEAR);
+  
+  gdata->plain_texture_shader = create_shader (&plain_texture_setup, NULL);
+  shader_append_texmap (gdata->plain_texture_shader,
+			&gdata->mighty_zebu_tex_obj, GX_TEXMAP0);
+  shader_append_texcoordgen (gdata->plain_texture_shader,
+			     GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0,
+			     GX_IDENTITY);
 
   GX_InitTexObj (&gdata->grabbed_tex_obj, gdata->grabbed_texture, RTT_WIDTH,
 		 RTT_HEIGHT, USEFMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
@@ -159,7 +165,7 @@ ghost_init_effect (void *params)
 }
 
 static void
-ghost_uninit_effect (void *params)
+ghost_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   glass_data *gdata = (glass_data *) params;
 
@@ -168,9 +174,8 @@ ghost_uninit_effect (void *params)
   free (gdata->grabbed_texture);
 }
 
-static void
-ghost_display_effect (uint32_t time_offset, void *params, int iparam,
-		      GXRModeObj *rmode)
+static display_target
+ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   glass_data *gdata = (glass_data *) params;
   /*GXTexObj spiderweb_tex_obj;*/
@@ -220,11 +225,9 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), gdata->thr * 0.7);
   guMtxConcat (rot, mvtmp, mvtmp);
   
-  object_set_tex_norm_matrix (&gdata->obj_loc, GX_TEXMTX0);
-  
   guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp, sep_scale,
-			 perspmat, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
+			 sep_scale, perspmat, GX_PERSPECTIVE);
 
   light_update (scene.camera, &light0);
   
@@ -248,23 +251,29 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   
   GX_PixModeSync ();
 
-  rendertarget_screen (rmode);
-  
-  {
-    f32 indmtx[2][3];
-    
-    /* Channels for indirect lookup go:
-	 R -> -
-	 G -> U
-	 B -> T
-	 A -> S
-       We have G/B channels, so map those to S/T.  */
-    
-    indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
-    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.5;
-    
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 2);
-  }
+  return MAIN_BUFFER;
+}
+
+static void
+ghost_display_effect (uint32_t time_offset, void *params, int iparam)
+{
+  glass_data *gdata = (glass_data *) params;
+  /*GXTexObj spiderweb_tex_obj;*/
+  Mtx mvtmp, rot, mvtmp2;
+  Mtx sep_scale;
+  f32 indmtx[2][3];
+
+  /* Channels for indirect lookup go:
+       R -> -
+       G -> U
+       B -> T
+       A -> S
+     We have G/B channels, so map those to S/T.  */
+
+  indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
+  indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.5;
+
+  GX_SetIndTexMatrix (GX_ITM_0, indmtx, 2);
 
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
@@ -279,6 +288,13 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam,
   draw_square (1, 128 + 127 * sin (thr * M_PI / 360.0),
 	       128 + 127 * sin (thr * M_PI / 200.0));*/
 
+  guMtxIdentity (mvtmp);
+  guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), gdata->thr);
+  guMtxConcat (rot, mvtmp, mvtmp);
+  guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), gdata->thr * 0.7);
+  guMtxConcat (rot, mvtmp, mvtmp);
+
+  guMtxScale (sep_scale, 6.0, 6.0, 6.0);
   scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
 			 sep_scale, perspmat, GX_PERSPECTIVE);
 
@@ -307,8 +323,9 @@ effect_methods glass_methods =
 {
   .preinit_assets = NULL,
   .init_effect = &ghost_init_effect,
-  .prepare_frame = NULL,
+  .prepare_frame = &ghost_prepare_frame,
   .display_effect = &ghost_display_effect,
+  .composite_effect = NULL,
   .uninit_effect = &ghost_uninit_effect,
   .finalize = NULL
 };

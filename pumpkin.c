@@ -115,7 +115,7 @@ beam_z_render (void *dummy)
 }
 
 static void
-pumpkin_init_effect (void *params)
+pumpkin_init_effect (void *params, backbuffer_info *bbuf)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
 
@@ -177,10 +177,15 @@ pumpkin_init_effect (void *params)
 			GX_TEXMAP5);
   shader_append_texcoordgen (pdata->beam_z_render_shader, GX_TEXCOORD0,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
+
+  object_loc_initialise (&pdata->pumpkin_loc, GX_PNMTX0);
+  object_loc_initialise (&pdata->beam_loc, GX_PNMTX0);
+
+  object_set_vertex_depth_matrix (&pdata->beam_loc, GX_TEXMTX0);
 }
 
 static void
-pumpkin_uninit_effect (void *params)
+pumpkin_uninit_effect (void *params, backbuffer_info *bbuf)
 {
   spline_tracking_obj *sto =
     (spline_tracking_obj *) cube_tracking_scene.follow_path;
@@ -195,13 +200,11 @@ pumpkin_uninit_effect (void *params)
   free_shader (pdata->beam_lighting_shader);
 }
 
-static void
-pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
-			GXRModeObj *rmode)
+static display_target
+pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
-  Mtx modelview, mvtmp;
-  object_loc pumpkin_loc, beam_loc;
   pumpkin_data *pdata = (pumpkin_data *) params;
+  Mtx mvtmp;
 
   /* We probably don't really need to do this per-frame?  */
   GX_InvalidateTexAll ();
@@ -238,11 +241,6 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   scene_set_lookat (&scene, (guVector) { 0, 40, 0 });
 #endif
   
-  object_loc_initialise (&pumpkin_loc, GX_PNMTX0);
-  object_loc_initialise (&beam_loc, GX_PNMTX0);
-
-  object_set_vertex_depth_matrix (&beam_loc, GX_TEXMTX0);
-
   scene_update_camera (&scene);
 
   /* Put this somewhere nicer!  We need to do the same thing for shadow
@@ -279,10 +277,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
     guMtxCopy (dp, scene.depth_ramp_lookup);
   }
 
-  guMtxIdentity (modelview);
-  guMtxScaleApply (modelview, modelview, 30, 30, 30);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, NULL,
-			 proj, GX_PERSPECTIVE);
+  guMtxIdentity (pdata->modelview);
+  guMtxScaleApply (pdata->modelview, pdata->modelview, 30, 30, 30);
+  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+			 pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
@@ -312,9 +310,10 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   GX_SetFog (GX_FOG_PERSP_EXP2, 130, 300, 10, 500, (GXColor) { 0, 0, 0, 0 });
 
   /* Add back faces.  */
-  guMtxTransApply (modelview, mvtmp, 0, 45, 0);
+  guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
   
-  scene_update_matrices (&scene, &beam_loc, scene.camera, mvtmp, NULL, NULL, 0);
+  scene_update_matrices (&scene, &pdata->beam_loc, scene.camera, mvtmp, NULL,
+			 NULL, 0);
 
   GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -359,9 +358,16 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
 
   GX_PixModeSync ();
   
-  /* Render pumpkins...  */
+  return MAIN_BUFFER;
+}
 
-  rendertarget_screen (rmode);
+static void
+pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
+{
+  pumpkin_data *pdata = (pumpkin_data *) params;
+  Mtx mvtmp;
+
+  /* Render pumpkins...  */
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -376,22 +382,22 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam,
   object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, modelview, NULL,
-			 proj, GX_PERSPECTIVE);
+  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+			 pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
   
-  guMtxTransApply (modelview, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, NULL,
-			 0);
+  guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
+  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+			 NULL, NULL, 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pumpkin_loc, scene.camera, mvtmp, NULL, NULL,
-			 0);
+  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+			 NULL, NULL, 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
@@ -444,7 +450,7 @@ effect_methods pumpkin_methods =
 {
   .preinit_assets = NULL,
   .init_effect = &pumpkin_init_effect,
-  .prepare_frame = NULL,
+  .prepare_frame = &pumpkin_prepare_frame,
   .display_effect = &pumpkin_display_effect,
   .uninit_effect = &pumpkin_uninit_effect,
   .finalize = NULL
