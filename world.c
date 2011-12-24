@@ -117,11 +117,11 @@ world_display (world_info *world)
       
       /* Set up matrices for rendering the object.  Avoid reloading the
          projection matrix unnecessarily.  */
-      scene_update_matrices (&world->scene, objp->loc, world->scene.camera,
-			     *objp->modelview,
-			     objp->sep_scale ? *objp->sep_scale : NULL,
-			     this_projection ? *this_projection : NULL,
-			     world->projection_type);
+      object_set_matrices (&world->scene, objp->loc, world->scene.camera,
+			   *objp->modelview,
+			   objp->sep_scale ? *objp->sep_scale : NULL,
+			   this_projection ? *this_projection : NULL,
+			   world->projection_type);
 
       /* Set up vertex array pointers for rendering object.  */
       object_set_arrays (objp->object, objp->object_flags, objp->vtxfmt,

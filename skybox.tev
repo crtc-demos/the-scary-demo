@@ -1,0 +1,2 @@
+stage 0:
+  tev.rgb = texmap$face[texcoord0];

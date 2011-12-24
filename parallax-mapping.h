@@ -5,6 +5,7 @@
 #include "lighting-texture.h"
 #include "shader.h"
 #include "object.h"
+#include "skybox.h"
 
 typedef struct
 {

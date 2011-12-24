@@ -2,6 +2,7 @@
 #define OBJECT_H 1
 
 #include "shadow.h"
+#include "scene.h"
 
 typedef struct {
   /* Which position/normal matrix to use (GX_PNMTX0 etc.).  */
@@ -75,6 +76,9 @@ extern void object_set_shadow_tex_matrix (object_loc *loc,
 					  shadow_info *);
 extern void object_unset_shadow_tex_matrix (object_loc *loc);
 extern void object_set_pos_norm_matrix (object_loc *obj, u32 pnmtx);
+extern void object_set_matrices (scene_info *scene, object_loc *obj,
+				 Mtx cam_mtx, Mtx obj_mtx, Mtx sep_scale,
+				 Mtx projection, u32 proj_type);
 
 extern void object_set_arrays (object_info *, unsigned int, int, int);
 extern void object_render (object_info *, unsigned int, int);

@@ -21,11 +21,11 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
 OBJS :=		sintab.o backbuffer.o list.o server.o rendertarget.o object.o \
-		tracking-obj.o cam-path.o shader.o scene.o screenspace.o \
-		light.o lighting-texture.o utility-texture.o spline.o \
-		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
-		spooky-ghost.o bloom.o glass.o parallax-mapping.o \
-		tentacles.o timing.o
+		skybox.o reduce-cubemap.o tracking-obj.o cam-path.o shader.o \
+		scene.o screenspace.o light.o lighting-texture.o \
+		utility-texture.o spline.o shadow.o world.o pumpkin.o \
+		soft-crtc.o tubes.o ghost-obj.o reflection.o spooky-ghost.o \
+		bloom.o glass.o parallax-mapping.o tentacles.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -39,14 +39,15 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		alpha-test.inc refraction.inc do-refraction.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
-		parallax-lit-phase3.inc channelsplit.inc
+		parallax-lit-phase3.inc channelsplit.inc skybox.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
 		images/gradient.tpl.o images/spiderweb.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
-		images/height.tpl.o images/height_bump.tpl.o
+		images/height.tpl.o images/height_bump.tpl.o \
+		images/sky.tpl.o
 
 MODS :=		back_to_my_roots.mod.o to_back.xm.o its_3.a.e.a.m.mod.o
 

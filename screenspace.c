@@ -26,8 +26,8 @@ screenspace_rect (shader_info *shader, u32 vtxfmt, int texcoords_twice)
   
   guMtxIdentity (mvtmp);
 
-  scene_update_matrices (&rect_scene, &rect_loc, rect_scene.camera, mvtmp,
-			 NULL, ortho, GX_ORTHOGRAPHIC);
+  object_set_matrices (&rect_scene, &rect_loc, rect_scene.camera, mvtmp,
+		       NULL, ortho, GX_ORTHOGRAPHIC);
 
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);

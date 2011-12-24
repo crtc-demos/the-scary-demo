@@ -279,8 +279,8 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   guMtxIdentity (pdata->modelview);
   guMtxScaleApply (pdata->modelview, pdata->modelview, 30, 30, 30);
-  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
-			 pdata->modelview, NULL, proj, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+		       pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
   /* Render beams to texture.  */
   rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
@@ -312,8 +312,8 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
   /* Add back faces.  */
   guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
   
-  scene_update_matrices (&scene, &pdata->beam_loc, scene.camera, mvtmp, NULL,
-			 NULL, 0);
+  object_set_matrices (&scene, &pdata->beam_loc, scene.camera, mvtmp, NULL,
+		       NULL, 0);
 
   GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
@@ -382,22 +382,22 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
   object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
-  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
-			 pdata->modelview, NULL, proj, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+		       pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
   
   guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
-			 NULL, NULL, 0);
+  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+		       NULL, NULL, 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
-  scene_update_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
-			 NULL, NULL, 0);
+  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+		       NULL, NULL, 0);
 
   object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);

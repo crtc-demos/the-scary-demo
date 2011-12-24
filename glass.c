@@ -226,8 +226,8 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   guMtxConcat (rot, mvtmp, mvtmp);
   
   guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
-			 sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
+		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   light_update (scene.camera, &light0);
   
@@ -238,13 +238,13 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
-			 sep_scale, NULL, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
+		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp2, -13, 0, 0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
-			 sep_scale, NULL, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
+		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   GX_CopyTex (gdata->grabbed_texture, GX_TRUE);
@@ -295,8 +295,8 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   guMtxConcat (rot, mvtmp, mvtmp);
 
   guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
-			 sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
+		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   shader_load (gdata->glass_postpass_shader);
 
@@ -307,13 +307,13 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
-			 sep_scale, NULL, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
+		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   guMtxTransApply (mvtmp, mvtmp2, -13, 0, 0);
-  scene_update_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
-			 sep_scale, NULL, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
+		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
   gdata->thr += 1;

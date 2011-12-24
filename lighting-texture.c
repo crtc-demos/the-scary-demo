@@ -7,7 +7,7 @@
 #include <string.h>
 
 #include "rendertarget.h"
-#include "scene.h"
+#include "object.h"
 #include "lighting-texture.h"
 
 #define LIGHT_TEXFMT GX_TF_RGBA8
@@ -100,8 +100,8 @@ update_lighting_texture (scene_info *scene, lighting_texture_info *lt)
   GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
 
   guMtxIdentity (idmtx);
-  scene_update_matrices (scene, &obj_loc, idmtx, idmtx, NULL, proj,
-			 GX_ORTHOGRAPHIC);
+  object_set_matrices (scene, &obj_loc, idmtx, idmtx, NULL, proj,
+		       GX_ORTHOGRAPHIC);
 
   hemisphere_texture ();
 

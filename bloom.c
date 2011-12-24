@@ -292,10 +292,10 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
     
     object_loc_initialise (&shadowcast_loc, GX_PNMTX0);
     
-    scene_update_matrices (&scene, &shadowcast_loc,
-			   bdata->shadow_inf->light_cam, modelview, scale,
-			   bdata->shadow_inf->shadow_projection,
-			   bdata->shadow_inf->projection_type);
+    object_set_matrices (&scene, &shadowcast_loc,
+			 bdata->shadow_inf->light_cam, modelview, scale,
+			 bdata->shadow_inf->shadow_projection,
+			 bdata->shadow_inf->projection_type);
 
     GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
     GX_SetColorUpdate (GX_FALSE);
@@ -320,8 +320,8 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   object_set_shadow_tex_matrix (&softcube_loc, GX_TEXMTX1, GX_TEXMTX0,
 				bdata->shadow_inf);
   
-  scene_update_matrices (&scene, &softcube_loc, scene.camera, modelview, scale,
-			 proj, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &softcube_loc, scene.camera, modelview, scale,
+		       proj, GX_PERSPECTIVE);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);

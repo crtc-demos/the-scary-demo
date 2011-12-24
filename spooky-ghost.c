@@ -315,8 +315,8 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   guMtxIdentity (modelView);
   guMtxScale (sep_scale, 25.0, 25.0, 25.0);
-  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
-			 sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
+		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   light_update (scene.camera, &light0);
 
@@ -365,8 +365,8 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   guMtxTransApply (mvtmp, mvtmp, 64.4, -16,
 		   ((int) (sdata->bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
-			 NULL, 0);
+  object_set_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
+		       NULL, 0);
 
   /* Override position to make it reflected.  (Ew!).  */
   guMtxIdentity (modelView);
@@ -461,7 +461,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
 #else
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView);
+  object_set_matrices (&scene, &sdata->obj_loc, scene.camera, modelView);
   shader_load (sdata->tunnel_lighting_shader);
   draw_waves ();
 #endif
@@ -470,8 +470,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   const float size = 28.0;
 
   guMtxIdentity (modelView);
-  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
-			 sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&scene, &sdata->obj_loc, scene.camera, modelView,
+		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   if (switch_ghost_lighting)
     shader_load (sdata->bump_mapping_shader);
@@ -519,8 +519,8 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   guMtxTransApply (mvtmp, mvtmp, 64.4, -14,
 		   ((int) (sdata->bla + 32) % 32) - 16.0);
   
-  scene_update_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
-			 NULL, 0);
+  object_set_matrices (&scene, &sdata->obj_loc, scene.camera, mvtmp, NULL,
+		       NULL, 0);
 
   shader_load (sdata->tunnel_lighting_shader);
 
