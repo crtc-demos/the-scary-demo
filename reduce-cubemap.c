@@ -94,48 +94,40 @@ face_to_sphere (guVector *out, int face, float a, float b)
   guVector sphere;
   guVector eye = { 0, 0, -1 };
 
-  /*if (face == 3)
-    {
-      sphere.x = 0;
-      sphere.y = 0;
-      sphere.z = 0;
-      face = -1;
-    }*/
-
   switch (face)
     {
     case 0:  /* left */
       sphere.x = -1.0;
-      sphere.y = b;
+      sphere.y = -b;
       sphere.z = -a;
       break;
 
     case 1:  /* front */
-      sphere.x = a;
-      sphere.y = b;
-      sphere.z = -1.0;
+      sphere.x = -a;
+      sphere.y = -b;
+      sphere.z = 1.0;
       break;
 
     case 2:  /* right */
       sphere.x = 1.0;
-      sphere.y = b;
+      sphere.y = -b;
       sphere.z = a;
       break;
 
     case 3:  /* back */
-      sphere.x = -a;
-      sphere.y = b;
-      sphere.z = 1;
+      sphere.x = a;
+      sphere.y = -b;
+      sphere.z = -1;
       break;
 
     case 4:  /* top */
-      sphere.x = a;
+      sphere.x = -a;
       sphere.y = 1.0;
       sphere.z = b;
       break;
 
     case 5:  /* bottom */
-      sphere.x = a;
+      sphere.x = -a;
       sphere.y = -1.0;
       sphere.z = -b;
       break;
@@ -163,7 +155,7 @@ cubemap_cam_matrix_for_face (Mtx cam, scene_info *scene, int face)
   switch (face)
     {
     case 0:  /* left */
-      guMtxRotRad (rot, 'y', -M_PI / 2);
+      guMtxRotRad (rot, 'y', M_PI / 2);
       guMtxConcat (rot, scene->camera, cam);
       break;
 
@@ -172,7 +164,7 @@ cubemap_cam_matrix_for_face (Mtx cam, scene_info *scene, int face)
       break;
 
     case 2:  /* right */
-      guMtxRotRad (rot, 'y', M_PI / 2);
+      guMtxRotRad (rot, 'y', -M_PI / 2);
       guMtxConcat (rot, scene->camera, cam);
       break;
 
@@ -182,12 +174,12 @@ cubemap_cam_matrix_for_face (Mtx cam, scene_info *scene, int face)
       break;
 
     case 4:  /* top */
-      guMtxRotRad (rot, 'x', M_PI / 2);
+      guMtxRotRad (rot, 'x', -M_PI / 2);
       guMtxConcat (rot, scene->camera, cam);
       break;
 
     case 5:  /* bottom */
-      guMtxRotRad (rot, 'x', -M_PI / 2);
+      guMtxRotRad (rot, 'x', M_PI / 2);
       guMtxConcat (rot, scene->camera, cam);
       break;
     }
@@ -236,7 +228,7 @@ reduce_cubemap (cubemap_info *cubemap, int subdiv)
   GX_SetVtxAttrFmt (vtxfmt, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (vtxfmt, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
   
-  GX_SetCullMode (GX_CULL_FRONT);
+  GX_SetCullMode (GX_CULL_BACK);
   
   rendertarget_texture (cubemap->sphsize, cubemap->sphsize, cubemap->sphfmt);
   

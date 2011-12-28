@@ -9,12 +9,14 @@ typedef struct {
   u32 pnmtx;
   
   char calculate_normal_tex_mtx;
+  char calculate_sph_envmap_tex_mtx;
   char calculate_binorm_tex_mtx;
   char calculate_vertex_depth_mtx;
   char calculate_screenspace_tex_mtx;
   char calculate_shadowing_tex_mtx;
   char calculate_parallax_tex_mtx;
   u32 normal_tex_mtx;
+  u32 sph_envmap_tex_mtx;
   u32 binorm_tex_mtx;
   u32 vertex_depth_mtx;
   u32 screenspace_tex_mtx;
@@ -64,6 +66,8 @@ extern void object_set_tex_norm_binorm_matrices (object_loc *,
 extern void object_unset_tex_norm_binorm_matrices (object_loc *);
 extern void object_set_tex_norm_matrix (object_loc *loc, u32 normal_tex_mtx);
 extern void object_unset_tex_norm_matrix (object_loc *loc);
+extern void object_set_sph_envmap_matrix (object_loc *loc, u32 normal_tex_mtx);
+extern void object_unset_sph_envmap_matrix (object_loc *loc);
 extern void object_set_vertex_depth_matrix (object_loc *, u32);
 extern void object_unset_vertex_depth_matrix (object_loc *);
 extern void object_set_screenspace_tex_matrix (object_loc *, u32);

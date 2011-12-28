@@ -45,6 +45,19 @@ object_unset_tex_norm_matrix (object_loc *loc)
 }
 
 void
+object_set_sph_envmap_matrix (object_loc *loc, u32 envmap_tex_mtx)
+{
+  loc->calculate_sph_envmap_tex_mtx = 1;
+  loc->sph_envmap_tex_mtx = envmap_tex_mtx;
+}
+
+void
+object_unset_sph_envmap_matrix (object_loc *loc)
+{
+  loc->calculate_sph_envmap_tex_mtx = 0;
+}
+
+void
 object_set_vertex_depth_matrix (object_loc *obj, u32 vertex_depth_mtx)
 {
   obj->calculate_vertex_depth_mtx = 1;
@@ -135,7 +148,21 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
 
       GX_LoadTexMtxImm (normaltexmtx, obj->normal_tex_mtx, GX_MTX2x4);
     }
-  
+
+  if (obj->calculate_sph_envmap_tex_mtx)
+    {
+      guMtxTrans (tempmtx, 0.5, 0.5, 0.0);
+      guMtxConcat (tempmtx, normal, normaltexmtx);
+      /* This is a fudge factor to avoid the edges of the circle, which may not
+         be fully covered.  Should probably depend on the size of the texture
+	 and/or the number of subdivisions used to reduce the cubemap to the
+	 spheremap.   */
+      guMtxScale (tempmtx, 0.495, 0.495, 0.495);
+      guMtxConcat (normaltexmtx, tempmtx, normaltexmtx);
+
+      GX_LoadTexMtxImm (normaltexmtx, obj->sph_envmap_tex_mtx, GX_MTX2x4);
+    }
+
   if (obj->calculate_binorm_tex_mtx)
     {
       guMtxCopy (vertex, binormal);

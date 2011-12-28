@@ -1,0 +1,11 @@
+stage 0:
+  tev = 1 - texmap1[texcoord1];
+
+stage 1:
+  tev = clamp (tev * 2);
+
+stage 2:
+  tev = 1 - tev;
+  
+stage 3:
+  tev = tev * texmap0[texcoord0];
