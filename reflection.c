@@ -101,7 +101,7 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   GX_PixModeSync ();
 
-  reduce_cubemap (rdata->cubemap);
+  reduce_cubemap (rdata->cubemap, 32);
 
   return MAIN_BUFFER;
 }

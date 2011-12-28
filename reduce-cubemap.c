@@ -2,6 +2,7 @@
 #include <gccore.h>
 #include <malloc.h>
 #include <math.h>
+#include <assert.h>
 
 #include "shader.h"
 #include "object.h"
@@ -9,6 +10,7 @@
 #include "skybox.h"
 #include "reduce-cubemap.h"
 #include "rendertarget.h"
+#include "server.h"
 
 static void
 cubemap_shader_setup (void *dummy)
@@ -124,7 +126,6 @@ face_to_sphere (guVector *out, int face, float a, float b)
       sphere.x = -a;
       sphere.y = b;
       sphere.z = 1;
-      eye.z = -0.999;
       break;
 
     case 4:  /* top */
@@ -197,7 +198,7 @@ cubemap_cam_matrix_for_face (Mtx cam, scene_info *scene, int face)
    setup.  */
 
 void
-reduce_cubemap (cubemap_info *cubemap)
+reduce_cubemap (cubemap_info *cubemap, int subdiv)
 {
   int x, y, face;
   const u32 vtxfmt = GX_VTXFMT0;
@@ -205,12 +206,21 @@ reduce_cubemap (cubemap_info *cubemap)
   Mtx44 ortho;
   object_loc rect_loc;
   scene_info rect_scene;
+  int half_subdiv = subdiv / 2;
+  float scale_factor = 1.0 / ((float) half_subdiv - 0.5);
+  
+  /* Using an even number of subdivisions and spreading evenly from -1...1
+     ensures we don't try to evaluate the singularity point at the back of the
+     sphere.  */
+  assert ((subdiv & 1) == 0);
   
   scene_set_pos (&rect_scene, (guVector) { 0, 0, -5 });
   scene_set_lookat (&rect_scene, (guVector) { 0, 0, 0 });
   scene_set_up (&rect_scene, (guVector) { 0, 1, 0 });
   
-  guOrtho (ortho, -2, 0, -1, 1, 1, 15);
+  scene_update_camera (&rect_scene);
+  
+  guOrtho (ortho, -1, 1, -1, 1, 1, 15);
   
   object_loc_initialise (&rect_loc, GX_PNMTX0);
   
@@ -226,7 +236,7 @@ reduce_cubemap (cubemap_info *cubemap)
   GX_SetVtxAttrFmt (vtxfmt, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
   GX_SetVtxAttrFmt (vtxfmt, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
   
-  GX_SetCullMode (GX_CULL_NONE);
+  GX_SetCullMode (GX_CULL_FRONT);
   
   rendertarget_texture (cubemap->sphsize, cubemap->sphsize, cubemap->sphfmt);
   
@@ -234,52 +244,28 @@ reduce_cubemap (cubemap_info *cubemap)
     {
       shader_load (cubemap->face_shader[face]);
 
-      for (x = -8; x < 7; x++)
+      for (x = -half_subdiv; x < half_subdiv - 1; x++)
 	{
-          float a = ((float) x + 0.5) / 7.5;
-          float a1 = ((float) x + 1.5) / 7.5;
+          float a = ((float) x + 0.5) * scale_factor;
+          float a1 = ((float) x + 1.5) * scale_factor;
 
-	  if (face == -3)
+	  GX_Begin (GX_TRIANGLESTRIP, vtxfmt, subdiv * 2);
+
+	  for (y = -half_subdiv; y < half_subdiv; y++)
 	    {
-	      if (0 && x > 2)
-		{
-		  GX_Begin (GX_TRIANGLESTRIP, vtxfmt, 10);
+	      float b = ((float) y + 0.5) * scale_factor;
+	      guVector tmp;
 
-		  for (y = 3; y < 8; y++)
-		    {
-		      float b = ((float) y + 0.5) / 7.5;
-		      guVector tmp;
+	      face_to_sphere (&tmp, face, a, b);
+	      GX_Position3f32 (tmp.x, tmp.y, tmp.z);
+	      GX_TexCoord2f32 ((a + 1.0) / 2.0, (b + 1.0) / 2.0);
 
-		      face_to_sphere (&tmp, face, a, b);
-		      GX_Position3f32 (tmp.x, tmp.y, tmp.z);
-		      GX_TexCoord2f32 ((a + 1.0) / 2.0, (b + 1.0) / 2.0);
-
-		      face_to_sphere (&tmp, face, a1, b);
-		      GX_Position3f32 (tmp.x, tmp.y, tmp.z);
-		      GX_TexCoord2f32 ((a1 + 1.0) / 2.0, (b + 1.0) / 2.0);
-		    }
-		}
+	      face_to_sphere (&tmp, face, a1, b);
+	      GX_Position3f32 (tmp.x, tmp.y, tmp.z);
+	      GX_TexCoord2f32 ((a1 + 1.0) / 2.0, (b + 1.0) / 2.0);
 	    }
-	  else
-	    {
-	      GX_Begin (GX_TRIANGLESTRIP, vtxfmt, 32);
 
-	      for (y = -8; y < 8; y++)
-		{
-		  float b = ((float) y + 0.5) / 7.5;
-		  guVector tmp;
-
-		  face_to_sphere (&tmp, face, a, b);
-		  GX_Position3f32 (tmp.x, tmp.y, tmp.z);
-		  GX_TexCoord2f32 ((a + 1.0) / 2.0, (b + 1.0) / 2.0);
-
-		  face_to_sphere (&tmp, face, a1, b);
-		  GX_Position3f32 (tmp.x, tmp.y, tmp.z);
-		  GX_TexCoord2f32 ((a1 + 1.0) / 2.0, (b + 1.0) / 2.0);
-		}
-
-	      GX_End ();
-	    }
+	  GX_End ();
 	}
     }
   
