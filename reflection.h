@@ -19,6 +19,7 @@ typedef struct
   shader_info *ghost_shader;
   
   GXTexObj tangentmap;
+  GXTexObj aomap;
 } reflection_data;
 
 extern effect_methods reflection_methods;

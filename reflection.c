@@ -106,6 +106,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
   TPL_OpenTPLFromMemory (&skull_tangentmapTPL, (void *) skull_tangentmap_gx_tpl,
 			 skull_tangentmap_gx_tpl_size);
   TPL_GetTexture (&skull_tangentmapTPL, skull_tangentmap, &rdata->tangentmap);
+  TPL_GetTexture (&skull_tangentmapTPL, skull_aomap, &rdata->aomap);
 
   object_set_tex_norm_binorm_matrices (&rdata->ghost_loc, GX_TEXMTX1,
 				       GX_TEXMTX2);
@@ -114,6 +115,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texmap (rdata->ghost_shader, &rdata->cubemap->spheretex,
 			GX_TEXMAP0);
   shader_append_texmap (rdata->ghost_shader, &rdata->tangentmap, GX_TEXMAP1);
+  shader_append_texmap (rdata->ghost_shader, &rdata->aomap, GX_TEXMAP2);
   shader_append_texcoordgen (rdata->ghost_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
   shader_append_texcoordgen (rdata->ghost_shader, GX_TEXCOORD1, GX_TG_MTX2x4,
@@ -122,6 +124,17 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 			     GX_TG_TANGENT, GX_TEXMTX2);
   shader_append_texcoordgen (rdata->ghost_shader, GX_TEXCOORD3, GX_TG_MTX2x4,
 			     GX_TG_NRM, GX_TEXMTX1);
+  shader_append_texcoordgen (rdata->ghost_shader, GX_TEXCOORD4, GX_TG_MTX2x4,
+			     GX_TG_TEX0, GX_TEXMTX3);
+
+  {
+    Mtx texmtx;
+    
+    guMtxScale (texmtx, 1.0, -1.0, 1.0);
+    guMtxTransApply (texmtx, texmtx, 0.0, 1.0, 0.0);
+    
+    GX_LoadTexMtxImm (texmtx, GX_TEXMTX3, GX_MTX2x4);
+  }
 #else
   object_set_tex_norm_matrix (&rdata->ghost_loc, GX_TEXMTX1);
 

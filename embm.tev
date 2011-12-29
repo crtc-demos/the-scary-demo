@@ -12,3 +12,6 @@ stage 1:
 
 stage 2:
   tev.rgb = texmap0[itexcoord + texcoord3].rgb;
+
+stage 3:
+  tev.rgb = tev.rgb * texmap2[texcoord4].rgb;
