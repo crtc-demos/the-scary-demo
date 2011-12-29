@@ -40,7 +40,7 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
 		parallax-lit-phase3.inc channelsplit.inc skybox.inc \
-		fancy-envmap.inc
+		fancy-envmap.inc embm.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
@@ -48,17 +48,18 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
 		images/height.tpl.o images/height_bump.tpl.o \
-		images/sky.tpl.o
+		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o
 
-MODS :=		back_to_my_roots.mod.o to_back.xm.o its_3.a.e.a.m.mod.o
+MODS :=		back_to_my_roots.mod.o
 
-GENERATED_IMAGES :=	images/stones_bump.png
+GENERATED_IMAGES :=	images/stones_bump.png images/skull_tangentmap_gx.png
 
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
 		objects/pumpkin.inc objects/softcube.inc \
 		objects/plane.inc objects/textured-cube.inc \
-		objects/tentacles.inc objects/cross-cube.inc
+		objects/tentacles.inc objects/cross-cube.inc \
+		objects/scary-skull-2.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -96,15 +97,14 @@ filemgr.elf: $(FILEMGR_OBJS)
 %.inc:	%.tev
 	$(TEVSL) $< -o $@
 
-images/stones_bump.scf:	images/stones_bump.png
-
 images/stones_bump.png:	images/fake_stone_depth.png
 	$(BUMPTOOL) $< -o $@
 
-images/height_bump.scf: images/height_bump.png
-
 images/height_bump.png: images/height.png
 	$(BUMPTOOL) -i $< -o $@
+
+images/skull_tangentmap_gx.png: images/skull_tangentmap.png
+	$(BUMPTOOL) -b $< -o $@
 
 #%.tpl:	%.scf
 #	$(GXTEXCONV) -s $< -o $@
@@ -117,9 +117,9 @@ images/height_bump.png: images/height.png
 	@echo $(notdir $<)
 	@$(bin2o)
 
-%.xm.o:	%.xm
-	@echo $(notdir $<)
-	@$(bin2o)
+#%.xm.o:	%.xm
+#	@echo $(notdir $<)
+#	@$(bin2o)
 
 objects/spooky-ghost.inc:	objects/spooky-ghost.dae
 	$(OBJCONVERT) -c -n spooky_ghost $< -o $@
@@ -156,6 +156,9 @@ objects/tentacles.inc:	objects/tentacles.dae
 
 objects/cross-cube.inc:	objects/cross-cube.dae
 	$(OBJCONVERT) -c -yz -i -n cross_cube $< -o $@
+
+objects/scary-skull-2.inc:	objects/scary-skull-2.dae
+	$(OBJCONVERT) -c -t -yz -i -n scary_skull $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

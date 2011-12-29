@@ -17,6 +17,8 @@ typedef struct
   Mtx ghost_mv;
   Mtx ghost_scale;
   shader_info *ghost_shader;
+  
+  GXTexObj tangentmap;
 } reflection_data;
 
 extern effect_methods reflection_methods;
