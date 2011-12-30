@@ -310,11 +310,11 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
       rendertarget_texture (rdata->cubemap->size, rdata->cubemap->size,
 			    rdata->cubemap->fmt);
       
+      rib_render (rdata, camera, 1);
+
       skybox_set_matrices (&rdata->world->scene, camera, rdata->skybox,
 			   cubeface_proj, GX_PERSPECTIVE);
       skybox_render (rdata->skybox);
-      
-      rib_render (rdata, camera, 1);
       
       GX_CopyTex (rdata->cubemap->texels[i], GX_TRUE);
     }
