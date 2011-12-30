@@ -20,7 +20,9 @@
 #include "ghost-obj.h"
 
 #define USE_EMBM
-#define RIB_DL_SIZE 65536
+
+#define USE_DISPLAY_LISTS
+#define RIB_DL_SIZE 32768
 
 #include "objects/scary-skull-2.inc"
 
@@ -109,9 +111,9 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 {
   reflection_data *rdata = (reflection_data *) params;
 
-  guPerspective (cubeface_proj, 90, 1.0f, 1.0f, 500.0f);
+  guPerspective (cubeface_proj, 90, 1.0f, 0.2f, 800.0f);
 
-  rdata->skybox = create_skybox (200);
+  rdata->skybox = create_skybox (800.0 / sqrtf (3.0));
   rdata->cubemap = create_cubemap (256, GX_TF_RGB565, 512, GX_TF_RGB565);
   
   rdata->plain_texture_shader = create_shader (&plain_texturing_setup, NULL);
@@ -121,7 +123,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   
   rdata->world = create_world (1);
-  world_set_perspective (rdata->world, 60, 1.33f, 10.0f, 500.0f);
+  world_set_perspective (rdata->world, 60, 1.33f, 10.0f, 800.0f);
   world_set_pos_lookat_up (rdata->world, (guVector) { 0, 0, 30},
 					 (guVector) { 0, 0, 0 },
 					 (guVector) { 0, 1, 0 });
@@ -201,10 +203,12 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 			     &rdata->rib_mv, &rdata->rib_scale,
 			     rdata->rib_shader);*/
 
+#ifdef USE_DISPLAY_LISTS
   rdata->rib_dl = memalign (32, RIB_DL_SIZE);
   rdata->rib_dl_size = 0;
   rdata->rib_lo_dl = memalign (32, RIB_DL_SIZE);
   rdata->rib_lo_dl_size = 0;
+#endif
 }
 
 static void
@@ -218,19 +222,23 @@ reflection_uninit_effect (void *params, backbuffer_info *bbuf)
   free_shader (rdata->ghost_shader);
   free_shader (rdata->rib_shader);
   free_world (rdata->world);
+#ifdef USE_DISPLAY_LISTS
   free (rdata->rib_dl);
   free (rdata->rib_lo_dl);
+#endif
 }
 
 static float rib_offset = 0;
 
 static void
-rib_render (reflection_data *rdata, Mtx camera, int lo)
+rib_render (reflection_data *rdata, Mtx camera, int lo, float twist)
 {
   int i;
   object_info *which_obj;
   void *disp_list;
   u32 *dl_size;
+  int num_ribs = lo ? 10 : 30;
+  float midpt = (num_ribs - 1) * 0.5;
 
   shader_load (rdata->rib_shader);
   
@@ -249,7 +257,7 @@ rib_render (reflection_data *rdata, Mtx camera, int lo)
 
   object_set_arrays (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0);
 
-#if 0
+#ifdef USE_DISPLAY_LISTS
   if (*dl_size == 0)
     {
       GX_BeginDispList (disp_list, RIB_DL_SIZE);
@@ -257,7 +265,7 @@ rib_render (reflection_data *rdata, Mtx camera, int lo)
       *dl_size = GX_EndDispList ();
       srv_printf ("Initialised display list for %s rib object (%u bytes)\n",
 		  lo ? "lo" : "hi", *dl_size);
-      DCFlushRange (disp_list, *dl_size);
+      DCInvalidateRange (disp_list, *dl_size);
     }
 
   if (*dl_size == 0)
@@ -267,23 +275,45 @@ rib_render (reflection_data *rdata, Mtx camera, int lo)
     }
 #endif
 
-  for (i = 0; i < 10; i++)
+  for (i = 0; i < num_ribs; i++)
     {
+      if (lo || i < 10 || i >= 20)
+	{
+	  which_obj = &rib_lo_obj;
+	  disp_list = rdata->rib_lo_dl;
+	  dl_size = &rdata->rib_lo_dl_size;
+	}
+      else
+	{
+	  which_obj = &rib_obj;
+	  disp_list = rdata->rib_dl;
+	  dl_size = &rdata->rib_dl_size;
+	}
+
+      object_set_arrays (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0);
+
       guMtxIdentity (rdata->rib_mv);
+      guMtxRotRad (rdata->rib_mv, 'z', ((i - midpt) + rib_offset / 20.0)
+				       * twist);
       guMtxTransApply (rdata->rib_mv, rdata->rib_mv, 0, 0,
-		       (i - 4.5) * 20 + rib_offset);
+		       (i - midpt) * 20 + rib_offset);
     
       object_set_matrices (&rdata->world->scene, &rdata->rib_loc,
 			   camera, rdata->rib_mv, rdata->rib_scale,
 			   NULL, 0);
 
-      //GX_CallDispList (disp_list, *dl_size);
-      object_render (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+#ifdef USE_DISPLAY_LISTS
+      if (*dl_size)
+        GX_CallDispList (disp_list, *dl_size);
+      else
+#endif
+        object_render (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
     }
 }
 
 static float around = 0.0;
 static float up = 0.0;
+static float twisty = 0.0;
 
 static display_target
 reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
@@ -310,7 +340,7 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
       rendertarget_texture (rdata->cubemap->size, rdata->cubemap->size,
 			    rdata->cubemap->fmt);
       
-      rib_render (rdata, camera, 1);
+      rib_render (rdata, camera, 1, 0.3 * sinf (twisty));
 
       skybox_set_matrices (&rdata->world->scene, camera, rdata->skybox,
 			   cubeface_proj, GX_PERSPECTIVE);
@@ -336,7 +366,7 @@ reflection_display_effect (uint32_t time_offset, void *params, int iparam)
 #else
   world_display (rdata->world);
   
-  rib_render (rdata, rdata->world->scene.camera, 0);
+  rib_render (rdata, rdata->world->scene.camera, 0, 0.3 * sinf (twisty));
 
   skybox_set_matrices (&rdata->world->scene, rdata->world->scene.camera,
 		       rdata->skybox, rdata->world->projection,
@@ -346,6 +376,8 @@ reflection_display_effect (uint32_t time_offset, void *params, int iparam)
   rib_offset += 0.5;
   if (rib_offset >= 20)
     rib_offset = 0;
+  
+  twisty += 0.05;
 #endif
 }
 
