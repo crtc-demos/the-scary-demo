@@ -13,6 +13,7 @@ typedef struct
   
   world_info *world;
 
+  /* Stuff for ghost (now skull!) object.  */
   object_loc ghost_loc;
   Mtx ghost_mv;
   Mtx ghost_scale;
@@ -20,6 +21,18 @@ typedef struct
   
   GXTexObj tangentmap;
   GXTexObj aomap;
+  
+  /* Stuff for rib object.  */
+  object_loc rib_loc;
+  Mtx rib_mv;
+  Mtx rib_scale;
+  shader_info *rib_shader;
+  
+  void *rib_dl;
+  u32 rib_dl_size;
+
+  void *rib_lo_dl;
+  u32 rib_lo_dl_size;
 } reflection_data;
 
 extern effect_methods reflection_methods;

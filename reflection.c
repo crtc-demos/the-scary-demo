@@ -20,10 +20,19 @@
 #include "ghost-obj.h"
 
 #define USE_EMBM
+#define RIB_DL_SIZE 65536
 
 #include "objects/scary-skull-2.inc"
 
 INIT_OBJECT (scary_skull_obj, scary_skull);
+
+#include "objects/rib.inc"
+
+INIT_OBJECT (rib_obj, rib);
+
+#include "objects/rib-lo.inc"
+
+INIT_OBJECT (rib_lo_obj, rib_lo);
 
 #include "images/skull_tangentmap_gx.h"
 #include "skull_tangentmap_gx_tpl.h"
@@ -75,11 +84,32 @@ envmap_setup_2 (void *dummy)
 #endif
 
 static void
+rib_shader_setup (void *privdata)
+{
+  light_info *light = (light_info *) privdata;
+  GXLightObj lo0;
+
+  #include "plain-lighting.inc"
+
+  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
+  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
+
+  GX_InitLightPos (&lo0, light->tpos.x, light->tpos.y, light->tpos.z);
+  GX_InitLightColor (&lo0, (GXColor) { 255, 255, 255, 255 });
+  GX_InitLightSpot (&lo0, 0.0, GX_SP_OFF);
+  GX_InitLightDistAttn (&lo0, 1.0, 1.0, GX_DA_OFF);
+  GX_InitLightDir (&lo0, 0.0, 0.0, 0.0);
+  GX_LoadLightObj (&lo0, GX_LIGHT0);
+}
+
+static void
 reflection_init_effect (void *params, backbuffer_info *bbuf)
 {
   reflection_data *rdata = (reflection_data *) params;
 
-  guPerspective (cubeface_proj, 90, 1.0f, 10.0f, 500.0f);
+  guPerspective (cubeface_proj, 90, 1.0f, 1.0f, 500.0f);
 
   rdata->skybox = create_skybox (200);
   rdata->cubemap = create_cubemap (256, GX_TF_RGB565, 512, GX_TF_RGB565);
@@ -90,11 +120,15 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texcoordgen (rdata->plain_texture_shader, GX_TEXCOORD0,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   
-  rdata->world = create_world (0);
+  rdata->world = create_world (1);
   world_set_perspective (rdata->world, 60, 1.33f, 10.0f, 500.0f);
   world_set_pos_lookat_up (rdata->world, (guVector) { 0, 0, 30},
 					 (guVector) { 0, 0, 0 },
 					 (guVector) { 0, 1, 0 });
+  world_set_light_pos_lookat_up (rdata->world, 0,
+				 (guVector) { 20, 20, 30 },
+				 (guVector) { 0, 0, 0 },
+				 (guVector) { 0, 1, 0 });
 
   object_loc_initialise (&rdata->ghost_loc, GX_PNMTX0);
   object_set_sph_envmap_matrix (&rdata->ghost_loc, GX_TEXMTX0);
@@ -154,6 +188,23 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 			     OBJECT_POS | OBJECT_TEXCOORD | OBJECT_NBT3,
 			     GX_VTXFMT0, GX_VA_TEX0, &rdata->ghost_mv,
 			     &rdata->ghost_scale, rdata->ghost_shader);
+
+  object_loc_initialise (&rdata->rib_loc, GX_PNMTX0);
+
+  guMtxIdentity (rdata->rib_mv);
+  guMtxScale (rdata->rib_scale, 5, 5, 5);
+  rdata->rib_shader = create_shader (&rib_shader_setup,
+				     &rdata->world->light[0]);
+
+  /*world_add_standard_object (rdata->world, &rib_obj, &rdata->rib_loc,
+			     OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0,
+			     &rdata->rib_mv, &rdata->rib_scale,
+			     rdata->rib_shader);*/
+
+  rdata->rib_dl = memalign (32, RIB_DL_SIZE);
+  rdata->rib_dl_size = 0;
+  rdata->rib_lo_dl = memalign (32, RIB_DL_SIZE);
+  rdata->rib_lo_dl_size = 0;
 }
 
 static void
@@ -164,7 +215,71 @@ reflection_uninit_effect (void *params, backbuffer_info *bbuf)
   free_skybox (rdata->skybox);
   free_cubemap (rdata->cubemap);
   free_shader (rdata->plain_texture_shader);
+  free_shader (rdata->ghost_shader);
+  free_shader (rdata->rib_shader);
   free_world (rdata->world);
+  free (rdata->rib_dl);
+  free (rdata->rib_lo_dl);
+}
+
+static float rib_offset = 0;
+
+static void
+rib_render (reflection_data *rdata, Mtx camera, int lo)
+{
+  int i;
+  object_info *which_obj;
+  void *disp_list;
+  u32 *dl_size;
+
+  shader_load (rdata->rib_shader);
+  
+  if (lo)
+    {
+      which_obj = &rib_lo_obj;
+      disp_list = rdata->rib_lo_dl;
+      dl_size = &rdata->rib_lo_dl_size;
+    }
+  else
+    {
+      which_obj = &rib_obj;
+      disp_list = rdata->rib_dl;
+      dl_size = &rdata->rib_dl_size;
+    }
+
+  object_set_arrays (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0);
+
+#if 0
+  if (*dl_size == 0)
+    {
+      GX_BeginDispList (disp_list, RIB_DL_SIZE);
+      object_render (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+      *dl_size = GX_EndDispList ();
+      srv_printf ("Initialised display list for %s rib object (%u bytes)\n",
+		  lo ? "lo" : "hi", *dl_size);
+      DCFlushRange (disp_list, *dl_size);
+    }
+
+  if (*dl_size == 0)
+    {
+      srv_printf ("display list didn't fit\n");
+      return;
+    }
+#endif
+
+  for (i = 0; i < 10; i++)
+    {
+      guMtxIdentity (rdata->rib_mv);
+      guMtxTransApply (rdata->rib_mv, rdata->rib_mv, 0, 0,
+		       (i - 4.5) * 20 + rib_offset);
+    
+      object_set_matrices (&rdata->world->scene, &rdata->rib_loc,
+			   camera, rdata->rib_mv, rdata->rib_scale,
+			   NULL, 0);
+
+      //GX_CallDispList (disp_list, *dl_size);
+      object_render (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+    }
 }
 
 static float around = 0.0;
@@ -199,6 +314,8 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
 			   cubeface_proj, GX_PERSPECTIVE);
       skybox_render (rdata->skybox);
       
+      rib_render (rdata, camera, 1);
+      
       GX_CopyTex (rdata->cubemap->texels[i], GX_TRUE);
     }
   
@@ -222,6 +339,12 @@ reflection_display_effect (uint32_t time_offset, void *params, int iparam)
 		       rdata->world->projection_type);
   skybox_render (rdata->skybox);
   world_display (rdata->world);
+  
+  rib_render (rdata, rdata->world->scene.camera, 0);
+
+  rib_offset += 0.5;
+  if (rib_offset >= 20)
+    rib_offset = 0;
 #endif
 }
 

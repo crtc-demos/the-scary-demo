@@ -160,6 +160,12 @@ objects/cross-cube.inc:	objects/cross-cube.dae
 objects/scary-skull-2.inc:	objects/scary-skull-2.dae
 	$(OBJCONVERT) -c -t -yz -i -n scary_skull $< -o $@
 
+objects/rib.inc:	objects/rib.dae
+	$(OBJCONVERT) -c -yz -i -n rib $< -o $@
+
+objects/rib-lo.inc:	objects/rib-lo.dae
+	$(OBJCONVERT) -c -yz -i -n rib_lo $< -o $@
+
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	
 
