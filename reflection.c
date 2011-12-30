@@ -331,6 +331,9 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   scene_update_camera (&rdata->world->scene);
 
+  /* We only need to set this once...  */
+  GX_LoadProjectionMtx (cubeface_proj, GX_PERSPECTIVE);
+
   for (i = 0; i < 6; i++)
     {
       Mtx camera;
@@ -343,7 +346,7 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
       rib_render (rdata, camera, 1, 0.3 * sinf (twisty));
 
       skybox_set_matrices (&rdata->world->scene, camera, rdata->skybox,
-			   cubeface_proj, GX_PERSPECTIVE);
+			   NULL, 0);
       skybox_render (rdata->skybox);
       
       GX_CopyTex (rdata->cubemap->texels[i], GX_TRUE);
