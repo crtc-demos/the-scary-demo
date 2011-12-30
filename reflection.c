@@ -334,13 +334,14 @@ reflection_display_effect (uint32_t time_offset, void *params, int iparam)
 #if 0
   screenspace_rect (rdata->plain_texture_shader, GX_VTXFMT0, 0);
 #else
+  world_display (rdata->world);
+  
+  rib_render (rdata, rdata->world->scene.camera, 0);
+
   skybox_set_matrices (&rdata->world->scene, rdata->world->scene.camera,
 		       rdata->skybox, rdata->world->projection,
 		       rdata->world->projection_type);
   skybox_render (rdata->skybox);
-  world_display (rdata->world);
-  
-  rib_render (rdata, rdata->world->scene.camera, 0);
 
   rib_offset += 0.5;
   if (rib_offset >= 20)
