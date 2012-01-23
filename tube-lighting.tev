@@ -1,3 +1,3 @@
 stage 0:
-  tev.rgb = clamp (chan0.aaa + texmap0[texcoord0] * chan0.rgb);
+  tev.rgb = clamp (chan0.aaa + texmap0[texcoord0].rgb * chan0.rgb);
   tev.a = tev.a;

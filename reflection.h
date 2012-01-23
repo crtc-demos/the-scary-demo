@@ -10,6 +10,7 @@ typedef struct
   skybox_info *skybox;
   cubemap_info *cubemap;
   shader_info *plain_texture_shader;
+  int skybox_redness;
   
   world_info *world;
 

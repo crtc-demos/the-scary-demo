@@ -51,6 +51,18 @@ plain_texturing_setup (void *dummy)
   #include "plain-texturing.inc"
 }
 
+static void
+skybox_mixcol_setup (void *privdata)
+{
+  skybox_shader_data *shader_data = privdata;
+  int face = shader_data->face;
+  int redness = *(int*) shader_data->private_data;
+
+  #include "skybox-mixcol.inc"
+  
+  GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 0, 0, redness });
+}
+
 #ifndef USE_EMBM
 static int colourswitch;
 
@@ -113,7 +125,8 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 
   guPerspective (cubeface_proj, 90, 1.0f, 0.2f, 800.0f);
 
-  rdata->skybox = create_skybox (800.0 / sqrtf (3.0));
+  rdata->skybox = create_skybox (800.0 / sqrtf (3.0), &skybox_mixcol_setup,
+				 (void *) &rdata->skybox_redness);
   rdata->cubemap = create_cubemap (256, GX_TF_RGB565, 512, GX_TF_RGB565);
   
   rdata->plain_texture_shader = create_shader (&plain_texturing_setup, NULL);
@@ -330,6 +343,8 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
 			      30 * sinf (around) * cosf (up) });
 
   scene_update_camera (&rdata->world->scene);
+
+  rdata->skybox_redness = 128.0 + PAD_SubStickY (0);
 
   /* We only need to set this once...  */
   GX_LoadProjectionMtx (cubeface_proj, GX_PERSPECTIVE);

@@ -19,32 +19,16 @@ static TPLFile snakeskinTPL;
 #define TUBE_AROUND 16
 #define TUBE_ALONG 64
 
+tube_data tube_data_0;
+
 static f32 *tube[NUM_TUBES] = { 0 };
 static f32 *tubenorms[NUM_TUBES] = { 0 };
-
-static light_info light0 =
-{
-  .pos = { 20, 20, 30 },
-  .lookat = { 0, 0, 0 },
-  .up = { 0, 1, 0 }
-};
-
-static light_info light1 =
-{
-  .pos = { -20, -20, 30 },
-  .lookat = { 0, 0, 0 },
-  .up = { 0, 1, 0 }
-};
 
 static float lightdeg = 0.0;
 static float deg = 0.0;
 static float deg2 = 0.0;
 
-static Mtx44 perspmat;
-static Mtx viewmat, depth, texproj;
-static guVector pos = {0, 0, 50};
-static guVector up = {0, 1, 0};
-static guVector lookat = {0, 0, 0};
+//static Mtx viewmat, depth, texproj;
 
 static void
 allocate_tube_arrays (unsigned int which, unsigned int around_steps,
@@ -149,6 +133,7 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
 		around_steps * along_steps * 3 * sizeof (f32));
 }
 
+#if 0
 static void
 setup_tube_mats (Mtx viewMatrix, Mtx depth, Mtx texproj, int do_texture_mats)
 {
@@ -181,6 +166,7 @@ setup_tube_mats (Mtx viewMatrix, Mtx depth, Mtx texproj, int do_texture_mats)
   guMtxTranspose (mvitmp, mvi);
   GX_LoadNrmMtxImm (mvi, GX_PNMTX0);
 }
+#endif
 
 static void
 render_tube (unsigned int around_steps, unsigned int along_steps)
@@ -219,73 +205,9 @@ render_tube (unsigned int around_steps, unsigned int along_steps)
 }
 
 static void
-tubes_init_effect (void *params, backbuffer_info *bbuf)
+specular_lighting_1light (void *privdata)
 {
-  unsigned int i;
-
-  guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
-  guLookAt (viewmat, &pos, &up, &lookat);
-
-  for (i = 0; i < NUM_TUBES; i++)
-    allocate_tube_arrays (i, TUBE_AROUND, TUBE_ALONG);
-  
-  TPL_OpenTPLFromMemory (&snakeskinTPL, (void *) snakeskin_tpl,
-			 snakeskin_tpl_size);
-
-  GX_ClearVtxDesc ();
-  GX_SetVtxDesc (GX_VA_POS, GX_INDEX16);
-  GX_SetVtxDesc (GX_VA_NRM, GX_INDEX16);
-  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
-  
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
-  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-}
-
-static void
-tubes_uninit_effect (void *params, backbuffer_info *bbuf)
-{
-  unsigned int i;
-
-  for (i = 0; i < NUM_TUBES; i++)
-    free_tube_arrays (i);
-}
-
-static void
-update_anim (void)
-{
-  deg++;
-  lightdeg += 0.5;
-  deg2 += 0.5;
-  phase += 0.1;
-}
-
-static display_target
-tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
-{
-  unsigned int i;
-
-  GX_InvVtxCache ();
-  GX_InvalidateTexAll ();
-  
-  light0.pos.x = FASTCOS ((lightdeg * 4) / 180.0 * M_PI) * 30.0;
-  light0.pos.y = FASTCOS (lightdeg / 180.0 * M_PI) * 25.0;
-  light0.pos.z = FASTSIN (lightdeg / 180.0 * M_PI) * 25.0;
-
-  light_update (viewmat, &light0);
-  light_update (viewmat, &light1);
-
-  for (i = 0; i < NUM_TUBES; i++)
-    fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
-  
-  update_anim ();
-  
-  return MAIN_BUFFER;
-}
-
-static void
-specular_lighting_1light (void)
-{
+  world_info *world = (world_info *) privdata;
   GXLightObj lo0;
   GXLightObj lo1;
   guVector ldir;
@@ -303,49 +225,153 @@ specular_lighting_1light (void)
 		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_SPEC);
 
   /* Light 0.  */
-  guVecSub (&light0.tpos, &light0.tlookat, &ldir);
+  guVecSub (&world->light[0].tpos, &world->light[0].tlookat, &ldir);
   guVecNormalize (&ldir);
 
   GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightDistAttn (&lo0, 1.0, 1.0, GX_DA_OFF);
   GX_InitLightShininess (&lo0, 64);
   GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
 
   /* Light 1.  */
-  guVecSub (&light1.tpos, &light1.tlookat, &ldir);
+  guVecSub (&world->light[1].tpos, &world->light[1].tlookat, &ldir);
   guVecNormalize (&ldir);
 
   GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightDistAttn (&lo1, 1.0, 1.0, GX_DA_OFF);
   GX_InitLightShininess (&lo1, 32);
   GX_InitLightColor (&lo1, (GXColor) { 128, 32, 32, 192 });
   GX_LoadLightObj (&lo1, GX_LIGHT1);
+}
 
-  GX_InvalidateTexAll ();
+static void
+tubes_init_effect (void *params, backbuffer_info *bbuf)
+{
+  unsigned int i;
+  tube_data *tdata = (tube_data *) params;
+
+  tdata->world = create_world (2);
+  
+  world_set_perspective (tdata->world, 60, 1.33f, 10.0f, 300.0f);
+  world_set_pos_lookat_up (tdata->world,
+			   (guVector) { 0, 0, 50 },
+			   (guVector) { 0, 0, 0 },
+			   (guVector) { 0, 1, 0 });
+  world_set_light_pos_lookat_up (tdata->world, 0,
+				 (guVector) { 20, 20, 30 },
+				 (guVector) { 0, 0, 0 },
+				 (guVector) { 0, 1, 0 });
+  world_set_light_pos_lookat_up (tdata->world, 1,
+				 (guVector) { -20, -20, 30 },
+				 (guVector) { 0, 0, 0 },
+				 (guVector) { 0, 1, 0 });
+
+  for (i = 0; i < NUM_TUBES; i++)
+    allocate_tube_arrays (i, TUBE_AROUND, TUBE_ALONG);
+  
+  TPL_OpenTPLFromMemory (&snakeskinTPL, (void *) snakeskin_tpl,
+			 snakeskin_tpl_size);
+
+  TPL_GetTexture (&snakeskinTPL, snakeskin, &tdata->snakeskin_texture_obj);
+
+  tdata->tube_shader = create_shader (&specular_lighting_1light,
+				      (void *) tdata->world);
+  shader_append_texmap (tdata->tube_shader, &tdata->snakeskin_texture_obj,
+			GX_TEXMAP0);
+  shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
+			     GX_TG_TEX0, GX_IDENTITY);
+
+  object_loc_initialise (&tdata->tube_locator, GX_PNMTX0);
+}
+
+static void
+tubes_uninit_effect (void *params, backbuffer_info *bbuf)
+{
+  tube_data *tdata = (tube_data *) params;
+  unsigned int i;
+
+  for (i = 0; i < NUM_TUBES; i++)
+    free_tube_arrays (i);
+
+  free_world (tdata->world);
+  free_shader (tdata->tube_shader);
+}
+
+static void
+update_anim (void)
+{
+  deg++;
+  lightdeg += 0.5;
+  deg2 += 0.5;
+  phase += 0.1;
+}
+
+static display_target
+tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
+{
+  unsigned int i;
+  tube_data *tdata = (tube_data *) params;
+
+  GX_InvVtxCache ();
+  
+  tdata->world->light[0].pos.x = FASTCOS ((lightdeg * 4) / 180.0 * M_PI) * 30.0;
+  tdata->world->light[0].pos.y = FASTCOS (lightdeg / 180.0 * M_PI) * 25.0;
+  tdata->world->light[0].pos.z = FASTSIN (lightdeg / 180.0 * M_PI) * 25.0;
+
+  /*light_update (viewmat, &light0);
+  light_update (viewmat, &light1);*/
+
+  for (i = 0; i < NUM_TUBES; i++)
+    fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
+  
+  update_anim ();
+  
+  return MAIN_BUFFER;
 }
 
 static void
 tubes_display_effect (uint32_t time_offset, void *params, int iparam)
 {
+  tube_data *tdata = (tube_data *) params;
+  world_info *world = tdata->world;
   unsigned int i;
-  GXTexObj texture;
-  
-  TPL_GetTexture (&snakeskinTPL, snakeskin, &texture);
-  GX_SetTexCoordGen (GX_TEXCOORD0, GX_TG_MTX3x4, GX_TG_TEX0, GX_IDENTITY);
-  
-  GX_InvalidateTexAll ();
-  
-  GX_LoadTexObj (&texture, GX_TEXMAP0);
+  Mtx modelview, rotmtx;
+  const guVector axis = {0, 1, 0};
+  const guVector axis2 = {0, 0, 1};
 
-  GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+  //GX_InvalidateTexAll ();
   
-  specular_lighting_1light ();
+  /* Updates various things, transformed light positions etc.  */
+  world_display (world);
+  
+  //GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+  
+  shader_load (tdata->tube_shader);
   
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_TRUE);
 
-  setup_tube_mats (viewmat, depth, texproj, 1);
+  guMtxRotAxisDeg (modelview, (guVector *) &axis, deg);
+  guMtxRotAxisDeg (rotmtx, (guVector *) &axis2, deg);
+  
+  guMtxConcat (modelview, rotmtx, modelview);
+
+  object_set_matrices (&world->scene, &tdata->tube_locator,
+		       world->scene.camera, modelview, NULL,
+		       world->projection, world->projection_type);
+  //setup_tube_mats (viewmat, depth, texproj, 1);
+
+  GX_ClearVtxDesc ();
+  GX_SetVtxDesc (GX_VA_POS, GX_INDEX16);
+  GX_SetVtxDesc (GX_VA_NRM, GX_INDEX16);
+  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+  
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_NRM, GX_NRM_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
   for (i = 0; i < NUM_TUBES; i++)
     {

@@ -12,9 +12,11 @@
 static TPLFile skyTPL;
 
 static void
-tex_shader_setup (void *dummy)
+tex_shader_setup (void *data)
 {
-  int face = *(int *) dummy;
+  skybox_shader_data *shader_data = data;
+  int face = shader_data->face;
+
   #include "skybox.inc"
 }
 
@@ -29,11 +31,12 @@ static const int faceno[6] =
 };
 
 skybox_info *
-create_skybox (float radius)
+create_skybox (float radius, tev_setup_fn shader, void *private_data)
 {
   skybox_info *skybox = malloc (sizeof (skybox_info));
   int i;
-
+  tev_setup_fn use_shader = shader ? shader : &tex_shader_setup;
+  
   TPL_OpenTPLFromMemory (&skyTPL, (void *) sky_tpl, sky_tpl_size);
   
   TPL_GetTexture (&skyTPL, sky_left, &skybox->tex[SKYBOX_LEFT]);
@@ -48,8 +51,10 @@ create_skybox (float radius)
 
   for (i = 0; i < 6; i++)
     {
-      skybox->face_shader[i] = create_shader (&tex_shader_setup,
-					      (void *) &faceno[i]);
+      skybox->shader_data[i].face = i;
+      skybox->shader_data[i].private_data = private_data;
+      skybox->face_shader[i] = create_shader (use_shader,
+					      (void *) &skybox->shader_data[i]);
       shader_append_texmap (skybox->face_shader[i], &skybox->tex[i], faceno[i]);
       shader_append_texcoordgen (skybox->face_shader[i], GX_TEXCOORD0,
 				 GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
