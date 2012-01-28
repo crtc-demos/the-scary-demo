@@ -17,6 +17,7 @@ create_world (int num_lights)
   
   world->light = calloc (num_lights, sizeof (light_info));
   world->standard_objects = EMPTY (standard_object);
+  world->num_lights = num_lights;
   
   return world;
 }

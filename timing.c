@@ -75,15 +75,15 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-/*{      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }*/
+  {      0, 300000, &parallax_mapping_methods, &parallax_mapping_data_0, -1, 0 }
  /*{       0, 300000, &reflection_methods, &reflection_data_0, -1, 0 }*/
  /* {      0, 50000, &tentacle_methods, &tentacle_data_0, -1, 0 },*/
  /* {      0,  15000, &glass_methods, &glass_data_0, -1, 0 },
   {  15000,  50000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  50000,  70000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
-  {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },*/
-  {  95000, 300000 /* 110000*/, &tubes_methods, &tube_data_0, -1, 0 },
-/*  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }*/
+  {  70000,  95000, &soft_crtc_methods, NULL, -1, 0 },
+  {  95000, 300000 // 110000, &tubes_methods, &tube_data_0, -1, 0 },
+  { 110000, 300000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }*/
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))

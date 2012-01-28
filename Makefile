@@ -48,7 +48,8 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/primary.tpl.o images/mighty_zebu.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
 		images/height.tpl.o images/height_bump.tpl.o \
-		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o
+		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o \
+		images/snakytextures.tpl.o images/snaketanmap.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 
@@ -59,7 +60,7 @@ OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/pumpkin.inc objects/softcube.inc \
 		objects/plane.inc objects/textured-cube.inc \
 		objects/tentacles.inc objects/cross-cube.inc \
-		objects/scary-skull-2.inc
+		objects/scary-skull-2.inc objects/cobra.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -105,6 +106,11 @@ images/height_bump.png: images/height.png
 
 images/skull_tangentmap_gx.png: images/skull_tangentmap.png
 	$(BUMPTOOL) -b $< -o $@
+
+images/snaketanmap.png: images/snakenorm.png
+	$(BUMPTOOL) -b $< -o $@
+
+images/snakytextures.d: images/snaketanmap.png
 
 #%.tpl:	%.scf
 #	$(GXTEXCONV) -s $< -o $@
@@ -165,6 +171,9 @@ objects/rib.inc:	objects/rib.dae
 
 objects/rib-lo.inc:	objects/rib-lo.dae
 	$(OBJCONVERT) -c -yz -i -n rib_lo $< -o $@
+
+objects/cobra.inc:	objects/cobra9.dae
+	$(OBJCONVERT) -c -yz -i -t -s Cube_003-mesh -n cobra $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

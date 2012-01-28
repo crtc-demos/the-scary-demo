@@ -1,4 +1,5 @@
 #include "light.h"
+#include "server.h"
 
 void
 light_update (Mtx viewmat, light_info *mylight)

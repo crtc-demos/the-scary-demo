@@ -8,6 +8,7 @@
 #include "tubes.h"
 #include "light.h"
 #include "sintab.h"
+#include "server.h"
 
 #include "images/snakeskin.h"
 #include "snakeskin_tpl.h"

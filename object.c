@@ -225,7 +225,7 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
   if (obj->calculate_parallax_tex_mtx)
     {
       Mtx parmtx, offset;
-      float scale = 256.0 / (float) obj->parallax.texture_edge;
+      float scale = -256.0 / (float) obj->parallax.texture_edge;
       
       /***
        ( s )   [ 1 0 0 0 ] ( +x )
