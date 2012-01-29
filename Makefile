@@ -107,7 +107,7 @@ images/height_bump.png: images/height.png
 images/skull_tangentmap_gx.png: images/skull_tangentmap.png
 	$(BUMPTOOL) -b $< -o $@
 
-images/snaketanmap.png: images/snakenorm.png
+images/snaketanmap.png: images/snakenorm2.png
 	$(BUMPTOOL) -b $< -o $@
 
 images/snakytextures.d: images/snaketanmap.png

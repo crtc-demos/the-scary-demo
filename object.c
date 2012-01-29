@@ -225,7 +225,7 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
   if (obj->calculate_parallax_tex_mtx)
     {
       Mtx parmtx, offset;
-      float scale = -256.0 / (float) obj->parallax.texture_edge;
+      float scale = 256.0 / (float) obj->parallax.texture_edge;
       
       /***
        ( s )   [ 1 0 0 0 ] ( +x )
@@ -241,9 +241,9 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
        [ -1  0  0 ] [ v20 v21 v22 ]    [ -v00 -v01 -v02 ]
        
       ***/
-      guMtxRowCol (parmtx, 0, 0) = -scale * guMtxRowCol (vertex, 2, 0);
-      guMtxRowCol (parmtx, 0, 1) = -scale * guMtxRowCol (vertex, 2, 1);
-      guMtxRowCol (parmtx, 0, 2) = -scale * guMtxRowCol (vertex, 2, 2);
+      guMtxRowCol (parmtx, 0, 0) = scale * guMtxRowCol (vertex, 2, 0);
+      guMtxRowCol (parmtx, 0, 1) = scale * guMtxRowCol (vertex, 2, 1);
+      guMtxRowCol (parmtx, 0, 2) = scale * guMtxRowCol (vertex, 2, 2);
       guMtxRowCol (parmtx, 0, 3) = 0;
 
       guMtxRowCol (parmtx, 1, 0) = 0;
@@ -275,9 +275,9 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxRowCol (parmtx, 0, 1) = 0;
       guMtxRowCol (parmtx, 0, 2) = 0;
 
-      guMtxRowCol (parmtx, 1, 0) = -scale * guMtxRowCol (vertex, 2, 0);
-      guMtxRowCol (parmtx, 1, 1) = -scale * guMtxRowCol (vertex, 2, 1);
-      guMtxRowCol (parmtx, 1, 2) = -scale * guMtxRowCol (vertex, 2, 2);
+      guMtxRowCol (parmtx, 1, 0) = scale * guMtxRowCol (vertex, 2, 0);
+      guMtxRowCol (parmtx, 1, 1) = scale * guMtxRowCol (vertex, 2, 1);
+      guMtxRowCol (parmtx, 1, 2) = scale * guMtxRowCol (vertex, 2, 2);
 
       guMtxConcat (tempmtx, parmtx, offset);
 

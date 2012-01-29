@@ -91,8 +91,8 @@ static TPLFile stone_bumpTPL;
 */
 
 /* These settings are kind of hackish & arbitrary...  */
-#define BUMP_DISPLACEMENT_STRENGTH -2
-#define BUMP_TANGENT_STRENGTH -2
+#define BUMP_DISPLACEMENT_STRENGTH -3
+#define BUMP_TANGENT_STRENGTH -1
 
 #define TEXCOORD_MAP_H 512
 #define TEXCOORD_MAP_W 512
@@ -353,7 +353,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
   {
     f32 indmtx[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
     /* This wants to be: log2(size of bump s,t-offset texture) - 7.  */
-    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 3);
+    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
   }
 
   rendertarget_texture (TEXCOORD_MAP2_W, TEXCOORD_MAP2_H, GX_CTF_GB8);
