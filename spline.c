@@ -219,7 +219,7 @@ get_evaluated_spline_pos (spline_info *spline, float *dst, float u)
   line_start = eval->accum_length[idx];
   sec_length = eval->accum_length[idx + 1] - line_start;
   
-  if (u < line_start || u >= (line_start + sec_length))
+  if (u < line_start || u > (line_start + sec_length))
     srv_printf ("bad section: line_start=%f, u=%f, sec_length=%f, idx=%d\n",
 		line_start, u, sec_length, idx);
   

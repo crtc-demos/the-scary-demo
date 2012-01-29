@@ -47,6 +47,9 @@ static TPLFile snakytextureTPL;
 
 static TPLFile snaketanmapTPL;
 
+#include "cam-path.h"
+#include "objects/cobra9.xyz"
+
 /*
 #undef USE_GRID
 #define WITH_LIGHTING
@@ -157,7 +160,7 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   unsigned int tex_edge_length;
-  guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
+  guPerspective (perspmat, 45, 1.33f, 10.0f, 500.0f);
 
   tex_edge_length = 1024;
   
@@ -279,7 +282,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_info *render_object;
-  Mtx rot;
+  Mtx rot, id;
 
   render_object = &cobra_obj;
 
@@ -290,12 +293,26 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
   light0.pos.y = 40;
   light0.pos.z = 40 * sinf (lightrot);
   
-  lightrot += 0.01;
+  lightrot += 0.2;
 
-  scene_set_pos (&scene,
+  /*scene_set_pos (&scene,
 		 (guVector) { 50 * cosf (around) * cosf (up),
 			      50 * sinf (up),
-			      50 * sinf (around) * cosf (up) });
+			      50 * sinf (around) * cosf (up) });*/
+  guMtxScale (id, 10, 10, 10);
+  {
+    float tx, ty, tz;
+    tx = guMtxRowCol (id, 0, 1);
+    ty = guMtxRowCol (id, 1, 1);
+    tz = guMtxRowCol (id, 2, 1);
+    guMtxRowCol (id, 0, 1) = guMtxRowCol (id, 0, 2);
+    guMtxRowCol (id, 1, 1) = guMtxRowCol (id, 1, 2);
+    guMtxRowCol (id, 2, 1) = guMtxRowCol (id, 2, 2);
+    guMtxRowCol (id, 0, 2) = tx;
+    guMtxRowCol (id, 1, 2) = ty;
+    guMtxRowCol (id, 2, 2) = tz;
+  }
+  cam_path_follow (&scene, id, &cobra9, (float) time_offset / 10000.0);
 
   scene_update_camera (&scene);
 
@@ -314,11 +331,11 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
   pdata->phase2 += (float) PAD_StickY (0) / 100.0;*/
   
   guMtxIdentity (pdata->modelview);
-  guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), pdata->phase);
+  /*guMtxRotAxisDeg (rot, &((guVector) { 0, 1, 0 }), pdata->phase);
   guMtxConcat (rot, pdata->modelview, pdata->modelview);
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), pdata->phase2);
-  guMtxConcat (rot, pdata->modelview, pdata->modelview);
-  guMtxTransApply (pdata->modelview, pdata->modelview, 0, -20, 0);
+  guMtxConcat (rot, pdata->modelview, pdata->modelview);*/
+  //guMtxTransApply (pdata->modelview, pdata->modelview, 0, -20, 0);
 
   guMtxScale (pdata->scale, 10.0, 10.0, 10.0);
   

@@ -1,0 +1,50 @@
+/* Curve NurbsPath.001 animation path setting:True */
+static float NurbsPath_001_knots_0[][4] = {
+  { 1.210835337638855, -19.6363525390625, 1.8783230781555176, 1.0 },
+  { -5.994734764099121, -16.506792068481445, 0.5379512310028076, 1.0 },
+  { -5.959118366241455, -14.244399070739746, 0.96153724193573, 1.0 },
+  { 5.155880451202393, -12.492801666259766, 2.4762215614318848, 1.0 },
+  { 5.245035648345947, -10.32234001159668, 3.232766628265381, 1.0 },
+  { -5.7465362548828125, -7.271217346191406, 2.0319581031799316, 1.0 },
+  { -0.3451951742172241, -5.35707950592041, 0.4281809329986572, 1.0 },
+  { -0.21902704238891602, -1.901914358139038, 2.7022690773010254, 1.0 },
+};
+static float NurbsPath_001_tilt_0[] = {
+  0.0,
+  0.0,
+  -0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+};
+static float NurbsPath_001_weight_0[] = {
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+};
+static spline_tracking_obj NurbsPath_001_0 = {
+  .base = { .type = TRACKING_OBJ_PATH },
+  .spline = {
+    .length = 8,
+    .order = 5,
+    .resolution = 12,
+    .knots = &NurbsPath_001_knots_0,
+    .tilt = NurbsPath_001_tilt_0,
+    .weight = NurbsPath_001_weight_0
+  }
+};
+static static_tracking_obj tracking_empty = {
+  .base = { .type = TRACKING_OBJ_STATIC },
+  .pos = { -0.2533777952194214, 0.27127838134765625, 3.4024715423583984 }
+};
+cam_path cobra9 = {
+  .follow_path = (tracking_obj_base *) &NurbsPath_001_0,
+  .track_to = (tracking_obj_base *) &tracking_empty
+};
