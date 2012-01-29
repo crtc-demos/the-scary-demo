@@ -5,11 +5,14 @@
 # texcoord2: parallax T-offset texcoord
 
 stage 0:
-  itexcoord = s_dynmtx(texcoord1) ** (texmap1[texcoord0] + vec3 (-128, -128, -128)) * indscale0;
+  itexcoord = s_dynmtx(texcoord1)
+	      ** (texmap1[texcoord0] + vec3 (-128, -128, -128)) * indscale0;
   tev = tev;
 
 stage 1:
-  itexcoord = itexcoord + t_dynmtx(texcoord2) ** (texmap1[texcoord0] + vec3 (-128, -128, -128)) * indscale0;
+  itexcoord = itexcoord + t_dynmtx(texcoord2)
+			  ** (texmap1[texcoord0] + vec3 (-128, -128, -128))
+			     * indscale0;
   tev = tev;
 
 stage 2:
