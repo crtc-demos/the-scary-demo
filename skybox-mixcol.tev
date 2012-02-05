@@ -1,0 +1,2 @@
+stage 0:
+  tev.rgb = mix (texmap$face[texcoord0].rgb, cr0.rgb, cr0.aaa);

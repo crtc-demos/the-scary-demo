@@ -40,7 +40,7 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
 		parallax-lit-phase3.inc channelsplit.inc skybox.inc \
-		fancy-envmap.inc embm.inc skybox-mixcol.inc
+		fancy-envmap.inc embm.inc skybox-mixcol.inc column-texture.inc
 
 TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
@@ -49,7 +49,7 @@ TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
 		images/fake_stone_depth.tpl.o images/grid.tpl.o \
 		images/height.tpl.o images/height_bump.tpl.o \
 		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o \
-		images/snakytextures.tpl.o images/snaketanmap.tpl.o
+		images/snakytextures.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 
@@ -60,7 +60,8 @@ OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/pumpkin.inc objects/softcube.inc \
 		objects/plane.inc objects/textured-cube.inc \
 		objects/tentacles.inc objects/cross-cube.inc \
-		objects/scary-skull-2.inc objects/cobra.inc
+		objects/scary-skull-2.inc objects/cobra.inc \
+		objects/column.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -174,6 +175,9 @@ objects/rib-lo.inc:	objects/rib-lo.dae
 
 objects/cobra.inc:	objects/cobra9.dae
 	$(OBJCONVERT) -c -yz -i -t -s Cube_003-mesh -n cobra $< -o $@
+
+objects/column.inc:	objects/column.dae
+	$(OBJCONVERT) -c -yz -i -s column-mesh -n column $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

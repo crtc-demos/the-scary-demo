@@ -20,6 +20,10 @@
 
 INIT_OBJECT (cobra_obj, cobra);
 
+#include "objects/column.inc"
+
+INIT_OBJECT (column_obj, column);
+
 static Mtx44 perspmat;
 
 static scene_info scene =
@@ -42,56 +46,8 @@ static light_info light0 =
 
 static TPLFile snakytextureTPL;
 
-#include "images/snaketanmap.h"
-#include "snaketanmap_tpl.h"
-
-static TPLFile snaketanmapTPL;
-
 #include "cam-path.h"
 #include "objects/cobra9.xyz"
-
-/*
-#undef USE_GRID
-#define WITH_LIGHTING
-#undef TUNNEL_SECTION
-
-#ifdef TUNNEL_SECTION
-extern object_info tunnel_section_obj;
-#endif
-
-#ifdef USE_GRID
-#include "images/grid.h"
-#include "grid_tpl.h"
-#else
-#include "images/more_stones.h"
-#include "more_stones_tpl.h"
-#endif
-
-extern TPLFile stone_textureTPL;
-
-#ifdef USE_GRID
-#include "images/height.h"
-#include "height_tpl.h"
-#else
-#include "images/fake_stone_depth.h"
-#include "fake_stone_depth_tpl.h"
-#endif
-
-static TPLFile stone_depthTPL;
-
-#ifdef WITH_LIGHTING
-#ifdef USE_GRID
-#include "images/height_bump.h"
-#include "height_bump_tpl.h"
-
-static TPLFile height_bumpTPL;
-#else
-#include "images/stones_bump.h"
-#include "stones_bump_tpl.h"
-
-static TPLFile stone_bumpTPL;
-#endif
-*/
 
 /* These settings are kind of hackish & arbitrary...  */
 #define BUMP_DISPLACEMENT_STRENGTH -3
@@ -123,6 +79,28 @@ static void
 parallax_phase3 (void *dummy)
 {
   #include "parallax-lit-phase3.inc"
+}
+
+static void
+column_shader_setup (void *dummy)
+{
+  GXLightObj lo0;
+  guVector ldir;
+
+  #include "column-texture.inc"
+
+  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
+  GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
+		  GX_DF_CLAMP, GX_AF_NONE);
+
+  guVecSub (&light0.tpos, &light0.tlookat, &ldir);
+  guVecNormalize (&ldir);
+
+  GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightShininess (&lo0, 64);
+  GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
+  GX_LoadLightObj (&lo0, GX_LIGHT0);
 }
 
 static void
@@ -160,7 +138,7 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   unsigned int tex_edge_length;
-  guPerspective (perspmat, 45, 1.33f, 10.0f, 500.0f);
+  guPerspective (perspmat, 45, 1.33f, 1.0f, 500.0f);
 
   tex_edge_length = 1024;
   
@@ -170,8 +148,6 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 
   TPL_OpenTPLFromMemory (&snakytextureTPL, (void *) snakytextures_tpl,
 			 snakytextures_tpl_size);
-  TPL_OpenTPLFromMemory (&snaketanmapTPL, (void *) snaketanmap_tpl,
-			 snaketanmap_tpl_size);
 
   pdata->lighting_texture = create_lighting_texture ();
   pdata->texcoord_map = memalign (32, GX_GetTexBufferSize (TEXCOORD_MAP_W,
@@ -209,7 +185,7 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 			     GX_TG_MTX2x4, GX_TG_TANGENT, GX_TEXMTX1);
 
   /* Phase 2.  */
-  TPL_GetTexture (&snaketanmapTPL, snake_tanmap, &pdata->height_bump_obj);
+  TPL_GetTexture (&snakytextureTPL, snake_tanmap, &pdata->height_bump_obj);
   pdata->parallax_lit_phase2_shader = create_shader (&parallax_phase2, NULL);
   shader_append_texmap (pdata->parallax_lit_phase2_shader,
 			&pdata->height_bump_obj, GX_TEXMAP3);
@@ -256,6 +232,15 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 			     GX_TG_MTX2x4, GX_TG_NRM, GX_TEXMTX2);
   shader_append_texcoordgen (pdata->parallax_lit_phase3_shader, GX_TEXCOORD6,
 			     GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX4);
+
+  TPL_GetTexture (&snakytextureTPL, column_texture,
+		  &pdata->column_texture_obj);
+
+  pdata->column_shader = create_shader (&column_shader_setup, NULL);
+  shader_append_texmap (pdata->column_shader, &pdata->column_texture_obj,
+			GX_TEXMAP0);
+  shader_append_texcoordgen (pdata->column_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
+			     GX_TG_TEX0, GX_IDENTITY);
 }
 
 static void
@@ -390,6 +375,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_loc map_flat_loc;
   object_info *render_object;
+  Mtx col_mv, col_scale;
+  int i;
 
   render_object = &cobra_obj;
   
@@ -417,6 +404,28 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
 		     GX_VTXFMT0, GX_VA_TEX0);
   object_render (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
+
+  shader_load (pdata->column_shader);
+  
+  guMtxScale (col_scale, 10.0, 10.0, 10.0);
+  object_set_arrays (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0, GX_VA_TEX0);
+
+  for (i = 0; i < 6; i++)
+    {
+      guMtxTrans (col_mv, 75.0, 0.0, 25.0 + i * 75);
+
+      object_set_matrices (&scene, &pdata->column_loc, scene.camera, col_mv,
+			   col_scale, NULL, 0);
+      object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0);
+
+      guMtxTrans (col_mv, -75.0, 0.0, 25.0 + i * 75);
+      object_set_matrices (&scene, &pdata->column_loc, scene.camera, col_mv,
+			   col_scale, NULL, 0);
+      object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0);
+    }
 }
 
 effect_methods parallax_mapping_methods =

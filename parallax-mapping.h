@@ -32,6 +32,10 @@ typedef struct
   shader_info *parallax_lit_phase1_shader;
   shader_info *parallax_lit_phase2_shader;
   shader_info *parallax_lit_phase3_shader;
+  
+  GXTexObj column_texture_obj;
+  shader_info *column_shader;
+  object_loc column_loc;
 } parallax_mapping_data;
 
 extern effect_methods parallax_mapping_methods;
