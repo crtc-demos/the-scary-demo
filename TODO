@@ -13,8 +13,8 @@ CRTC logo (soft_crtc)
 
 * Add camera path. [DONE]
 
-Tentacle
---------
+Tentacle (in box, colour-channel split)
+---------------------------------------
 
 * Fade in from black [DONE]
 
@@ -23,7 +23,7 @@ Tentacle
 Pumpkins
 --------
 
-* Drop pile of solid pumpkins, three on top of each other.
+* Drop pile of solid pumpkins, three on top of each other. [DONE]
 
 * Middle one spins round, and has a terrible face! Lights up. Try to restrict to good angles...
 
@@ -36,12 +36,10 @@ Snake
 
 * Add fog texture!
 
-* Fix horrible crash!
-
 Reflecting skull
 ----------------
 
-* Fix horrible crash!
+* Fix horrible crash! [DONE]
 
 * Add camera path
 
@@ -57,7 +55,7 @@ Bloom
 
 * Use mipmap levels/hardware box filter to get rid of jaggies.
 
-* Dunno, add background?
+* Dunno, add background? Inside of pumpkin?
 
 Tubes
 -----

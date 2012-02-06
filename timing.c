@@ -61,8 +61,8 @@ extern u32 diff_msec (u64 start, u64 end);
 //#include "its_3_a_e_a_m_mod.h"
 #endif
 
-#undef SKIP_TO_TIME
-//#define SKIP_TO_TIME 39000
+//#undef SKIP_TO_TIME
+#define SKIP_TO_TIME 30000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;

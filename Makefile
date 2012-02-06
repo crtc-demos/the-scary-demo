@@ -55,11 +55,11 @@ GENERATED_IMAGES :=	images/stones_bump.png images/skull_tangentmap_gx.png
 
 OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/beam-right.inc objects/beam-mouth.inc \
-		objects/pumpkin.inc objects/softcube.inc \
-		objects/plane.inc objects/textured-cube.inc \
-		objects/tentacles.inc objects/cross-cube.inc \
-		objects/scary-skull-2.inc objects/cobra.inc \
-		objects/column.inc
+		objects/pumpkin.inc objects/carved-pumpkin.inc \
+		objects/softcube.inc objects/plane.inc \
+		objects/textured-cube.inc objects/tentacles.inc \
+		objects/cross-cube.inc objects/scary-skull-2.inc \
+		objects/cobra.inc objects/column.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -131,8 +131,11 @@ images/snakytextures.d: images/snaketanmap.png
 objects/spooky-ghost.inc:	objects/spooky-ghost.dae
 	$(OBJCONVERT) -c -n spooky_ghost $< -o $@
 
-objects/pumpkin.inc:	objects/carved-pumpkin.dae
+objects/pumpkin.inc:	objects/pumpkin.dae
 	$(OBJCONVERT) -c -yz -i -n pumpkin $< -o $@
+
+objects/carved-pumpkin.inc:	objects/carved-pumpkin.dae
+	$(OBJCONVERT) -c -yz -i -n carved_pumpkin $< -o $@
 
 objects/beam-left.inc:	objects/beam-left.dae
 	$(OBJCONVERT) -c -yz -i -n beam_left $< -o $@

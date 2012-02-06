@@ -28,11 +28,13 @@ static TPLFile pumpkin_skinTPL;
 static TPLFile gradientTPL;
 
 #include "objects/pumpkin.inc"
+#include "objects/carved-pumpkin.inc"
 #include "objects/beam-left.inc"
 #include "objects/beam-right.inc"
 #include "objects/beam-mouth.inc"
 
 INIT_OBJECT (pumpkin_obj, pumpkin);
+INIT_OBJECT (carved_pumpkin_obj, carved_pumpkin);
 INIT_OBJECT (beam_left_obj, beam_left);
 INIT_OBJECT (beam_right_obj, beam_right);
 INIT_OBJECT (beam_mouth_obj, beam_mouth);
@@ -118,6 +120,7 @@ static void
 pumpkin_init_effect (void *params, backbuffer_info *bbuf)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
+  int i;
 
   guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
   phase = 0;
@@ -188,6 +191,12 @@ pumpkin_init_effect (void *params, backbuffer_info *bbuf)
   
   assert (pdata->pumpkin_lighting_shader && pdata->beam_lighting_shader
 	  && pdata->beam_z_render_shader);
+
+  for (i = 0; i < 3; i++)
+    {
+      pdata->vpos[i] = 250.0;
+      pdata->spd[i] = 0.0;
+    }
 }
 
 static void
@@ -372,6 +381,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
   Mtx mvtmp;
+  int i;
 
   /* Render pumpkins...  */
 
@@ -385,68 +395,108 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
   light_update (scene.camera, &light0);
   shader_load (pdata->pumpkin_lighting_shader);
 
-  object_set_arrays (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		     GX_VTXFMT0, GX_VA_TEX0);
+  if (time_offset < 5000)
+    {
+      object_set_arrays (&pumpkin_obj,
+			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
+			 GX_VA_TEX0);
 
-  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
-		       pdata->modelview, NULL, proj, GX_PERSPECTIVE);
+      for (i = 0; i < 3; i++)
+        {
+	  guMtxTransApply (pdata->modelview, mvtmp, 0, pdata->vpos[i], 0);
+	  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+			       mvtmp, NULL, proj, GX_PERSPECTIVE);
+	  object_render (&pumpkin_obj,
+			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+			 GX_VTXFMT0);
+	}
 
-  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		 GX_VTXFMT0);
-  
-  guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
-  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
-		       NULL, NULL, 0);
+      for (i = 0; i < 3; i++)
+        pdata->vpos[i] += pdata->spd[i];
 
-  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		 GX_VTXFMT0);
+      pdata->spd[0] -= 0.2;
+      if (time_offset > 1000)
+        pdata->spd[1] -= 0.2;
+      if (time_offset > 2000)
+        pdata->spd[2] -= 0.2;
 
-  guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
-  object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
-		       NULL, NULL, 0);
+      for (i = 0; i < 3; i++)
+        if (pdata->vpos[i] < i * 45.0)
+	  {
+	    pdata->vpos[i] = i * 45.0;
+	    pdata->spd[i] = 0.0;
+	  }
+    }
+  else
+    {
+      object_set_arrays (&carved_pumpkin_obj,
+			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
+			 GX_VA_TEX0);
 
-  object_render (&pumpkin_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
-		 GX_VTXFMT0);
+      object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
+			   pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
-  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
-  GX_SetColorUpdate (GX_TRUE);
-  GX_SetAlphaUpdate (GX_FALSE);
-  
-  /* Load indirect texture matrices.  */
-  {
-    f32 indmtx[2][3];
-    
-    //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
-    
-    /* Texture indices from colours go from 0 to 255: these are interpreted
-       exactly as-is for texture coordinates.  We have to scale by 0.5 (giving
-       us 0...127) due to the limited range of indirect matrices, then use an
-       exponent of 1 to get back to 0...255.  Also we multiply by 4 translating
-       from RGB8 to RGBA6, so compensate for that (not any more).  */
-    
-    indmtx[0][0] = 0.5; indmtx[0][1] = 0.0; indmtx[0][2] = 0.0;
-    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
-    
-    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
-    
-    indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
-    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+      object_render (&carved_pumpkin_obj,
+		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 1);
+      guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
+      object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+			   NULL, NULL, 0);
 
-    indmtx[0][0] = 0.0; indmtx[0][1] = 0.0; indmtx[0][2] = 0.5;
-    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+      object_render (&carved_pumpkin_obj,
+		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
-  }
+      guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
+      object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
+			   NULL, NULL, 0);
 
-  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
-  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
-  GX_SetCullMode (GX_CULL_BACK);
-  GX_SetColorUpdate (GX_TRUE);
-  GX_SetAlphaUpdate (GX_FALSE);
+      object_render (&carved_pumpkin_obj,
+		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-  screenspace_rect (pdata->beam_z_render_shader, GX_VTXFMT1, 0);
+      if (rand () & 8)
+        {
+	  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+	  GX_SetColorUpdate (GX_TRUE);
+	  GX_SetAlphaUpdate (GX_FALSE);
+
+	  /* Load indirect texture matrices.  */
+	  {
+	    f32 indmtx[2][3];
+
+	    //GX_SetIndTexCoordScale (GX_INDTEXSTAGE0, GX_ITS_1, GX_ITS_1);
+
+	    /* Texture indices from colours go from 0 to 255: these are interpreted
+	       exactly as-is for texture coordinates.  We have to scale by 0.5
+	       (giving us 0...127) due to the limited range of indirect matrices,
+	       then use an exponent of 1 to get back to 0...255.  Also we multiply
+	       by 4 translating from RGB8 to RGBA6, so compensate for that (not any
+	       more).  */
+
+	    indmtx[0][0] = 0.5; indmtx[0][1] = 0.0; indmtx[0][2] = 0.0;
+	    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+
+	    GX_SetIndTexMatrix (GX_ITM_0, indmtx, 1);
+
+	    indmtx[0][0] = 0.0; indmtx[0][1] = 0.5; indmtx[0][2] = 0.0;
+	    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+
+	    GX_SetIndTexMatrix (GX_ITM_1, indmtx, 1);
+
+	    indmtx[0][0] = 0.0; indmtx[0][1] = 0.0; indmtx[0][2] = 0.5;
+	    indmtx[1][0] = 0.0; indmtx[1][1] = 0.0; indmtx[1][2] = 0.0;
+
+	    GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
+	  }
+
+	  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+	  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+	  GX_SetCullMode (GX_CULL_BACK);
+	  GX_SetColorUpdate (GX_TRUE);
+	  GX_SetAlphaUpdate (GX_FALSE);
+
+	  screenspace_rect (pdata->beam_z_render_shader, GX_VTXFMT1, 0);
+	}
+    }
 
   phase += 0.01;
   phase2 += 0.008;

@@ -23,6 +23,9 @@ typedef struct
   object_loc beam_loc;
   
   shader_info *beam_lighting_shader;
+
+  float vpos[3];
+  float spd[3];
 } pumpkin_data;
 
 extern effect_methods pumpkin_methods;
