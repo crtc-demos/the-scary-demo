@@ -26,18 +26,22 @@ INIT_OBJECT (cross_cube_obj, cross_cube);
 static void
 tentacle_lighting (void *privdata)
 {
-  light_info *light = (light_info *) privdata;
+  tentacle_data *tdata = (tentacle_data *) privdata;
+  light_info *light = &tdata->world->light[0];
   GXLightObj lo0;
+  int amb = (32 * tdata->light_brightness) / 255;
 
   #include "plain-lighting.inc"
   
-  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
+  GX_SetChanAmbColor (GX_COLOR0, (GXColor) { amb, amb, amb, 0 });
   GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
 		  GX_DF_CLAMP, GX_AF_NONE);
 
   GX_InitLightPos (&lo0, light->tpos.x, light->tpos.y, light->tpos.z);
-  GX_InitLightColor (&lo0, (GXColor) { 255, 255, 255, 255 });
+  GX_InitLightColor (&lo0, (GXColor) { tdata->light_brightness,
+				       tdata->light_brightness,
+				       tdata->light_brightness, 255 });
   GX_InitLightSpot (&lo0, 0.0, GX_SP_OFF);
   GX_InitLightDistAttn (&lo0, 1.0, 1.0, GX_DA_OFF);
   GX_InitLightDir (&lo0, 0.0, 0.0, 0.0);
@@ -58,6 +62,8 @@ tentacle_init_effect (void *params, backbuffer_info *bbuf)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   
+  tdata->light_brightness = 0;
+  
   tdata->tentacle_wavey_pos = memalign (32, sizeof (tentacles_pos));
   
   tdata->world = create_world (1);
@@ -71,8 +77,7 @@ tentacle_init_effect (void *params, backbuffer_info *bbuf)
 				 (guVector) { 0, 0, 0 },
 				 (guVector) { 0, 1, 0 });
 
-  tdata->tentacle_shader = create_shader (&tentacle_lighting,
-					  &tdata->world->light[0]);
+  tdata->tentacle_shader = create_shader (&tentacle_lighting, (void *) tdata);
   
   world_add_standard_object (tdata->world, &tentacles_obj,
 			     &tdata->tentacle_loc, OBJECT_POS | OBJECT_NORM,
@@ -161,6 +166,11 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   GX_CopyTex (tdata->back_buffer, GX_TRUE);
   GX_PixModeSync ();
+  
+  tdata->light_brightness += 2;
+  
+  if (tdata->light_brightness > 255)
+    tdata->light_brightness = 255;
   
   return MAIN_BUFFER;
 }

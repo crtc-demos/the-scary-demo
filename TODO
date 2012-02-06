@@ -1,0 +1,75 @@
+TODO list/running order
+=======================
+
+Musix
+-----
+
+Play streaming raw PCM/ADPCM from ARAM.
+
+CRTC logo (soft_crtc)
+---------------------
+
+* Start with CRTC logo (dropping in like tetris blocks?). Maybe life-effect it away, but quickly. [DONE]
+
+* Add camera path. [DONE]
+
+Tentacle
+--------
+
+* Fade in from black [DONE]
+
+* Time to music (several parameters...). Don't start with colour split, make that happen later.
+
+Pumpkins
+--------
+
+* Drop pile of solid pumpkins, three on top of each other.
+
+* Middle one spins round, and has a terrible face! Lights up. Try to restrict to good angles...
+
+* Camera path, slow moving.
+
+* Fade to red...
+
+Snake
+-----
+
+* Add fog texture!
+
+* Fix horrible crash!
+
+Reflecting skull
+----------------
+
+* Fix horrible crash!
+
+* Add camera path
+
+* Sky pulsing red to music!
+
+Glass
+-----
+
+* Add old-film fade to edge effect.
+
+Bloom
+-----
+
+* Use mipmap levels/hardware box filter to get rid of jaggies.
+
+* Dunno, add background?
+
+Tubes
+-----
+
+* More exciting movement? Dunno.
+
+Spooky ghost tunnel
+-------------------
+
+* Fix jitter on spooky ghost in tunnel
+
+* Red & blue & yellow colours for spooky ghost in tunnel, make a fun left/right pattern. Or straight towards viewer sometimes.
+
+* End credits using bitmap font.
+

@@ -19,6 +19,8 @@
 #include "world.h"
 #include "ghost-obj.h"
 
+#undef DEBUG
+
 #define USE_EMBM
 
 #define USE_DISPLAY_LISTS
@@ -123,19 +125,27 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 {
   reflection_data *rdata = (reflection_data *) params;
 
+#ifdef DEBUG
+  srv_printf ("reflection_init_effect\n");
+#endif
+
   guPerspective (cubeface_proj, 90, 1.0f, 0.2f, 800.0f);
 
   rdata->skybox = create_skybox (800.0 / sqrtf (3.0), &skybox_mixcol_setup,
 				 (void *) &rdata->skybox_redness);
   rdata->cubemap = create_cubemap (256, GX_TF_RGB565, 512, GX_TF_RGB565);
   
+  assert (rdata->skybox && rdata->cubemap);
+  
   rdata->plain_texture_shader = create_shader (&plain_texturing_setup, NULL);
+  assert (rdata->plain_texture_shader);
   shader_append_texmap (rdata->plain_texture_shader, &rdata->cubemap->spheretex,
 			GX_TEXMAP0);
   shader_append_texcoordgen (rdata->plain_texture_shader, GX_TEXCOORD0,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY);
   
   rdata->world = create_world (1);
+  assert (rdata->world);
   world_set_perspective (rdata->world, 60, 1.33f, 10.0f, 800.0f);
   world_set_pos_lookat_up (rdata->world, (guVector) { 0, 0, 30},
 					 (guVector) { 0, 0, 0 },
@@ -161,6 +171,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
 				       GX_TEXMTX2);
 
   rdata->ghost_shader = create_shader (&envmap_setup_2, NULL);
+  assert (rdata->ghost_shader);
   shader_append_texmap (rdata->ghost_shader, &rdata->cubemap->spheretex,
 			GX_TEXMAP0);
   shader_append_texmap (rdata->ghost_shader, &rdata->tangentmap, GX_TEXMAP1);
@@ -210,6 +221,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
   guMtxScale (rdata->rib_scale, 5, 5, 5);
   rdata->rib_shader = create_shader (&rib_shader_setup,
 				     &rdata->world->light[0]);
+  assert (rdata->rib_shader);
 
   /*world_add_standard_object (rdata->world, &rib_obj, &rdata->rib_loc,
 			     OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0,
@@ -221,6 +233,7 @@ reflection_init_effect (void *params, backbuffer_info *bbuf)
   rdata->rib_dl_size = 0;
   rdata->rib_lo_dl = memalign (32, RIB_DL_SIZE);
   rdata->rib_lo_dl_size = 0;
+  assert (rdata->rib_dl && rdata->rib_lo_dl);
 #endif
 }
 
@@ -273,12 +286,13 @@ rib_render (reflection_data *rdata, Mtx camera, int lo, float twist)
 #ifdef USE_DISPLAY_LISTS
   if (*dl_size == 0)
     {
+      DCInvalidateRange (disp_list, RIB_DL_SIZE);
       GX_BeginDispList (disp_list, RIB_DL_SIZE);
       object_render (which_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
       *dl_size = GX_EndDispList ();
       srv_printf ("Initialised display list for %s rib object (%u bytes)\n",
 		  lo ? "lo" : "hi", *dl_size);
-      DCInvalidateRange (disp_list, *dl_size);
+      DCFlushRange (disp_list, *dl_size);
     }
 
   if (*dl_size == 0)
@@ -334,6 +348,14 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
   reflection_data *rdata = (reflection_data *) params;
   int i;
 
+  assert (rdata->rib_dl && rdata->rib_lo_dl);
+
+#ifdef DEBUG
+  srv_printf ("it's at reflection_prepare_frame\n");
+#endif
+
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+
   around += PAD_StickX (0) / 300.0;
   up += PAD_StickY (0) / 300.0;
 
@@ -378,6 +400,10 @@ static void
 reflection_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   reflection_data *rdata = (reflection_data *) params;
+
+#ifdef DEBUG
+  srv_printf ("it's at reflection display_effect\n");
+#endif
 
 #if 0
   screenspace_rect (rdata->plain_texture_shader, GX_VTXFMT0, 0);

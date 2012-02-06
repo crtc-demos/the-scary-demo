@@ -1,0 +1,70 @@
+/* Curve NurbsPath animation path setting:True */
+static float NurbsPath_knots_0[][4] = {
+  { -1.025587558746338, -12.242460250854492, -2.684913396835327, 1.0 },
+  { 2.6753573417663574, -8.85373306274414, -0.5985458493232727, 1.0 },
+  { 2.202468156814575, -6.773197650909424, 1.4132401943206787, 1.0 },
+  { 0.26924973726272583, -6.561196327209473, 2.913442373275757, 1.0 },
+  { -0.7771726846694946, -0.7895787954330444, 1.5853819847106934, 1.0 },
+};
+static float NurbsPath_tilt_0[] = {
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+};
+static float NurbsPath_weight_0[] = {
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+};
+static spline_tracking_obj NurbsPath_0 = {
+  .base = { .type = TRACKING_OBJ_PATH },
+  .spline = {
+    .length = 5,
+    .order = 5,
+    .resolution = 12,
+    .knots = &NurbsPath_knots_0,
+    .tilt = NurbsPath_tilt_0,
+    .weight = NurbsPath_weight_0
+  }
+};
+/* Curve NurbsPath.001 animation path setting:True */
+static float NurbsPath_001_knots_0[][4] = {
+  { -0.08028793334960938, -0.7164394855499268, 0.012931287288665771, 1.0 },
+  { -0.8236844539642334, 0.9090221524238586, -0.23937860131263733, 1.0 },
+  { -1.1878268718719482, 1.9357776641845703, -0.7892260551452637, 1.0 },
+  { -0.8190762996673584, 2.8937041759490967, -0.8713656067848206, 1.0 },
+  { 0.33399277925491333, 3.3688154220581055, 0.5931739807128906, 1.0 },
+};
+static float NurbsPath_001_tilt_0[] = {
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+  0.0,
+};
+static float NurbsPath_001_weight_0[] = {
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+  1.0,
+};
+static spline_tracking_obj NurbsPath_001_0 = {
+  .base = { .type = TRACKING_OBJ_PATH },
+  .spline = {
+    .length = 5,
+    .order = 5,
+    .resolution = 12,
+    .knots = &NurbsPath_001_knots_0,
+    .tilt = NurbsPath_001_tilt_0,
+    .weight = NurbsPath_001_weight_0
+  }
+};
+cam_path soft_crtc = {
+  .follow_path = (tracking_obj_base *) &NurbsPath_0,
+  .track_to = (tracking_obj_base *) &NurbsPath_001_0
+};

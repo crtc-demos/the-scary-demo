@@ -61,8 +61,8 @@ extern u32 diff_msec (u64 start, u64 end);
 //#include "its_3_a_e_a_m_mod.h"
 #endif
 
-//#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 20000
+#undef SKIP_TO_TIME
+//#define SKIP_TO_TIME 39000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -75,14 +75,14 @@ u64 offset_time = 0;
 uint64_t start_time;
 
 static do_thing_at sequence[] = {
-  {      0,  20000, &tentacle_methods, &tentacle_data_0, -1, 0 },
-  {  20000,  30000, &parallax_mapping_methods, &parallax_mapping_data_0, -1,
+  {      0,  10000, &soft_crtc_methods, NULL, -1, 0 },
+  {  10000,  30000, &tentacle_methods, &tentacle_data_0, -1, 0 },
+  {  30000,  40000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
+  {  40000,  50000, &parallax_mapping_methods, &parallax_mapping_data_0, -1,
 		    0 },
-  {  30000,  50000, &reflection_methods, &reflection_data_0, -1, 0 },
-  {  50000,  60000, &glass_methods, &glass_data_0, -1, 0 },
-  {  60000,  75000, &bloom_methods, &bloom_data_0, -1, 0 },
-  {  75000,  85000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
-  {  85000, 120000, &soft_crtc_methods, NULL, -1, 0 },
+  {  50000,  70000, &reflection_methods, &reflection_data_0, -1, 0 },
+  {  70000,  80000, &glass_methods, &glass_data_0, -1, 0 },
+  {  80000,  95000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  95000, 120000, &tubes_methods, &tube_data_0, -1, 0 },
   { 120000, 180000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
 };
@@ -462,6 +462,11 @@ main (int argc, char *argv[])
 		      sequence[next_effect].methods->init_effect,
 		      sequence[next_effect].iparam);*/
 
+#ifdef DEBUG
+	      srv_printf ("next effect is number %d (active=%d)\n",
+			  next_effect, num_active_effects);
+#endif
+
 	      if (sequence[next_effect].methods->init_effect)
 		{
 		  sequence[next_effect].methods->init_effect (
@@ -514,6 +519,8 @@ main (int argc, char *argv[])
 
 	      target_for_active_effect[i] = target;
 	    }
+	  else
+	    target_for_active_effect[i] = MAIN_BUFFER;
 	}
 
 #ifdef DEBUG

@@ -7,6 +7,7 @@
 typedef struct
 {
   world_info *world;
+  int light_brightness;
   
   shader_info *tentacle_shader;
   object_loc tentacle_loc;

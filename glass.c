@@ -24,10 +24,10 @@ static TPLFile primaryTPL;
 
 static TPLFile mighty_zebuTPL;
 
-#include "images/spiderweb.h"
+/*#include "images/spiderweb.h"
 #include "spiderweb_tpl.h"
 
-static TPLFile spiderwebTPL;
+static TPLFile spiderwebTPL;*/
 
 #include "object.h"
 #include "scene.h"
@@ -114,8 +114,8 @@ ghost_init_effect (void *params, backbuffer_info *bbuf)
   TPL_OpenTPLFromMemory (&mighty_zebuTPL, (void *) mighty_zebu_tpl,
 			 mighty_zebu_tpl_size);
   
-  TPL_OpenTPLFromMemory (&spiderwebTPL, (void *) spiderweb_tpl,
-			 spiderweb_tpl_size);
+  /*TPL_OpenTPLFromMemory (&spiderwebTPL, (void *) spiderweb_tpl,
+			 spiderweb_tpl_size);*/
   
   gdata->grabbed_texture = memalign (32, GX_GetTexBufferSize (RTT_WIDTH,
 				     RTT_HEIGHT, USEFMT, GX_FALSE, 0));

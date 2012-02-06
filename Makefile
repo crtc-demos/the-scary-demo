@@ -40,14 +40,12 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		glass-postpass.inc parallax.inc parallax-lit.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
 		parallax-lit-phase3.inc channelsplit.inc skybox.inc \
-		fancy-envmap.inc embm.inc skybox-mixcol.inc column-texture.inc
+		fancy-envmap.inc embm.inc skybox-mixcol.inc \
+		column-texture.inc fog-texture.inc
 
-TEXTURES :=	images/snakeskin.tpl.o images/more_stones.tpl.o \
-		images/stones_bump.tpl.o images/pumpkin_skin.tpl.o \
-		images/gradient.tpl.o images/spiderweb.tpl.o \
-		images/primary.tpl.o images/mighty_zebu.tpl.o \
-		images/fake_stone_depth.tpl.o images/grid.tpl.o \
-		images/height.tpl.o images/height_bump.tpl.o \
+TEXTURES :=	images/more_stones.tpl.o images/stones_bump.tpl.o \
+		images/snakeskin.tpl.o images/pumpkin_skin.tpl.o \
+		images/mighty_zebu.tpl.o images/gradient.tpl.o \
 		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o \
 		images/snakytextures.tpl.o
 
@@ -70,6 +68,8 @@ $(TARGET):	demo.elf
 demo.elf:	$(OBJS) $(TEXTURES) $(MODS)
 
 .PHONY:	.depend
+
+.PRECIOUS: .inc
 
 all:	$(TARGET)
 

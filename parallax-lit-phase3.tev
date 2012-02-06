@@ -44,3 +44,4 @@ stage 4:
 stage 5:
   tev.rgb = clamp (texmap2[itexcoord + texcoord5].aaa
 	  + tev.rgb * texmap2[itexcoord + texcoord5].rgb);
+  tev.a = 1.0;

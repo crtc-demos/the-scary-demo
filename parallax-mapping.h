@@ -36,6 +36,10 @@ typedef struct
   GXTexObj column_texture_obj;
   shader_info *column_shader;
   object_loc column_loc;
+  
+  GXTexObj fog_texture_obj;
+  shader_info *fog_shader;
+  object_loc fog_loc;
 } parallax_mapping_data;
 
 extern effect_methods parallax_mapping_methods;

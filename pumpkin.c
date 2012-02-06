@@ -135,6 +135,9 @@ pumpkin_init_effect (void *params, backbuffer_info *bbuf)
   pdata->beams_z_texture = memalign (32, GX_GetTexBufferSize (BEAMS_TEX_W,
 			      BEAMS_TEX_H, BEAMS_TEX_ZTF, GX_FALSE, 0));
 
+  assert (pdata->beams_texture_gb && pdata->beams_texture_r
+	  && pdata->beams_z_texture);
+
   TPL_GetTexture (&pumpkin_skinTPL, pumpkin_skin, &pdata->pumpkin_tex_obj);
 
   pdata->pumpkin_lighting_shader = create_shader (&pumpkin_lighting, NULL);
@@ -182,19 +185,22 @@ pumpkin_init_effect (void *params, backbuffer_info *bbuf)
   object_loc_initialise (&pdata->beam_loc, GX_PNMTX0);
 
   object_set_vertex_depth_matrix (&pdata->beam_loc, GX_TEXMTX0);
+  
+  assert (pdata->pumpkin_lighting_shader && pdata->beam_lighting_shader
+	  && pdata->beam_z_render_shader);
 }
 
 static void
 pumpkin_uninit_effect (void *params, backbuffer_info *bbuf)
 {
-  spline_tracking_obj *sto =
-    (spline_tracking_obj *) cube_tracking_scene.follow_path;
+  /*spline_tracking_obj *sto =
+    (spline_tracking_obj *) cube_tracking_scene.follow_path;*/
   pumpkin_data *pdata = (pumpkin_data *) params;
 
   free (pdata->beams_texture_gb);
   free (pdata->beams_texture_r);
   free (pdata->beams_z_texture);
-  free_spline_data (&sto->spline);
+  /*free_spline_data (&sto->spline);*/
   free_shader (pdata->pumpkin_lighting_shader);
   free_shader (pdata->beam_z_render_shader);
   free_shader (pdata->beam_lighting_shader);

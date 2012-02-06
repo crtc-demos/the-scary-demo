@@ -104,6 +104,12 @@ column_shader_setup (void *dummy)
 }
 
 static void
+fog_shader_setup (void *dummy)
+{
+  #include "fog-texture.inc"
+}
+
+static void
 tunnel_lighting (void *dummy)
 {
   GXLightObj lo0;
@@ -233,6 +239,7 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texcoordgen (pdata->parallax_lit_phase3_shader, GX_TEXCOORD6,
 			     GX_TG_MTX3x4, GX_TG_POS, GX_TEXMTX4);
 
+  /* Column bits.  */
   TPL_GetTexture (&snakytextureTPL, column_texture,
 		  &pdata->column_texture_obj);
 
@@ -240,6 +247,15 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texmap (pdata->column_shader, &pdata->column_texture_obj,
 			GX_TEXMAP0);
   shader_append_texcoordgen (pdata->column_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
+			     GX_TG_TEX0, GX_IDENTITY);
+
+  /* Fog bits.  */
+  TPL_GetTexture (&snakytextureTPL, fog_texture, &pdata->fog_texture_obj);
+  
+  pdata->fog_shader = create_shader (&fog_shader_setup, NULL);
+  shader_append_texmap (pdata->fog_shader, &pdata->fog_texture_obj,
+			GX_TEXMAP0);
+  shader_append_texcoordgen (pdata->fog_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
 }
 
@@ -255,6 +271,8 @@ parallax_mapping_uninit_effect (void *params, backbuffer_info *bbuf)
   free_shader (pdata->parallax_lit_phase1_shader);
   free_shader (pdata->parallax_lit_phase2_shader);
   free_shader (pdata->parallax_lit_phase3_shader);
+  free_shader (pdata->column_shader);
+  free_shader (pdata->fog_shader);
 }
 
 static float around = 0.0;
@@ -267,7 +285,14 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_info *render_object;
-  Mtx rot, id;
+  Mtx /*rot,*/ id;
+
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+  GX_SetCullMode (GX_CULL_BACK);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
+  GX_SetFog (GX_FOG_NONE, 0, 1, 0, 1, (GXColor) { 0, 0, 0, 0 });
 
   render_object = &cobra_obj;
 
@@ -392,6 +417,9 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
 
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
+  /* We want alpha blending.  */
+  GX_SetBlendMode (GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+  
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
   object_set_screenspace_tex_matrix (&map_flat_loc, GX_TEXMTX4);
   object_set_tex_norm_binorm_matrices (&map_flat_loc, GX_TEXMTX2, GX_TEXMTX3);
@@ -404,6 +432,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
 		     GX_VTXFMT0, GX_VA_TEX0);
   object_render (render_object, OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD,
 		 GX_VTXFMT0);
+
+  /* Render the nice columns.  */
 
   shader_load (pdata->column_shader);
   
@@ -426,6 +456,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
       object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0);
     }
+  
+  /*screenspace_rect (pdata->fog_shader, GX_VTXFMT0, 0);*/
 }
 
 effect_methods parallax_mapping_methods =

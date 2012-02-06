@@ -11,6 +11,9 @@
 #include "light.h"
 #include "object.h"
 #include "server.h"
+#include "cam-path.h"
+
+#include "objects/soft-crtc.xyz"
 
 #include "objects/softcube.inc"
 
@@ -18,23 +21,26 @@ INIT_OBJECT (softcube_obj, softcube);
 
 static light_info light0 =
 {
-  .pos = { 20, 20, 30 },
+  .pos = { 20, 20, -30 },
   .lookat = { 0, 0, 0 },
   .up = { 0, 1, 0 }
 };
 
 static light_info light1 =
 {
-  .pos = { -20, -20, 20 },
+  .pos = { -20, -20, -20 },
   .lookat = { 0, 0, 0 },
   .up = { 0, 1, 0 }
 };
 
 static Mtx44 perspmat;
-static Mtx viewmat;
-static guVector pos = {0, 0, 30};
-static guVector up = {0, 1, 0};
-static guVector lookat = {0, 0, 0};
+static scene_info scene =
+{
+  .pos = { 0, 0, -30 },
+  .up = { 0, 1, 0 },
+  .lookat = { 0, 0, 0 },
+  .camera_dirty = 1
+};
 static float deg = 0.0;
 static float deg2 = 0.0;
 
@@ -157,6 +163,7 @@ unpack_grid (grid_list *glist, char *grid)
     }
 }
 
+#if 0
 static grid_list *
 add_grid (char *grid, grid_list *oldhead)
 {
@@ -185,24 +192,58 @@ delete_grid (char *grid, grid_list *oldhead)
   
   return following;
 }
+#endif
+
+static void
+set_grid (int step)
+{
+  int i, j;
+  static const char logo[7][7] =
+    { { ' ', '2', '2', ' ', ' ', '3', '3' },
+      { '2', ' ', ' ', ' ', '3', ' ', ' ' },
+      { '2', '2', '2', ' ', '3', ' ', ' ' },
+      { ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
+      { '1', '1', '1', ' ', ' ', '0', '0' },
+      { ' ', '1', ' ', ' ', '0', ' ', ' ' },
+      { ' ', '1', ' ', ' ', '0', '0', '0' } };
+  unsigned int lhs = (GRID_WIDTH - 7) / 2;
+  unsigned int top = (GRID_HEIGHT - 7) / 2;
+
+  memset (grid[0], 0, GRID_WIDTH * GRID_HEIGHT);
+
+  for (j = 6; j >= 0; j--)
+    for (i = 0; i < 7; i++)
+      {
+        int pixel = logo[j][i];
+	int topp = top + j - 16 + (step & 15);
+	int topp2 = top + j - 16 + ((step - 8) & 15);
+	
+	if (step < 16 && topp >= 0 && topp < GRID_HEIGHT)
+	  LCELL (grid[0], lhs + 6 - i, topp) |= pixel == '0' ? 1 : 0;
+	if (step >= 8 && step < 24 && topp2 >= 0 && topp2 < GRID_HEIGHT)
+	  LCELL (grid[0], lhs + 6 - i, topp2) |= pixel == '1' ? 1 : 0;
+	if (step >= 16 && step < 32 && topp >= 0 && topp < GRID_HEIGHT)
+	  LCELL (grid[0], lhs + 6 - i, topp) |= pixel == '2' ? 1 : 0;
+	if (step >= 24 && step < 40 && topp2 >= 0 && topp2 < GRID_HEIGHT)
+	  LCELL (grid[0], lhs + 6 - i, topp2) |= pixel == '3' ? 1 : 0;
+
+        if (step >= 16)
+	  LCELL (grid[0], lhs + 6 - i, top + j) |= pixel == '0' ? 1 : 0;
+	if (step >= 24)
+	  LCELL (grid[0], lhs + 6 - i, top + j)
+	    |= pixel == '0' || pixel == '1' ? 1 : 0;
+	if (step >= 32)
+	  LCELL (grid[0], lhs + 6 - i, top + j)
+	    |= pixel == '0' || pixel == '1' || pixel == '2' ? 1 : 0;
+	if (step >= 40)
+	  LCELL (grid[0], lhs + 6 - i, top + j) |= pixel != ' ' ? 1 : 0;
+      }
+}
 
 static void
 soft_crtc_init_effect (void *params, backbuffer_info *bbuf)
 {
-  unsigned int i, j;
-  static const char logo[7][7] =
-    { { ' ', 'x', 'x', ' ', ' ', 'x', 'x' },
-      { 'x', ' ', ' ', ' ', 'x', ' ', ' ' },
-      { 'x', 'x', 'x', ' ', 'x', ' ', ' ' },
-      { ' ', ' ', ' ', ' ', ' ', ' ', ' ' },
-      { 'x', 'x', 'x', ' ', ' ', 'x', 'x' },
-      { ' ', 'x', ' ', ' ', 'x', ' ', ' ' },
-      { ' ', 'x', ' ', ' ', 'x', 'x', 'x' } };
-  unsigned int lhs = (GRID_WIDTH - 7) / 2;
-  unsigned int top = (GRID_HEIGHT - 7) / 2;
-
-  guPerspective (perspmat, 60, 1.33f, 10.0f, 300.0f);
-  guLookAt (viewmat, &pos, &up, &lookat);
+  guPerspective (perspmat, 60, 1.33f, 1.0f, 300.0f);
   
   grid[0] = malloc (GRID_WIDTH * GRID_HEIGHT);
   grid[1] = malloc (GRID_WIDTH * GRID_HEIGHT);
@@ -210,9 +251,7 @@ soft_crtc_init_effect (void *params, backbuffer_info *bbuf)
   memset (grid[0], 0, GRID_WIDTH * GRID_HEIGHT);
   memset (grid[1], 0, GRID_WIDTH * GRID_HEIGHT);
   
-  for (i = 0; i < 7; i++)
-    for (j = 0; j < 7; j++)
-      LCELL (grid[0], lhs + 6 - i, top + j) = logo[j][i] == 'x' ? 1 : 0;
+  set_grid (0);
 }
 
 static void
@@ -257,6 +296,10 @@ do_life_step (unsigned int new_idx)
       }
 }
 
+static int last_time_offset;
+static int bounce_trigger = 0;
+static float uprot = 0.0;
+
 static void
 soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 {
@@ -264,6 +307,31 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   guVector axis = {0, 1, 0};
   guVector axis2 = {0, 0, 1};
   int i, j;
+  uint32_t tmo_mod;
+  Mtx id;
+
+  guMtxScale (id, 2, 2, 2);
+  {
+    float tx, ty, tz;
+    tx = guMtxRowCol (id, 0, 1);
+    ty = guMtxRowCol (id, 1, 1);
+    tz = guMtxRowCol (id, 2, 1);
+    guMtxRowCol (id, 0, 1) = guMtxRowCol (id, 0, 2);
+    guMtxRowCol (id, 1, 1) = guMtxRowCol (id, 1, 2);
+    guMtxRowCol (id, 2, 1) = guMtxRowCol (id, 2, 2);
+    guMtxRowCol (id, 0, 2) = tx;
+    guMtxRowCol (id, 1, 2) = ty;
+    guMtxRowCol (id, 2, 2) = tz;
+  }
+  cam_path_follow (&scene, id, &soft_crtc, (float) time_offset / 10000.0);
+
+  scene.up.x = sinf (uprot);
+  scene.up.y = cosf (uprot);
+  scene.up.z = 0.0;
+
+  uprot -= 0.002;
+
+  scene_update_camera (&scene);
 
   GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
 
@@ -272,8 +340,8 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_TRUE);
 
-  light_update (viewmat, &light0);
-  light_update (viewmat, &light1);
+  light_update (scene.camera, &light0);
+  light_update (scene.camera, &light1);
 
   specular_lighting_1light ();
   
@@ -284,6 +352,24 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   object_set_arrays (&softcube_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
 		     GX_VA_TEX0);
 
+  if (counter < 256)
+    set_grid (counter / 4);
+  
+  tmo_mod = (time_offset / 10) % 35;
+  
+  if (tmo_mod < last_time_offset)
+    bounce_trigger = 1;
+  
+  last_time_offset = tmo_mod;
+  
+  /*if (bounce_trigger)
+    {
+      block_size = 1.0;
+      bounce_trigger = 0;
+    }
+  else
+    block_size += (0.5 - block_size) / 20.0;*/
+  
   for (i = 0; i < GRID_WIDTH; i++)
     for (j = 0; j < GRID_HEIGHT; j++)
       {
@@ -293,7 +379,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 	    float i_f = (float) i - (float) GRID_WIDTH / 2.0;
 	    float j_f = (float) j - (float) GRID_HEIGHT / 2.0;
 
-	    guMtxTransApply (modelView, mvtmp, i_f * 2.2, j_f * 2.2, 0.0);
+	    guMtxTransApply (modelView, mvtmp, i_f * 2.2, -j_f * 2.2, 0.0);
 
 	    guMtxScaleApply (mvtmp, mvtmp, block_size, block_size, block_size);
 	    
@@ -304,10 +390,10 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 		block_size_acc *= 0.999;
 	      }
 
-	    guMtxConcat (rotmtx, mvtmp, mvtmp);
-	    guMtxConcat (rotmtx2, mvtmp, mvtmp);
+	    /*guMtxConcat (rotmtx, mvtmp, mvtmp);
+	    guMtxConcat (rotmtx2, mvtmp, mvtmp);*/
 
-	    guMtxConcat (viewmat, mvtmp, mvtmp);
+	    guMtxConcat (scene.camera, mvtmp, mvtmp);
 
 	    GX_LoadPosMtxImm (mvtmp, GX_PNMTX0);
 	    guMtxInverse (mvtmp, mvitmp);
@@ -317,8 +403,16 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 	    object_render (&softcube_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 	  }
       }
-  
+
   counter++;
+
+  if (counter >= 350)
+    {
+      current_grid = 1 - current_grid;
+      do_life_step (current_grid);
+    }
+
+/*
   
   if (counter < 200)
     {
@@ -343,6 +437,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   
   deg++;
   deg2 += 0.5;
+*/
 }
 
 effect_methods soft_crtc_methods =
