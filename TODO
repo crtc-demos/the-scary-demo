@@ -4,7 +4,7 @@ TODO list/running order
 Musix
 -----
 
-Play streaming raw PCM/ADPCM from ARAM.
+Play streaming raw PCM/ADPCM from ARAM. FFMPEG has an ADX encoder; use that?
 
 CRTC logo (soft_crtc)
 ---------------------
@@ -25,11 +25,9 @@ Pumpkins
 
 * Drop pile of solid pumpkins, three on top of each other. [DONE]
 
-* Middle one spins round, and has a terrible face! Lights up. Try to restrict to good angles...
+* Middle one spins round, and has a terrible face! Lights up. Try to restrict to good angles... [DONE]
 
-* Camera path, slow moving.
-
-* Fade to red...
+* Camera path, slow moving. [DONE]
 
 Snake
 -----

@@ -16,6 +16,7 @@
 #include "rendertarget.h"
 #include "shader.h"
 #include "screenspace.h"
+#include "matrixutil.h"
 
 #include "images/pumpkin_skin.h"
 #include "pumpkin_skin_tpl.h"
@@ -231,25 +232,7 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
   {
     Mtx path_mtx;
     guMtxScale (path_mtx, 30, 30, 30);
-    {
-      Mtx swap_yz;
-      guMtxRowCol (swap_yz, 0, 0) = 1.0;
-      guMtxRowCol (swap_yz, 0, 1) = 0.0;
-      guMtxRowCol (swap_yz, 0, 2) = 0.0;
-      guMtxRowCol (swap_yz, 0, 3) = 0.0;
-
-      guMtxRowCol (swap_yz, 1, 0) = 0.0;
-      guMtxRowCol (swap_yz, 1, 1) = 0.0;
-      guMtxRowCol (swap_yz, 1, 2) = 1.0;
-      guMtxRowCol (swap_yz, 1, 3) = 0.0;
-
-      guMtxRowCol (swap_yz, 2, 0) = 0.0;
-      guMtxRowCol (swap_yz, 2, 1) = 1.0;
-      guMtxRowCol (swap_yz, 2, 2) = 0.0;
-      guMtxRowCol (swap_yz, 2, 3) = 0.0;
-
-      guMtxConcat (path_mtx, swap_yz, path_mtx);
-    }
+    matrixutil_swap_yz (path_mtx, path_mtx);
     cam_path_follow (&scene, path_mtx, &pumpkin_track,
 		     (float) time_offset / 10000.0);
   }

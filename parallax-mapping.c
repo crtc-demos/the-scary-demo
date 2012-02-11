@@ -15,6 +15,7 @@
 #include "server.h"
 #include "lighting-texture.h"
 #include "screenspace.h"
+#include "matrixutil.h"
 
 #include "objects/cobra.inc"
 
@@ -310,18 +311,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 			      50 * sinf (up),
 			      50 * sinf (around) * cosf (up) });*/
   guMtxScale (id, 10, 10, 10);
-  {
-    float tx, ty, tz;
-    tx = guMtxRowCol (id, 0, 1);
-    ty = guMtxRowCol (id, 1, 1);
-    tz = guMtxRowCol (id, 2, 1);
-    guMtxRowCol (id, 0, 1) = guMtxRowCol (id, 0, 2);
-    guMtxRowCol (id, 1, 1) = guMtxRowCol (id, 1, 2);
-    guMtxRowCol (id, 2, 1) = guMtxRowCol (id, 2, 2);
-    guMtxRowCol (id, 0, 2) = tx;
-    guMtxRowCol (id, 1, 2) = ty;
-    guMtxRowCol (id, 2, 2) = tz;
-  }
+  matrixutil_swap_yz (id, id);
   cam_path_follow (&scene, id, &cobra9, (float) time_offset / 10000.0);
 
   scene_update_camera (&scene);
@@ -418,7 +408,8 @@ parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   /* We want alpha blending.  */
-  GX_SetBlendMode (GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+  //GX_SetBlendMode (GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
   object_set_screenspace_tex_matrix (&map_flat_loc, GX_TEXMTX4);

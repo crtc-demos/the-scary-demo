@@ -20,12 +20,13 @@ COMPASS_OBJ :=	libcompass/restrip.o libcompass/perlin.o \
 		libcompass/geosphere.o libcompass/skybox.o \
 		libcompass/torus.o libcompass/tube.o libcompass/cube.o
 
-OBJS :=		sintab.o backbuffer.o list.o server.o rendertarget.o object.o \
-		skybox.o reduce-cubemap.o tracking-obj.o cam-path.o shader.o \
-		scene.o screenspace.o light.o lighting-texture.o \
-		utility-texture.o spline.o shadow.o world.o pumpkin.o \
-		soft-crtc.o tubes.o ghost-obj.o reflection.o spooky-ghost.o \
-		bloom.o glass.o parallax-mapping.o tentacles.o timing.o
+OBJS :=		sintab.o backbuffer.o list.o server.o matrixutil.o \
+		rendertarget.o object.o skybox.o reduce-cubemap.o \
+		tracking-obj.o cam-path.o shader.o scene.o screenspace.o \
+		light.o lighting-texture.o utility-texture.o spline.o \
+		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
+		reflection.o spooky-ghost.o bloom.o glass.o \
+		parallax-mapping.o tentacles.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
