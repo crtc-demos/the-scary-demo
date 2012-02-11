@@ -292,7 +292,9 @@ rib_render (reflection_data *rdata, Mtx camera, int lo, float twist)
       *dl_size = GX_EndDispList ();
       srv_printf ("Initialised display list for %s rib object (%u bytes)\n",
 		  lo ? "lo" : "hi", *dl_size);
-      DCFlushRange (disp_list, *dl_size);
+      /* This isn't needed unless we move the display list (i.e. copy it via
+         the CPU cache)...  */
+      /*DCFlushRange (disp_list, *dl_size);*/
     }
 
   if (*dl_size == 0)

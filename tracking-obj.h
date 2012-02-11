@@ -27,6 +27,10 @@ typedef struct
 {
   tracking_obj_base base;
   spline_info spline;
+  float *anim_data;
+  int anim_frames;
+  float anim_start;
+  float anim_end;
 } spline_tracking_obj;
 
 extern void tracking_obj_pos (guVector *, tracking_obj_base *, float param);

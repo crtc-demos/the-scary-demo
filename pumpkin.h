@@ -26,6 +26,8 @@ typedef struct
 
   float vpos[3];
   float spd[3];
+  
+  float central_pumpkin_rotation;
 } pumpkin_data;
 
 extern effect_methods pumpkin_methods;

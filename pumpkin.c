@@ -40,7 +40,7 @@ INIT_OBJECT (beam_right_obj, beam_right);
 INIT_OBJECT (beam_mouth_obj, beam_mouth);
 
 #include "cam-path.h"
-#include "objects/cube-tracking-scene.xyz"
+#include "objects/pumpkin-track.xyz"
 
 static light_info light0 =
 {
@@ -103,7 +103,7 @@ beam_composite_tev_setup (void)
 }
 #endif
 
-static float phase, phase2;
+/*static float phase, phase2;*/
 
 #define BEAMS_TEX_W 640
 #define BEAMS_TEX_H 480
@@ -123,8 +123,8 @@ pumpkin_init_effect (void *params, backbuffer_info *bbuf)
   int i;
 
   guPerspective (proj, 60, 1.33f, 10.0f, 500.0f);
-  phase = 0;
-  phase2 = 0;
+  /*phase = 0;
+  phase2 = 0;*/
   TPL_OpenTPLFromMemory (&pumpkin_skinTPL, (void *) pumpkin_skin_tpl,
 			 pumpkin_skin_tpl_size);
 
@@ -197,6 +197,7 @@ pumpkin_init_effect (void *params, backbuffer_info *bbuf)
       pdata->vpos[i] = 250.0;
       pdata->spd[i] = 0.0;
     }
+  pdata->central_pumpkin_rotation = M_PI;
 }
 
 static void
@@ -219,15 +220,17 @@ static display_target
 pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
-  Mtx mvtmp;
+  Mtx mvtmp, rot/*, sep_scale*/;
+
+  //guMtxScale (sep_scale, 30, 30, 30);
 
   /* We probably don't really need to do this per-frame?  */
   GX_InvalidateTexAll ();
 
-#if 0
+#if 1
   {
     Mtx path_mtx;
-    guMtxScale (path_mtx, 40, 40, 40);
+    guMtxScale (path_mtx, 30, 30, 30);
     {
       Mtx swap_yz;
       guMtxRowCol (swap_yz, 0, 0) = 1.0;
@@ -247,8 +250,8 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
       guMtxConcat (path_mtx, swap_yz, path_mtx);
     }
-    cam_path_follow (&scene, path_mtx, &cube_tracking_scene,
-		     (float) (time_offset % 8000) / 8000.0);
+    cam_path_follow (&scene, path_mtx, &pumpkin_track,
+		     (float) time_offset / 10000.0);
   }
 #else
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
@@ -292,8 +295,7 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
     guMtxCopy (dp, scene.depth_ramp_lookup);
   }
 
-  guMtxIdentity (pdata->modelview);
-  guMtxScaleApply (pdata->modelview, pdata->modelview, 30, 30, 30);
+  guMtxScale (pdata->modelview, 30, 30, 30);
   object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
 		       pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
@@ -322,10 +324,12 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   shader_load (pdata->beam_lighting_shader);
 
-  GX_SetFog (GX_FOG_PERSP_EXP2, 130, 300, 10, 500, (GXColor) { 0, 0, 0, 0 });
+  //GX_SetFog (GX_FOG_PERSP_EXP2, 130, 300, 10, 500, (GXColor) { 0, 0, 0, 0 });
 
   /* Add back faces.  */
   guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
+  guMtxRotRad (rot, 'y', pdata->central_pumpkin_rotation);
+  guMtxConcat (mvtmp, rot, mvtmp);
   
   object_set_matrices (&scene, &pdata->beam_loc, scene.camera, mvtmp, NULL,
 		       NULL, 0);
@@ -380,8 +384,10 @@ static void
 pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
-  Mtx mvtmp;
+  Mtx mvtmp, rot, mvtmp2/*, sep_scale*/;
   int i;
+
+  /*guMtxScale (sep_scale, 30, 30, 30);*/
 
   /* Render pumpkins...  */
 
@@ -429,31 +435,37 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
     }
   else
     {
-      object_set_arrays (&carved_pumpkin_obj,
+      object_set_arrays (&pumpkin_obj,
 			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
 			 GX_VA_TEX0);
-
       object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera,
 			   pdata->modelview, NULL, proj, GX_PERSPECTIVE);
-
-      object_render (&carved_pumpkin_obj,
+      object_render (&pumpkin_obj,
 		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
       guMtxTransApply (pdata->modelview, mvtmp, 0, 45, 0);
-      object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
-			   NULL, NULL, 0);
+      guMtxRotRad (rot, 'y', pdata->central_pumpkin_rotation);
+      guMtxConcat (mvtmp, rot, mvtmp2);
 
+      object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp2,
+			   NULL, NULL, 0);
+      object_set_arrays (&carved_pumpkin_obj,
+			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
+			 GX_VA_TEX0);
       object_render (&carved_pumpkin_obj,
 		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
       guMtxTransApply (mvtmp, mvtmp, 0, 45, 0);
+
       object_set_matrices (&scene, &pdata->pumpkin_loc, scene.camera, mvtmp,
 			   NULL, NULL, 0);
-
-      object_render (&carved_pumpkin_obj,
+      object_set_arrays (&pumpkin_obj,
+			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
+			 GX_VA_TEX0);
+      object_render (&pumpkin_obj,
 		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-      if (rand () & 8)
+      if (time_offset > 6000 && (rand () & 8))
         {
 	  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 	  GX_SetColorUpdate (GX_TRUE);
@@ -496,10 +508,15 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
 
 	  screenspace_rect (pdata->beam_z_render_shader, GX_VTXFMT1, 0);
 	}
+
+      if (pdata->central_pumpkin_rotation <= 0)
+        pdata->central_pumpkin_rotation = 0;
+      else
+        pdata->central_pumpkin_rotation -= M_PI / 20.0;
     }
 
-  phase += 0.01;
-  phase2 += 0.008;
+  /*phase += 0.01;
+  phase2 += 0.008;*/
 }
 
 effect_methods pumpkin_methods =
