@@ -62,7 +62,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #endif
 
 //#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 30000
+#define SKIP_TO_TIME 50000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;

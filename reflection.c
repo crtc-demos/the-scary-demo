@@ -18,6 +18,8 @@
 #include "reflection.h"
 #include "world.h"
 #include "ghost-obj.h"
+#include "cam-path.h"
+#include "matrixutil.h"
 
 #undef DEBUG
 
@@ -42,6 +44,8 @@ INIT_OBJECT (rib_lo_obj, rib_lo);
 #include "skull_tangentmap_gx_tpl.h"
 
 TPLFile skull_tangentmapTPL;
+
+#include "objects/skull-path.xyz"
 
 static Mtx44 cubeface_proj;
 
@@ -340,6 +344,13 @@ rib_render (reflection_data *rdata, Mtx camera, int lo, float twist)
     }
 }
 
+static float
+impulse (float k, float x)
+{
+  float h = k * x;
+  return h * expf (1.0f - h);
+}
+
 static float around = 0.0;
 static float up = 0.0;
 static float twisty = 0.0;
@@ -349,6 +360,7 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   reflection_data *rdata = (reflection_data *) params;
   int i;
+  Mtx cp;
 
   assert (rdata->rib_dl && rdata->rib_lo_dl);
 
@@ -361,14 +373,24 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
   around += PAD_StickX (0) / 300.0;
   up += PAD_StickY (0) / 300.0;
 
+#if 1
+  guMtxScale (cp, 6.5, 6.5, 6.5);
+  matrixutil_swap_yz (cp, cp);
+  cam_path_follow (&rdata->world->scene, cp, &skull_path,
+		   (float) time_offset / 20000.0);
+#else
   scene_set_pos (&rdata->world->scene,
 		 (guVector) { 30 * cosf (around) * cosf (up),
 			      30 * sinf (up),
 			      30 * sinf (around) * cosf (up) });
+#endif
 
   scene_update_camera (&rdata->world->scene);
 
-  rdata->skybox_redness = 128.0 + PAD_SubStickY (0);
+  //rdata->skybox_redness = 128.0 + PAD_SubStickY (0);
+  rdata->skybox_redness = 255.0
+			  * impulse (5, (float) (time_offset % 1000)
+				     / 500.0);
 
   /* We only need to set this once...  */
   GX_LoadProjectionMtx (cubeface_proj, GX_PERSPECTIVE);
