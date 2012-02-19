@@ -18,6 +18,8 @@ typedef struct
   GXTexObj mighty_zebu_tex_obj;
 
   shader_info *glass_postpass_shader;
+  
+  float xoffset;
 } glass_data;
 
 extern effect_methods glass_methods;

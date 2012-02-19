@@ -402,7 +402,8 @@ reflection_prepare_frame (uint32_t time_offset, void *params, int iparam)
       cubemap_cam_matrix_for_face (camera, &rdata->world->scene, i);
       
       rendertarget_texture (rdata->cubemap->size, rdata->cubemap->size,
-			    rdata->cubemap->fmt);
+			    rdata->cubemap->fmt, GX_FALSE, GX_PF_RGB8_Z24,
+			    GX_ZC_LINEAR);
       
       rib_render (rdata, camera, 1, 0.3 * sinf (twisty));
 

@@ -1,4 +1,16 @@
+# Dirty configurable bits, uncomment as appropriate
+
+CONSOLE := gamecube
+#CONSOLE := wii
+
+FILESYSTEM := -lfat
+#FILESYSTEM := -lext2fs
+
+ifeq ($(CONSOLE),gamecube)
 include $(DEVKITPPC)/gamecube_rules
+else
+include $(DEVKITPPC)/wii_rules
+endif
 
 TOOLROOT :=	/home/jules/stuff/gamecube
 
@@ -8,9 +20,18 @@ OBJCONVERT :=	$(TOOLROOT)/objconvert/objconvert
 BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wall -std=gnu99 $(MACHDEP) $(INCLUDE)
+ifeq ($(CONSOLE),gamecube)
+CFLAGS +=	-DNETWORKING
+endif
+ifeq ($(FILESYSTEM),-lext2fs)
+CFLAGS +=	-DUSE_EXT2FS
+endif
 LDFLAGS =	-g $(MACHDEP) -Wl,-Map,$(notdir $@).map
-LIBS :=		-ldb -lbba -lext2fs -lmodplay -laesnd -logc -lm
-#LIBS :=		-ldb -lbba -lext2fs -lmad -lasnd -logc -lm
+ifeq ($(CONSOLE),gamecube)
+LIBS :=		-ldb -lbba $(FILESYSTEM) -lmodplay -laesnd -logc -lm
+else
+LIBS :=		-ldb $(FILESYSTEM) -lmodplay -laesnd -logc -lm
+endif
 INCLUDE :=	-I$(LIBOGC_INC)
 LIBPATHS :=	-L$(LIBOGC_LIB)
 LD :=		$(CC)
@@ -26,7 +47,7 @@ OBJS :=		sintab.o backbuffer.o list.o server.o matrixutil.o \
 		light.o lighting-texture.o utility-texture.o spline.o \
 		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
 		reflection.o spooky-ghost.o bloom.o glass.o \
-		parallax-mapping.o tentacles.o timing.o
+		parallax-mapping.o tentacles.o adpcm.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -60,7 +81,7 @@ OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/softcube.inc objects/plane.inc \
 		objects/textured-cube.inc objects/tentacles.inc \
 		objects/cross-cube.inc objects/scary-skull-2.inc \
-		objects/cobra.inc objects/column.inc
+		objects/cobra.inc objects/column.inc objects/blobby-thing.inc
 
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
@@ -182,6 +203,9 @@ objects/cobra.inc:	objects/cobra9.dae
 
 objects/column.inc:	objects/column.dae
 	$(OBJCONVERT) -c -yz -i -s column-mesh -n column $< -o $@
+
+objects/blobby-thing.inc:	objects/blobby-thing.dae
+	$(OBJCONVERT) -c -yz -i -n blobby_thing $< -o $@
 
 #demo.elf:	$(OBJS)
 #	$(LD)  $^ $(LDFLAGS) $(LIBPATHS) $(LIBS) -o $@	

@@ -61,7 +61,7 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   float which_phase_offset = 2.0 * M_PI * (which % 3) / 3.0;
   float bigger_offset = 2.0 * M_PI * (which / 3) / 3.0;
   float phase1 = which_phase_offset + phase;
-  float phase2 = bigger_offset;
+  float phase2 = bigger_offset - phase / 2.5;
   
   assert (tube[which] != NULL);
   assert (tubenorms[which] != NULL);

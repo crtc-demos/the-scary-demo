@@ -324,8 +324,8 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   /* PHASE 1: Render bump offset to screen-space indirect texture.  */
 
-  rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (TEXCOORD_MAP_W, TEXCOORD_MAP_H, GX_CTF_GB8, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
       
   /*pdata->phase += (float) PAD_StickX (0) / 100.0;
   pdata->phase2 += (float) PAD_StickY (0) / 100.0;*/
@@ -373,8 +373,8 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
     GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
   }
 
-  rendertarget_texture (TEXCOORD_MAP2_W, TEXCOORD_MAP2_H, GX_CTF_GB8);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (TEXCOORD_MAP2_W, TEXCOORD_MAP2_H, GX_CTF_GB8, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   screenspace_rect (pdata->parallax_lit_phase2_shader, GX_VTXFMT1, 0);
 

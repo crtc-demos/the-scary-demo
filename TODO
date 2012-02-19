@@ -4,7 +4,12 @@ TODO list/running order
 Musix
 -----
 
-Play streaming raw PCM/ADPCM from ARAM. FFMPEG has an ADX encoder; use that?
+Play streaming raw PCM/ADPCM from ARAM. FFMPEG has an ADX encoder; use that? [DONE]
+
+Static/text only/loading part
+-----------------------------
+
+* Add something at the start.
 
 CRTC logo (soft_crtc)
 ---------------------
@@ -39,21 +44,23 @@ Reflecting skull
 
 * Fix horrible crash! [DONE]
 
-* Add camera path
+* Add camera path [DONE]
 
-* Sky pulsing red to music!
+* Sky pulsing red to music! [DONE, sorta]
 
-* Check: is normal perturbation still correct?
+* Check: is normal perturbation still correct? [PROBABLY]
 
 Glass
 -----
 
 * Add old-film fade to edge effect.
 
+* Different object? Tentacles or blobs! [DONE, just another demo-like static object...]
+
 Bloom
 -----
 
-* Use mipmap levels/hardware box filter to get rid of jaggies.
+* Use mipmap levels/hardware box filter to get rid of jaggies. [doesn't work quite like I thought; still, using hardware box filter will probably speed up the bloom effect a little.]
 
 * Dunno, add background? Inside of pumpkin?
 

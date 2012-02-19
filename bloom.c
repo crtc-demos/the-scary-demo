@@ -45,8 +45,8 @@ static scene_info scene =
 
 bloom_data bloom_data_0;
 
-#define STAGE1_W 640
-#define STAGE1_H 480
+#define STAGE1_W 512
+#define STAGE1_H 512
 #define STAGE1_FMT GX_TF_RGBA8
 
 #define STAGE2_W 320
@@ -139,6 +139,8 @@ bloom_gaussian2_shader (void *dummy)
   GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
 }
 
+#define STAGE1_MAX_LOD 5
+
 static void
 bloom_init_effect (void *params, backbuffer_info *bbuf)
 {
@@ -150,7 +152,7 @@ bloom_init_effect (void *params, backbuffer_info *bbuf)
   bdata->phase2 = 0.0;
   
   bdata->stage1_texture = memalign (32, GX_GetTexBufferSize (STAGE1_W, STAGE1_H,
-			    STAGE1_FMT, GX_FALSE, 0));
+			    STAGE1_FMT, GX_TRUE, 2));
   bdata->stage2_texture = memalign (32, GX_GetTexBufferSize (STAGE2_W, STAGE2_H,
 			    STAGE2_FMT, GX_FALSE, 0));
   bdata->shadow_buf = memalign (32, GX_GetTexBufferSize (SHADOW_TEX_W,
@@ -158,7 +160,11 @@ bloom_init_effect (void *params, backbuffer_info *bbuf)
   bdata->shadow_inf = create_shadow_info (8, &light0);
 
   GX_InitTexObj (&bdata->stage1_tex_obj, bdata->stage1_texture, STAGE1_W,
-		 STAGE1_H, STAGE1_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+		 STAGE1_H, STAGE1_FMT, GX_CLAMP, GX_CLAMP, GX_TRUE);
+  GX_InitTexObjLOD (&bdata->stage1_tex_obj, GX_LIN_MIP_NEAR, GX_LINEAR,
+		    1, 1, 0, GX_FALSE, GX_FALSE, GX_ANISO_1);
+  /*GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 0);*/
+  /*GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 2);*/
   GX_InitTexObj (&bdata->stage2_tex_obj, bdata->stage2_texture, STAGE2_W,
 		 STAGE2_H, STAGE2_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
   GX_InitTexObj (&bdata->shadowbuf_tex_obj, bdata->shadow_buf, SHADOW_TEX_W,
@@ -255,12 +261,28 @@ bloom_uninit_effect (void *params, backbuffer_info *bbuf)
   destroy_shadow_info (bdata->shadow_inf);
 }
 
+extern int switch_ghost_lighting;
+
 static display_target
 bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   bloom_data *bdata = (bloom_data *) params;
   object_loc softcube_loc;
   Mtx modelview, rotmtx, rotmtx2, scale;
+  int i;
+  static int first_time = 1;
+  int offset_acc = 0;
+
+  if (switch_ghost_lighting)
+    {
+      GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 1);
+      GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 1);
+    }
+  else
+    {
+      GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 0);
+      GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 0);
+    }
 
   object_loc_initialise (&softcube_loc, GX_PNMTX0);
   
@@ -280,8 +302,8 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   {
     object_loc shadowcast_loc;
 
-    rendertarget_texture (SHADOW_TEX_W, SHADOW_TEX_H, GX_TF_Z8);
-    GX_SetPixelFmt (GX_PF_Z24, GX_ZC_LINEAR);
+    rendertarget_texture (SHADOW_TEX_W, SHADOW_TEX_H, GX_TF_Z8, GX_FALSE,
+			  GX_PF_Z24, GX_ZC_LINEAR);
 
     GX_SetCullMode (GX_CULL_FRONT);
     
@@ -311,8 +333,8 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   /* Render knot, with shadowing from one light source and over-bright specular
      highlights in the alpha channel.  */
   
-  rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT);
-  GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT, GX_FALSE,
+			GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
   
   /* Use TEXMTX0 for ramp texture lookup, and TEXMTX1 for shadow-buffer
      lookup.  Object loc also stores a pointer to the shadow being cast onto
@@ -333,12 +355,57 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   object_set_arrays (&knot_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0, 0);
   object_render (&knot_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
-  
-  GX_CopyTex (bdata->stage1_texture, GX_TRUE);
-  GX_PixModeSync ();
+#if 0
+  for (i = 0; i <= STAGE1_MAX_LOD; i++)
+    {
+      int divisor = 1 << i;
+      int src_divisor = (i == 0) ? 1 : 1 << (i - 1);
+      int lev_size;
+      /*GX_SetViewport (0, 0, STAGE1_W / src_divisor, STAGE1_H / src_divisor,
+		      0, 1);*/
+      GX_SetTexCopySrc (0, 0, STAGE1_W / src_divisor, STAGE1_H / src_divisor);
+      GX_SetTexCopyDst (STAGE1_W / divisor, STAGE1_H / divisor, STAGE1_FMT,
+			(i == 0) ? GX_FALSE : GX_TRUE);
+      GX_CopyTex (bdata->stage1_texture + offset_acc,
+		  (i == STAGE1_MAX_LOD) ? GX_TRUE : GX_FALSE);
+      if (first_time)
+	srv_printf ("i = %d, offset = %d\n", i, offset_acc);
+      /*lev_size = (STAGE1_W / divisor) * (STAGE1_H / divisor) * 4;
+      lev_size = (lev_size + 31) & ~31;*/
+      lev_size = GX_GetTexBufferSize (STAGE1_W / divisor, STAGE1_H / divisor,
+				      STAGE1_FMT, GX_FALSE, 0);
+      offset_acc += lev_size;
+      GX_PixModeSync ();
+    }
+#else
+  {
+    int offset;
 
-  rendertarget_texture (STAGE2_W, STAGE2_H, STAGE2_FMT);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+    rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT, GX_FALSE,
+			  GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+
+    if (switch_ghost_lighting)
+      {
+        /* Grab top-level resolution mipmap.  */
+        GX_CopyTex (bdata->stage1_texture, GX_FALSE);
+	rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT, GX_TRUE,
+			      GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+	offset = GX_GetTexBufferSize (STAGE1_W, STAGE1_H, STAGE1_FMT,
+				      GX_FALSE, 0);
+	/* Now we'll get the mipmap at level 1 in the next GX_CopyTex call.  */
+      }
+    else
+      offset = 0;
+
+    GX_CopyTex (bdata->stage1_texture + offset, GX_TRUE);
+    GX_PixModeSync ();
+  }
+#endif
+
+  first_time = 0;
+
+  rendertarget_texture (STAGE2_W, STAGE2_H, STAGE2_FMT, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -371,10 +438,15 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_SetColorUpdate (GX_TRUE);
   GX_SetAlphaUpdate (GX_FALSE);
 
+  /* Render bloomed highlights first.  */
   load_texmtx_for_blur (0);
   screenspace_rect (bdata->gaussian_blur2_shader, GX_VTXFMT1, 0);
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
+
+  /* Use the highest-resolution mipmap for the final compositing.  */
+  GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 0);
+  GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 0);
 
   screenspace_rect (bdata->composite_shader, GX_VTXFMT1, 0);
 

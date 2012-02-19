@@ -82,7 +82,8 @@ update_lighting_texture (scene_info *scene, lighting_texture_info *lt)
   
   object_loc_initialise (&obj_loc, GX_PNMTX0);
 
-  rendertarget_texture (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT);
+  rendertarget_texture (LIGHT_TEX_W, LIGHT_TEX_H, LIGHT_TEXFMT, GX_FALSE,
+			GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -90,8 +91,6 @@ update_lighting_texture (scene_info *scene, lighting_texture_info *lt)
   GX_SetAlphaUpdate (GX_TRUE);
 
   guOrtho (proj, -1, 1, -1, 1, 1, 15);
-
-  GX_SetPixelFmt (GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
 
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);

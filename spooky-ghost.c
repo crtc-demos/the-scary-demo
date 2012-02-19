@@ -331,7 +331,8 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
     
   GX_SetCurrentMtx (GX_PNMTX0);
   
-  rendertarget_texture (REFLECTION_W, REFLECTION_H, REFLECTION_TEXFMT);
+  rendertarget_texture (REFLECTION_W, REFLECTION_H, REFLECTION_TEXFMT,
+			GX_FALSE, GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   GX_SetCullMode (GX_CULL_FRONT);
 

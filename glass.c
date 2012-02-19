@@ -8,7 +8,7 @@
 
 #include "timing.h"
 #include "glass.h"
-#include "ghost-obj.h"
+/*#include "ghost-obj.h"*/
 #include "shader.h"
 #include "screenspace.h"
 
@@ -32,6 +32,10 @@ static TPLFile spiderwebTPL;*/
 #include "object.h"
 #include "scene.h"
 #include "rendertarget.h"
+
+#include "objects/blobby-thing.inc"
+
+INIT_OBJECT (blobby_thing_obj, blobby_thing);
 
 #define COPYFMT GX_TF_RGBA8
 #define USEFMT GX_TF_RGBA8
@@ -186,8 +190,8 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   GX_InvalidateTexAll ();
   
-  rendertarget_texture (RTT_WIDTH, RTT_HEIGHT, COPYFMT);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (RTT_WIDTH, RTT_HEIGHT, COPYFMT, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
@@ -202,8 +206,8 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   GX_PixModeSync ();
 
-  rendertarget_texture (RTT_WIDTH, RTT_HEIGHT, COPYFMT);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (RTT_WIDTH, RTT_HEIGHT, COPYFMT, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
   GX_SetCopyClear ((GXColor) { 128, 128, 128, 0 }, 0x00ffffff);
   GX_SetColorUpdate (GX_TRUE);
@@ -225,18 +229,28 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), gdata->thr * 0.7);
   guMtxConcat (rot, mvtmp, mvtmp);
   
-  guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
+  if (time_offset < 1000)
+    gdata->xoffset = -(float) (1000 - time_offset) / 10.0;
+  else if (time_offset > 9000)
+    gdata->xoffset = (float) (time_offset - 9000) / 10.0;
+  else
+    gdata->xoffset = 0.0;
+  
+  /*guMtxScale (sep_scale, 6.0, 6.0, 6.0);*/
+  guMtxScale (sep_scale, 10.0, 10.0, 10.0);
+  guMtxTransApply (mvtmp, mvtmp2, gdata->xoffset, 0, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   light_update (scene.camera, &light0);
   
   shader_load (gdata->refraction_shader);
   
-  object_set_arrays (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
+  object_set_arrays (&blobby_thing_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
 		     0);
-  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+  object_render (&blobby_thing_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
+/*
   guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, NULL, 0);
@@ -246,6 +260,7 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+*/
 
   GX_CopyTex (gdata->grabbed_texture, GX_TRUE);
   
@@ -294,18 +309,21 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), gdata->thr * 0.7);
   guMtxConcat (rot, mvtmp, mvtmp);
 
-  guMtxScale (sep_scale, 6.0, 6.0, 6.0);
-  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp,
+  /*guMtxScale (sep_scale, 6.0, 6.0, 6.0);*/
+  guMtxScale (sep_scale, 10.0, 10.0, 10.0);
+  guMtxTransApply (mvtmp, mvtmp2, gdata->xoffset, 0, 0);
+  object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, perspmat, GX_PERSPECTIVE);
 
   shader_load (gdata->glass_postpass_shader);
 
   GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_SRCALPHA, GX_LO_SET);
 
-  object_set_arrays (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
+  object_set_arrays (&blobby_thing_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0,
 		     0);
-  object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+  object_render (&blobby_thing_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
 
+/*
   guMtxTransApply (mvtmp, mvtmp2, 13, 0, 0);
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, NULL, 0);
@@ -315,6 +333,7 @@ ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, NULL, 0);
   object_render (&spooky_ghost_obj, OBJECT_POS | OBJECT_NORM, GX_VTXFMT0);
+*/
 
   gdata->thr += 1;
 }

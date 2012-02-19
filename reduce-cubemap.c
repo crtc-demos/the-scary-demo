@@ -230,7 +230,8 @@ reduce_cubemap (cubemap_info *cubemap, int subdiv)
   
   GX_SetCullMode (GX_CULL_BACK);
   
-  rendertarget_texture (cubemap->sphsize, cubemap->sphsize, cubemap->sphfmt);
+  rendertarget_texture (cubemap->sphsize, cubemap->sphsize, cubemap->sphfmt,
+			GX_FALSE, GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   for (face = 0; face < 6; face++)
     {

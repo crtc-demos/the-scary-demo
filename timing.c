@@ -12,7 +12,6 @@
 #include <unistd.h>
 #include <time.h>
 #include <errno.h>
-#include <ext2.h>
 #include <sdcard/gcsd.h>
 #include <dirent.h>
 
@@ -47,7 +46,14 @@ extern u32 diff_msec (u64 start, u64 end);
 #undef DEBUG
 
 #undef PLAY_MP3
-#define PLAY_MOD
+#undef PLAY_MOD
+#define PLAY_ADPCM
+
+#ifdef USE_EXT2FS
+#include <ext2.h>
+#else
+#include <fat.h>
+#endif
 
 #ifdef PLAY_MP3
 #include <asndlib.h>
@@ -61,8 +67,13 @@ extern u32 diff_msec (u64 start, u64 end);
 //#include "its_3_a_e_a_m_mod.h"
 #endif
 
+#ifdef PLAY_ADPCM
+#include <aesndlib.h>
+#include "adpcm.h"
+#endif
+
 //#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 50000
+#define SKIP_TO_TIME 80000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -216,10 +227,12 @@ main (int argc, char *argv[])
   backbuffer_info backbuffers[MAX_BACKBUFFERS];
   unsigned int num_active_effects;
   const int num_effects = ARRAY_SIZE (sequence);
+#ifdef NETWORKING
   char localip[16] = {0};
   char gateway[16] = {0};
   char netmask[16] = {0};
   s32 ret;
+#endif
   Mtx viewmat, perspmat;
   guVector pos = {0, 0, 50};
   guVector up = {0, 1, 0};
@@ -229,6 +242,9 @@ main (int argc, char *argv[])
 #endif
 #ifdef PLAY_MP3
   FILE *mp3_fh = NULL;
+#endif
+#ifdef PLAY_ADPCM
+  u32 song_handle;
 #endif
 
   memset (backbuffers, 0, sizeof (backbuffers));
@@ -241,6 +257,7 @@ main (int argc, char *argv[])
   /* Hopefully this will trigger if we exit unexpectedly...  */
   atexit (return_to_loader);
 
+#ifdef NETWORKING
   printf ("Configuring network ...\n");
 
   strcpy (localip, "192.168.2.254");
@@ -259,6 +276,7 @@ main (int argc, char *argv[])
   printf ("waiting for connection...\n");
   srv_wait_for_connection ();
   printf ("got connection!\n");
+#endif
 
   srv_printf ("framebuffer = %p\n", xfb);
   srv_printf ("rmode = %p\n", (void*) rmode);
@@ -277,13 +295,9 @@ main (int argc, char *argv[])
   num_active_effects = 0;
   next_effect = 0;
 
-#ifdef PLAY_MP3
-  /*srv_printf ("ARAM init\n");
-  AR_Init (aram_blocks, MAX_ARAM_BLOCKS);*/
-    
+#if defined(PLAY_MP3) || defined(PLAY_ADPCM)
+#ifdef USE_EXT2FS
   do {
-    struct stat buf;
-    int ret;
     sec_t *partitions;
     int parts;
     
@@ -304,16 +318,27 @@ main (int argc, char *argv[])
         srv_printf ("Mounting ext2 failed!\n");
 	break;
       }
-    
-    /*if (fatInitDefault ())
+  } while (0);
+#else
+    if (fatInitDefault ())
       srv_printf ("FAT init success\n");
     else
-      srv_printf ("FAT init failure\n");*/
+      srv_printf ("FAT init failure\n");
     
-    /*if (fatMountSimple ("sd", &__io_gcsda))
+    if (fatMountSimple ("sd", &__io_gcsda))
       srv_printf ("FAT mount returned non-zero (mounted?)\n");
     else
-      srv_printf ("FAT mount returned zero\n");*/
+      srv_printf ("FAT mount returned zero\n");
+#endif
+#endif
+
+#ifdef PLAY_MP3
+  /*srv_printf ("ARAM init\n");
+  AR_Init (aram_blocks, MAX_ARAM_BLOCKS);*/
+    
+  do {
+    struct stat buf;
+    int ret;
     
     srv_printf ("files in sd:/...\n");
     
@@ -385,6 +410,20 @@ main (int argc, char *argv[])
   srv_printf ("  (Set MOD... %s)\n", ret == 0 ? "successful" : "failed");
   ret = MODPlay_Start (&modplay);
   srv_printf ("  (Start playback... %s)\n", ret == 0 ? "successful" : "failed");
+#endif
+
+#ifdef PLAY_ADPCM
+  srv_printf ("AESND Init\n");
+  AESND_Init (NULL);
+  
+  adpcm_init ();
+  song_handle = adpcm_load_file ("sd:/adpcm.wav");
+  srv_printf ("Make it play!\n");
+#ifdef SKIP_TO_TIME
+  adpcm_play (song_handle, SKIP_TO_TIME);
+#else
+  adpcm_play (song_handle, 0);
+#endif
 #endif
 
   start_time = gettime ();
@@ -537,7 +576,8 @@ main (int argc, char *argv[])
 	    continue;
 
 	  rendertarget_texture (backbuffers[idx].width, backbuffers[idx].height,
-				backbuffers[idx].copyfmt);
+				backbuffers[idx].copyfmt, GX_FALSE,
+				GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 	  
           for (i = 0; i < num_active_effects; i++)
 	    if (active_effects[i]->methods->display_effect
@@ -598,8 +638,15 @@ main (int argc, char *argv[])
   if (mp3_fh)
     fclose (mp3_fh);
   ASND_End ();
+#endif
+
+#if defined(PLAY_MP3) || defined(PLAY_ADPCM)
+#ifdef USE_EXT2FS
   srv_printf ("Unmount ext2\n");
   ext2Unmount ("sd");
+#else
+  fatUnmount ("sd");
+#endif
 #endif
 
   return_to_loader ();

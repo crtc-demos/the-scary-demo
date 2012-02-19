@@ -283,8 +283,8 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 		       pdata->modelview, NULL, proj, GX_PERSPECTIVE);
 
   /* Render beams to texture.  */
-  rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (BEAMS_TEX_W, BEAMS_TEX_H, BEAMS_TEX_TF, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   /* Urgh, what.  */
   /*GX_SetCopyClear ((GXColor) { 1, 1, 1, 1 }, 0x00ffffff);

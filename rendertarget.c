@@ -33,18 +33,29 @@ rendertarget_screen (GXRModeObj *rmode)
 }
 
 void
-rendertarget_texture (u32 width, u32 height, u32 texfmt)
+rendertarget_texture (u32 width, u32 height, u32 texfmt, u8 mipmap, u8 pixfmt,
+		      u8 zfmt)
 {
+  int twidth = width, theight = height;
+  
+  if (mipmap)
+    {
+      twidth /= 2;
+      theight /= 2;
+    }
+  
   GX_SetViewport (0, 0, width, height, 0, 1);
   GX_SetScissor (0, 0, width, height);
-  GX_SetDispCopySrc (0, 0, width, height);
-  GX_SetDispCopyDst (width, height);
+  /*GX_SetDispCopySrc (0, 0, width, height);
+  GX_SetDispCopyDst (width, height);*/
   GX_SetDispCopyYScale (1);
   GX_SetCopyFilter (GX_FALSE, NULL, GX_FALSE, NULL);
   GX_SetTexCopySrc (0, 0, width, height);
-  GX_SetTexCopyDst (width, height, texfmt, GX_FALSE);
+  GX_SetTexCopyDst (twidth, theight, texfmt, mipmap);
   
   GX_ClearBoundingBox ();
+  
+  GX_SetPixelFmt (pixfmt, zfmt);
   
   rendering_to_screen = 0;
 }

@@ -158,8 +158,8 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   guMtxScale (tdata->box_scale, 50.0, 50.0, 50.0);
   
-  rendertarget_texture (TEX_WIDTH, TEX_HEIGHT, GX_CTF_R8);
-  GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
+  rendertarget_texture (TEX_WIDTH, TEX_HEIGHT, GX_CTF_R8, GX_FALSE,
+			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
   tentacles_obj.positions = tdata->tentacle_wavey_pos;
   world_display (tdata->world);
