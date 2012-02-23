@@ -1,0 +1,2 @@
+stage 0:
+  tev.rgb = chan0.rgb;
