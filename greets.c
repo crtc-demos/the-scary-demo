@@ -54,8 +54,8 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
 
   TPL_OpenTPLFromMemory (&fontTPL, (void *) font_tpl, font_tpl_size);
   TPL_GetTexture (&fontTPL, font, &gdata->fontobj);
-  GX_InitTexObjFilterMode (&gdata->fontobj, GX_NEAR, GX_NEAR);
-  GX_InitTexObjWrapMode (&gdata->fontobj, GX_REPEAT, GX_REPEAT);
+  GX_InitTexObjFilterMode (&gdata->fontobj, GX_LINEAR, GX_LINEAR);
+  GX_InitTexObjWrapMode (&gdata->fontobj, GX_CLAMP, GX_CLAMP);
   
   gdata->tileidx = memalign (32, GX_GetTexBufferSize (TILES_W, TILES_H,
 						      TILES_FMT, GX_FALSE, 0));
