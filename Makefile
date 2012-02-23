@@ -47,7 +47,7 @@ OBJS :=		sintab.o backbuffer.o list.o server.o matrixutil.o \
 		light.o lighting-texture.o utility-texture.o spline.o \
 		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
 		reflection.o spooky-ghost.o bloom.o glass.o \
-		parallax-mapping.o tentacles.o adpcm.o timing.o
+		parallax-mapping.o tentacles.o greets.o adpcm.o timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -63,13 +63,14 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
 		parallax-lit-phase3.inc channelsplit.inc skybox.inc \
 		fancy-envmap.inc embm.inc skybox-mixcol.inc \
-		column-texture.inc fog-texture.inc ghastly-lighting.inc
+		column-texture.inc fog-texture.inc ghastly-lighting.inc \
+		tile-grid.inc
 
 TEXTURES :=	images/more_stones.tpl.o images/stones_bump.tpl.o \
 		images/snakeskin.tpl.o images/pumpkin_skin.tpl.o \
 		images/mighty_zebu.tpl.o images/gradient.tpl.o \
 		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o \
-		images/snakytextures.tpl.o
+		images/snakytextures.tpl.o images/font.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 

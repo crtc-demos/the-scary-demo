@@ -440,7 +440,7 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
       sdata->ghost.going_right = false;
       sdata->ghost.number++;
     }
-  if (sdata->ghost.number == 2 && time_offset > 28000)
+  if (sdata->ghost.number == 2 && time_offset > 27000)
     {
       int block = 9;
       sdata->ghost.acrossness = -18.0;

@@ -37,6 +37,7 @@
 #include "tentacles.h"
 #include "sintab.h"
 #include "reflection.h"
+#include "greets.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -73,7 +74,7 @@ extern u32 diff_msec (u64 start, u64 end);
 #endif
 
 //#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 65000
+#define SKIP_TO_TIME 119000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -95,7 +96,8 @@ static do_thing_at sequence[] = {
   {  70000,  80000, &glass_methods, &glass_data_0, -1, 0 },
   {  80000,  95000, &bloom_methods, &bloom_data_0, -1, 0 },
   {  95000, 120000, &tubes_methods, &tube_data_0, -1, 0 },
-  { 120000, 180000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
+  { 120000, 180000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 },
+  { 121000, 180000, &greets_methods, &greets_data_0, -1, 0 }
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))

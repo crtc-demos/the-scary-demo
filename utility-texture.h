@@ -19,6 +19,9 @@ typedef enum {
   UTIL_TEX_MAX
 } utility_texture_handle;
 
+extern unsigned int tex_index (unsigned int, unsigned int, unsigned int,
+			       unsigned int);
+
 /* Get a cached GXTexObj for the given utility texture, creating it if
    necessary.  */
 extern GXTexObj *get_utility_texture (utility_texture_handle);

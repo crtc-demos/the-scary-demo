@@ -54,7 +54,7 @@ create_8bit_ramp (utility_texture_info *dst)
   dst->texbuf = ramptex;
 }
 
-static unsigned int
+unsigned int
 tex_index (unsigned int s, unsigned int t, unsigned int pitch,
 	   unsigned int texel_bits)
 {
