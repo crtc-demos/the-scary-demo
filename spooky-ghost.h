@@ -10,7 +10,9 @@
 typedef struct
 {
   lighting_texture_info *lighting_texture;
-  object_loc obj_loc;
+  object_loc tunnel_section_loc;
+
+  object_loc ghost_loc;
 
   float deg;
   float deg2;
@@ -25,8 +27,20 @@ typedef struct
   GXTexObj bumpmap;
   GXTexObj reflection_obj;
 
+  struct
+    {
+      bool visible;
+      float acrossness;
+      float alongness;
+      GXColor colour;
+      bool going_right;
+      int sometimes;
+      int number;
+    } ghost;
+
   shader_info *bump_mapping_shader;
   shader_info *tunnel_lighting_shader;
+  shader_info *ghost_shader;
   shader_info *water_shader;
 } spooky_ghost_data;
 

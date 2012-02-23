@@ -63,7 +63,7 @@ SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		parallax-lit-phase1.inc parallax-lit-phase2.inc \
 		parallax-lit-phase3.inc channelsplit.inc skybox.inc \
 		fancy-envmap.inc embm.inc skybox-mixcol.inc \
-		column-texture.inc fog-texture.inc
+		column-texture.inc fog-texture.inc ghastly-lighting.inc
 
 TEXTURES :=	images/more_stones.tpl.o images/stones_bump.tpl.o \
 		images/snakeskin.tpl.o images/pumpkin_skin.tpl.o \
@@ -83,6 +83,10 @@ OBJECTS_INC :=	objects/spooky-ghost.inc objects/beam-left.inc \
 		objects/cross-cube.inc objects/scary-skull-2.inc \
 		objects/cobra.inc objects/column.inc objects/blobby-thing.inc
 
+TEXTURE_HEADERS := $(TEXTURES:.tpl.o=.h)
+
+TEXTURE_TPL_HEADERS := $(foreach texture,$(TEXTURES:.tpl.o=_tpl.h),$(subst images/,,$(texture)))
+
 FILEMGR_OBJS :=	filemgr.o
 FILEMGR_LIBS := -ldb -lbba -lfat -logc -lm
 
@@ -99,8 +103,9 @@ clean:
 	rm -f *.o libcompass/*.o libcompass/*.a $(TARGET)
 
 cleaner: clean
-	rm -f libcompass/*.d *.d $(SHADERS_INC) $(TEXTURES) $(OBJECTS_INC) \
-	      $(GENERATED_IMAGES)
+	rm -f libcompass/*.d *.d images/*.d images/*.tpl $(SHADERS_INC) \
+	      $(TEXTURES) $(OBJECTS_INC) $(GENERATED_IMAGES) \
+	      $(TEXTURE_HEADERS) $(TEXTURE_TPL_HEADERS)
 
 .PHONY:	images_clean
 images_clean:
@@ -112,8 +117,8 @@ filemgr.elf: $(FILEMGR_OBJS)
 %.o:	%.c
 	$(CC) $(CFLAGS) $(INCLUDE) -c $< -o $@
 
-%.d:	%.c $(SHADERS_INC) $(OBJECTS_INC)
-	$(CC) $(CFLAGS) $(INCLUDE) -MM $< | ./dirify.sh "$@" > $@
+%.d:	%.c $(SHADERS_INC) $(OBJECTS_INC) $(TEXTURE_HEADERS) $(TEXTURE_TPL_HEADERS)
+	$(CC) $(CFLAGS) $(INCLUDE) -MM $< | ./dirify.sh "$@" > "$@"
 
 %.d:	%.scf
 	$(GXTEXCONV) -d $@ -s $<
@@ -121,11 +126,15 @@ filemgr.elf: $(FILEMGR_OBJS)
 %.inc:	%.tev
 	$(TEVSL) $< -o $@
 
+images/stones_bump.scf: images/stones_bump.png
+
 images/stones_bump.png:	images/fake_stone_depth.png
 	$(BUMPTOOL) $< -o $@
 
 images/height_bump.png: images/height.png
 	$(BUMPTOOL) -i $< -o $@
+
+images/skull_tangentmap_gx.scf: images/skull_tangentmap_gx.png
 
 images/skull_tangentmap_gx.png: images/skull_tangentmap.png
 	$(BUMPTOOL) -b $< -o $@
@@ -135,12 +144,22 @@ images/snaketanmap.png: images/snakenorm2.png
 
 images/snakytextures.d: images/snaketanmap.png
 
-#%.tpl:	%.scf
-#	$(GXTEXCONV) -s $< -o $@
+define tpl_o_template
+$(1) $(subst .tpl.o,_tpl.h,$(notdir $(1))): $(subst .tpl.o,.tpl,$(1))
+	@echo $(notdir $$<)
+	@$$(bin2o)
+endef
 
-%.tpl.o:	%.tpl
-	@echo $(notdir $<)
-	@$(bin2o)
+define tpl_template
+$(1) $(subst .tpl,.h,$(1)): $(subst .tpl,.scf,$(1))
+	$(GXTEXCONV) -s $$< -o $$@
+endef
+
+# Rules to make images/*.tpl.o and *_tpl.h files.
+$(foreach tpl_o,$(TEXTURES),$(eval $(call tpl_o_template,$(tpl_o))))
+
+# Rules to make images/*.tpl and images/*.h files.
+$(foreach tpl,$(TEXTURES:.tpl.o=.tpl),$(eval $(call tpl_template,$(tpl))))
 
 %.mod.o:	%.mod
 	@echo $(notdir $<)

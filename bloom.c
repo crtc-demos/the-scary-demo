@@ -19,6 +19,8 @@
 //extern object_info softcube_obj;
 INIT_OBJECT (knot_obj, knot);
 
+const static int use_mipmapping = 1;
+
 static light_info light0 =
 {
   .pos = { 40, 10, 10 },
@@ -113,7 +115,8 @@ load_texmtx_for_blur (int horizontal)
       else
 	guMtxTransApply (texmtx, texmtx, 0, (((float) i) - 3.5) / 60.0,
 			 0);
-      GX_LoadTexMtxImm (texmtx, GX_TEXMTX0 + i * 3, GX_MTX2x4);
+      GX_LoadTexMtxImm (texmtx, GX_TEXMTX0 + i * (GX_TEXMTX1 - GX_TEXMTX0),
+			GX_MTX2x4);
     }
 }
 
@@ -261,8 +264,6 @@ bloom_uninit_effect (void *params, backbuffer_info *bbuf)
   destroy_shadow_info (bdata->shadow_inf);
 }
 
-extern int switch_ghost_lighting;
-
 static display_target
 bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
@@ -273,7 +274,7 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   static int first_time = 1;
   int offset_acc = 0;
 
-  if (switch_ghost_lighting)
+  if (use_mipmapping)
     {
       GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 1);
       GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 1);
@@ -384,7 +385,7 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
     rendertarget_texture (STAGE1_W, STAGE1_H, STAGE1_FMT, GX_FALSE,
 			  GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
 
-    if (switch_ghost_lighting)
+    if (use_mipmapping)
       {
         /* Grab top-level resolution mipmap.  */
         GX_CopyTex (bdata->stage1_texture, GX_FALSE);
@@ -448,7 +449,9 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 0);
   GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 0);
 
-  screenspace_rect (bdata->composite_shader, GX_VTXFMT1, 0);
+  if ((time_offset > 3000 || (time_offset > 2000 && (rand () & 8) != 0))
+      && (time_offset < 11000 || (time_offset < 12000 && (rand () & 8) != 0)))
+    screenspace_rect (bdata->composite_shader, GX_VTXFMT1, 0);
 
   bdata->phase += 1;
   bdata->phase2 += 3.0 * sinf (bdata->phase * M_PI / 180.0);
