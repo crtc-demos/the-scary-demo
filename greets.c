@@ -2,6 +2,7 @@
 #include <gccore.h>
 #include <malloc.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "timing.h"
 #include "greets.h"
@@ -24,20 +25,46 @@ init_tile_shader (void *dummy)
   #include "tile-grid.inc"
 }
 
+static unsigned char grid_ascii_equiv[] =
+  {
+    ' ', '!', '?', '0', '1', '2', '3', '4',
+    '5', '6', '7', '8', '9', 'A', 'B', 'C',
+    'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K',
+    'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+    'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '3'
+  };
+
+static unsigned char ascii_to_char[256];
+
 static void
-put_data (void *tileidx)
+init_ascii_to_char (void)
 {
-  char *c = tileidx;
-  int i, j;
+  int i;
   
-  for (i = 0; i < TILES_W; i++)
-    for (j = 0; j < TILES_H; j++)
-      {
-        unsigned int idx = tex_index (i, j, TILES_W, 8);
-	c[idx] = i * 16 + j;
-	//c[idx + 1] = rand () & 15;
-      }
-  DCFlushRange (c, TILES_W * TILES_H * 2);
+  memset (ascii_to_char, 255, sizeof (ascii_to_char));
+  
+  for (i = 0; i < sizeof (grid_ascii_equiv); i++)
+    {
+      int s_part = i & 7;
+      int t_part = (i >> 3) & 7;
+      ascii_to_char[grid_ascii_equiv[i]] = s_part * 16 + t_part;
+    }
+}
+
+static void
+put_text (void *tileidx, int row, int startcol, unsigned char *text)
+{
+  unsigned char *c = tileidx;
+  int i;
+  
+  for (i = 0; text[i] != '\0'; i++)
+    {
+      int idx = tex_index (startcol + i, row, TILES_W, 8);
+      c[idx] = ascii_to_char[text[i]];
+    }
+
+  DCFlushRange (c, GX_GetTexBufferSize (TILES_W, TILES_H, TILES_FMT, GX_FALSE,
+					0));
 }
 
 static void
@@ -55,7 +82,7 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
   TPL_OpenTPLFromMemory (&fontTPL, (void *) font_tpl, font_tpl_size);
   TPL_GetTexture (&fontTPL, font, &gdata->fontobj);
   GX_InitTexObjFilterMode (&gdata->fontobj, GX_LINEAR, GX_LINEAR);
-  GX_InitTexObjWrapMode (&gdata->fontobj, GX_CLAMP, GX_CLAMP);
+  GX_InitTexObjWrapMode (&gdata->fontobj, GX_REPEAT, GX_REPEAT);
   
   gdata->tileidx = memalign (32, GX_GetTexBufferSize (TILES_W, TILES_H,
 						      TILES_FMT, GX_FALSE, 0));
@@ -68,7 +95,10 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texmap (gdata->tile_shader, &gdata->tileidxobj, GX_TEXMAP1);
   shader_append_texcoordgen (gdata->tile_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
-  put_data (gdata->tileidx);
+  memset (gdata->tileidx, 0, GX_GetTexBufferSize (TILES_W, TILES_H,
+						  TILES_FMT, GX_FALSE, 0));
+  init_ascii_to_char ();
+  put_text (gdata->tileidx, 2, 1, (unsigned char *) "HELLO!");
 }
 
 static void
