@@ -1,0 +1,6 @@
+stage 0:
+  tev.rgba = texmap0[(texcoord0 % 16)
+		     + indmtx0 ** texmap1[texcoord0 / 16] * indscale0].rgba;
+
+finally:
+  alpha_pass = tev.a > 128;
