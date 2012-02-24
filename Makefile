@@ -96,7 +96,7 @@ demo.elf:	$(OBJS) $(TEXTURES) $(MODS)
 
 .PHONY:	.depend
 
-.PRECIOUS: .inc
+.PRECIOUS: %.inc
 
 all:	$(TARGET)
 
