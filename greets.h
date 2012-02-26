@@ -14,6 +14,8 @@ typedef struct
   void *tileidx;
   
   shader_info *tile_shader;
+  
+  object_loc greets_loc;
 } greets_data;
 
 extern effect_methods greets_methods;

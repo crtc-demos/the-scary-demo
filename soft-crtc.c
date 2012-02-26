@@ -12,6 +12,7 @@
 #include "object.h"
 #include "server.h"
 #include "cam-path.h"
+#include "matrixutil.h"
 
 #include "objects/soft-crtc.xyz"
 
@@ -311,18 +312,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   Mtx id;
 
   guMtxScale (id, 2, 2, 2);
-  {
-    float tx, ty, tz;
-    tx = guMtxRowCol (id, 0, 1);
-    ty = guMtxRowCol (id, 1, 1);
-    tz = guMtxRowCol (id, 2, 1);
-    guMtxRowCol (id, 0, 1) = guMtxRowCol (id, 0, 2);
-    guMtxRowCol (id, 1, 1) = guMtxRowCol (id, 1, 2);
-    guMtxRowCol (id, 2, 1) = guMtxRowCol (id, 2, 2);
-    guMtxRowCol (id, 0, 2) = tx;
-    guMtxRowCol (id, 1, 2) = ty;
-    guMtxRowCol (id, 2, 2) = tz;
-  }
+  matrixutil_swap_yz (id, id);
   cam_path_follow (&scene, id, &soft_crtc, (float) time_offset / 10000.0);
 
   scene.up.x = sinf (uprot);

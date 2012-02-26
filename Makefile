@@ -189,7 +189,7 @@ objects/beam-mouth.inc:	objects/beam-mouth.dae
 	$(OBJCONVERT) -c -yz -i -n beam_mouth $< -o $@
 
 objects/tunnel-section.inc:	objects/tunnel-section.dae
-	$(OBJCONVERT) -c -t -n tunnel_section $< -o $@
+	$(OBJCONVERT) -c -yz -i -t -n tunnel_section $< -o $@
 
 objects/softcube.inc:	objects/softcube.dae
 	$(OBJCONVERT) -c -n softcube $< -o $@

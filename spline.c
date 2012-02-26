@@ -164,9 +164,9 @@ free_spline_data (spline_info *spline)
 static int
 find_section (float *arr, int len, float thing)
 {
-  int lo = 0, hi = len - 1;
+  int lo = 0, hi = len - 1, iter = 0;
   
-  while (hi - lo > 1)
+  while (hi - lo > 1 && iter < 16)
     {
       int midpt = (lo + hi) / 2;
 
@@ -176,6 +176,8 @@ find_section (float *arr, int len, float thing)
         hi = midpt;
       else if (thing > arr[midpt])
         lo = midpt;
+
+      iter++;
     }
   
   return lo;

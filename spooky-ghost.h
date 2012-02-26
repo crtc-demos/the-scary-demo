@@ -7,8 +7,15 @@
 #include "lighting-texture.h"
 #include "scene.h"
 
+typedef enum
+{
+  GHOST_LEFT, GHOST_RIGHT, GHOST_TOWARDS
+} ghost_dir;
+
 typedef struct
 {
+  scene_info scene;
+
   lighting_texture_info *lighting_texture;
   object_loc tunnel_section_loc;
 
@@ -33,7 +40,7 @@ typedef struct
       float acrossness;
       float alongness;
       GXColor colour;
-      bool going_right;
+      ghost_dir ghost_dir;
       int sometimes;
       int number;
     } ghost;

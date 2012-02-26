@@ -7,6 +7,7 @@
 #include "timing.h"
 #include "greets.h"
 #include "screenspace.h"
+#include "spooky-ghost.h"
 
 #include "images/font.h"
 #include "font_tpl.h"
@@ -15,8 +16,8 @@ static TPLFile fontTPL;
 
 greets_data greets_data_0;
 
-#define TILES_W 64
-#define TILES_H 32
+#define TILES_W 32
+#define TILES_H 16
 #define TILES_FMT GX_TF_IA4
 
 static void
@@ -71,9 +72,10 @@ static void
 greets_init_effect (void *params, backbuffer_info *bbuf)
 {
   greets_data *gdata = (greets_data *) params;
+  int i;
   
   gdata->world = create_world (0);
-  world_set_perspective (gdata->world, 60.0, 1.33f, 10.0f, 500.0f);
+  world_set_perspective (gdata->world, 60.0, 1.33f, 5.0f, 500.0f);
   world_set_pos_lookat_up (gdata->world,
 			   (guVector) { 0, 0, -30 },
 			   (guVector) { 0, 0, 0 },
@@ -98,7 +100,10 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
   memset (gdata->tileidx, 0, GX_GetTexBufferSize (TILES_W, TILES_H,
 						  TILES_FMT, GX_FALSE, 0));
   init_ascii_to_char ();
-  put_text (gdata->tileidx, 2, 1, (unsigned char *) "HELLO!");
+
+  put_text (gdata->tileidx, 0, 0, (unsigned char *) "HELLO WORLD!");
+  
+  object_loc_initialise (&gdata->greets_loc, GX_PNMTX0);
 }
 
 static void
@@ -112,18 +117,66 @@ greets_uninit_effect (void *params, backbuffer_info *bbuf)
 }
 
 static void
+render_texture (greets_data *gdata, float zpos)
+{
+  world_info *world = gdata->world;
+  Mtx mvtmp;
+
+  guMtxIdentity (mvtmp);
+
+  object_set_matrices (&world->scene, &gdata->greets_loc, world->scene.camera,
+		       mvtmp, NULL, world->projection, world->projection_type);
+
+  GX_ClearVtxDesc ();
+  GX_SetVtxDesc (GX_VA_POS, GX_DIRECT);
+  GX_SetVtxDesc (GX_VA_TEX0, GX_DIRECT);
+
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+  GX_SetVtxAttrFmt (GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+  GX_SetCullMode (GX_CULL_NONE);
+
+  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+
+  GX_Position3f32 (zpos, 3, -4);
+  GX_TexCoord2f32 (0, 0);
+
+  GX_Position3f32 (zpos, 3, 4);
+  GX_TexCoord2f32 (4, 0);
+
+  GX_Position3f32 (zpos, -3, -4);
+  GX_TexCoord2f32 (0, 2);
+
+  GX_Position3f32 (zpos, -3, 4);
+  GX_TexCoord2f32 (4, 2);
+
+  GX_End ();
+}
+
+static void
 greets_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   greets_data *gdata = (greets_data *) params;
   f32 indmtx[2][3] = { { 0.5, 0.0, 0.0 },
 		       { 0.0, 0.5, 0.0 } };
 
+  world_set_pos_lookat_up (gdata->world,
+			   (guVector) spooky_ghost_data_0.scene.pos,
+			   (guVector) spooky_ghost_data_0.scene.lookat,
+			   (guVector) spooky_ghost_data_0.scene.up);
+
   GX_SetIndTexMatrix (GX_ITM_0, indmtx, 5);
 
   world_display (gdata->world);
   //shader_load (gdata->tile_shader);
-  GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
-  screenspace_rect (gdata->tile_shader, GX_VTXFMT0, 0);
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+  
+  shader_load (gdata->tile_shader);
+
+  GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 255, 255, 255 });
+  render_texture (gdata, 5.5 + spooky_ghost_data_0.bla);
+
+  //screenspace_rect (gdata->tile_shader, GX_VTXFMT0, 0);
 }
 
 effect_methods greets_methods =

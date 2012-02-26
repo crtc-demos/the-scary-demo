@@ -16,6 +16,10 @@
 #include "ghost-obj.h"
 #include "lighting-texture.h"
 #include "screenspace.h"
+#include "cam-path.h"
+#include "matrixutil.h"
+
+#include "objects/tunnel-track.xyz"
 
 #include "images/more_stones.h"
 #include "more_stones_tpl.h"
@@ -45,14 +49,6 @@ static light_info light0 =
 };
 
 static Mtx44 perspmat;
-
-static scene_info scene =
-{
-  .pos = { 0, 0, 30 },
-  .up = { 0, 1, 0 },
-  .lookat = { 0, 0, 0 },
-  .camera_dirty = 1
-};
 
 spooky_ghost_data spooky_ghost_data_0;
 
@@ -143,8 +139,13 @@ spooky_ghost_init_effect (void *params, backbuffer_info *bbuf)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
 
-  guPerspective (perspmat, 60, 1.33f, 10.0f, 500.0f);
-  scene_update_camera (&scene);
+  guPerspective (perspmat, 60, 1.33f, 5.0f, 500.0f);
+  
+  scene_set_pos (&sdata->scene, (guVector) { 0, 0, 30 });
+  scene_set_up (&sdata->scene, (guVector) { 0, 1, 0 });
+  scene_set_lookat (&sdata->scene, (guVector) { 0, 0, 0 });
+  
+  scene_update_camera (&sdata->scene);
   
   object_loc_initialise (&sdata->tunnel_section_loc, GX_PNMTX0);
   object_set_tex_norm_binorm_matrices (&sdata->tunnel_section_loc,
@@ -341,19 +342,42 @@ render_tunnel (spooky_ghost_data *sdata, bool reflect, float camera_pos)
       else
 	guMtxTrans (mvtmp, block_start + i * fudge_factor * size, 0, 0.0);
       
-      object_set_matrices (&scene, &sdata->tunnel_section_loc, scene.camera,
-			   mvtmp, sep_scale, NULL, 0);
+      object_set_matrices (&sdata->scene, &sdata->tunnel_section_loc,
+			   sdata->scene.camera, mvtmp, sep_scale, NULL, 0);
       
       object_render (&tunnel_section_obj,
 		     OBJECT_POS | OBJECT_NBT3 | OBJECT_TEXCOORD, GX_VTXFMT0);
     }
 }
 
+
+static void
+place_ghost (spooky_ghost_data *sdata, int blocknum, GXColor colour,
+	     ghost_dir ghost_dir)
+{
+  switch (ghost_dir)
+    {
+    case GHOST_RIGHT:
+    case GHOST_LEFT:
+      sdata->ghost.acrossness = (ghost_dir == GHOST_RIGHT) ? -18.0 : 18.0;
+      break;
+    
+    case GHOST_TOWARDS:
+      sdata->ghost.acrossness = 0;
+      break;
+    }
+  sdata->ghost.alongness = blocknum * 28.0 * 1.15;
+  sdata->ghost.colour = colour;
+  sdata->ghost.visible = true;
+  sdata->ghost.ghost_dir = ghost_dir;
+  sdata->ghost.number++;
+}
+
 static display_target
 spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
-  Mtx modelView, mvtmp, sep_scale, rot;
+  Mtx modelView, mvtmp, sep_scale, rot, id;
 
   light0.pos.x = cos (sdata->lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
@@ -364,21 +388,29 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   if (switch_ghost_lighting)
     {
       shader_load (sdata->tunnel_lighting_shader);
-      light_update (scene.camera, &light0);
-      update_lighting_texture (&scene, sdata->lighting_texture);
+      light_update (sdata->scene.camera, &light0);
+      update_lighting_texture (&sdata->scene, sdata->lighting_texture);
     }
 
-  scene_set_pos (&scene, (guVector) { sdata->bla, 0.0, 0.0 });
-  scene_set_lookat (&scene, (guVector)
+#if 1
+  guMtxScale (id, 28, 28, 28);
+  matrixutil_swap_yz (id, id);
+  cam_path_follow (&sdata->scene, id, &tunnel_track,
+		   (float) time_offset / 60000.0);
+  sdata->bla = sdata->scene.pos.x - 28.0;
+#else
+  scene_set_pos (&sdata->scene, (guVector) { sdata->bla, 0.0, 0.0 });
+  scene_set_lookat (&sdata->scene, (guVector)
 		    { sdata->bla + 5,
 		      cos (sdata->deg) * 0.2 + cos (sdata->deg2) * 0.1,
 		      sin (sdata->deg2) * 0.2 + sin (sdata->deg) * 0.1 });
+#endif
 
   //guLookAt (viewmat, &pos, &up, &lookat);
 
   GX_InvalidateTexAll ();
   
-  scene_update_camera (&scene);
+  scene_update_camera (&sdata->scene);
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -389,14 +421,15 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   guMtxScaleApply (modelView, mvtmp, 2.0, 2.0, 2.0);
 
-  light_update (scene.camera, &light0);
+  light_update (sdata->scene.camera, &light0);
 
   guMtxIdentity (modelView);
   guMtxScale (sep_scale, 25.0, 25.0, 25.0);
-  object_set_matrices (&scene, &sdata->tunnel_section_loc, scene.camera,
-		       modelView, sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&sdata->scene, &sdata->tunnel_section_loc,
+		       sdata->scene.camera, modelView, sep_scale, perspmat,
+		       GX_PERSPECTIVE);
 
-  light_update (scene.camera, &light0);
+  light_update (sdata->scene.camera, &light0);
 
   if (switch_ghost_lighting)
     shader_load (sdata->bump_mapping_shader);
@@ -410,46 +443,20 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   render_tunnel (sdata, true, sdata->bla);
 
-  if (!sdata->ghost.visible && time_offset > 5000)
+  if (sdata->ghost.number == -1 && time_offset > 4000)
+    place_ghost (sdata, 2, (GXColor) { 255, 32, 32, 0 }, GHOST_LEFT);
+  else if (sdata->ghost.number == 0 && time_offset > 9000)
+    place_ghost (sdata, 5, (GXColor) { 255, 32, 32, 0 }, GHOST_RIGHT);
+  else if (sdata->ghost.number == 1 && time_offset > 14000)
     {
-      int block = 3;
-      sdata->ghost.acrossness = -18.0;
-      sdata->ghost.alongness = block * 28.0 * 1.15;
-      sdata->ghost.colour = (GXColor) { 255, 32, 32, 0 };
-      sdata->ghost.visible = true;
-      sdata->ghost.going_right = true;
-      sdata->ghost.number = 0;
+      sdata->ghost.visible = false;
+      if (time_offset > 25000)
+	place_ghost (sdata, 9, (GXColor) { 255, 255, 32, 0 }, GHOST_RIGHT);
     }
-  if (sdata->ghost.number == 0 && time_offset > 12000)
-    {
-      int block = 5;
-      sdata->ghost.acrossness = 18.0;
-      sdata->ghost.alongness = block * 28.0 * 1.15;
-      sdata->ghost.colour = (GXColor) { 255, 32, 32, 0 };
-      sdata->ghost.visible = true;
-      sdata->ghost.going_right = false;
-      sdata->ghost.number++;
-    }
-  if (sdata->ghost.number == 1 && time_offset > 20000)
-    {
-      int block = 7;
-      sdata->ghost.acrossness = 18.0;
-      sdata->ghost.alongness = block * 28.0 * 1.15;
-      sdata->ghost.colour = (GXColor) { 255, 255, 32, 0 };
-      sdata->ghost.visible = true;
-      sdata->ghost.going_right = false;
-      sdata->ghost.number++;
-    }
-  if (sdata->ghost.number == 2 && time_offset > 27000)
-    {
-      int block = 9;
-      sdata->ghost.acrossness = -18.0;
-      sdata->ghost.alongness = block * 28.0 * 1.15;
-      sdata->ghost.colour = (GXColor) { 255, 32, 32, 0 };
-      sdata->ghost.visible = true;
-      sdata->ghost.going_right = true;
-      sdata->ghost.number++;
-    }
+  else if (sdata->ghost.number == 2 && time_offset > 32000)
+    place_ghost (sdata, 12, (GXColor) { 255, 32, 32, 0 }, GHOST_LEFT);
+  else if (sdata->ghost.number == 3 && time_offset > 47000)
+    place_ghost (sdata, 20, (GXColor) { 255, 192, 32, 0 }, GHOST_TOWARDS);
 
   /* Ghost.  */
   if (sdata->ghost.visible)
@@ -460,14 +467,24 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
       guMtxTrans (mvtmp, sdata->ghost.alongness, -16, sdata->ghost.acrossness);
       guMtxScale (sep_scale, 5.0, -5.0, 5.0);
-      if (!sdata->ghost.going_right)
+      switch (sdata->ghost.ghost_dir)
         {
+	case GHOST_LEFT:
 	  guMtxRotRad (rot, 'y', M_PI);
 	  guMtxConcat (mvtmp, rot, mvtmp);
+	  break;
+	  
+	case GHOST_RIGHT:
+	  break;
+	
+	case GHOST_TOWARDS:
+	  guMtxRotRad (rot, 'y', -M_PI / 2.0);
+	  guMtxConcat (mvtmp, rot, mvtmp);
+	  break;
 	}
 
-      object_set_matrices (&scene, &sdata->ghost_loc, scene.camera, mvtmp,
-			   sep_scale, NULL, 0);
+      object_set_matrices (&sdata->scene, &sdata->ghost_loc,
+			   sdata->scene.camera, mvtmp, sep_scale, NULL, 0);
 
 
       /*sdata->ghost.colour = (GXColor) { 255, 32, 32 };*/
@@ -563,8 +580,9 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
 #endif
 
   guMtxIdentity (modelView);
-  object_set_matrices (&scene, &sdata->tunnel_section_loc, scene.camera,
-		       modelView, sep_scale, perspmat, GX_PERSPECTIVE);
+  object_set_matrices (&sdata->scene, &sdata->tunnel_section_loc,
+		       sdata->scene.camera, modelView, sep_scale, perspmat,
+		       GX_PERSPECTIVE);
 
   if (switch_ghost_lighting)
     shader_load (sdata->bump_mapping_shader);
@@ -575,7 +593,7 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
 
   render_tunnel (sdata, false, sdata->bla);
 
-  sdata->bla += 0.15;
+  /*sdata->bla += 0.15;*/
   /*if (sdata->bla >= size * fudge_factor)
     sdata->bla -= size * fudge_factor;*/
 
@@ -590,14 +608,24 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
 
       guMtxTrans (mvtmp, sdata->ghost.alongness, -14, sdata->ghost.acrossness);
       guMtxScale (sep_scale, 5.0, 5.0, 5.0);
-      if (!sdata->ghost.going_right)
+      switch (sdata->ghost.ghost_dir)
         {
+	case GHOST_LEFT:
 	  guMtxRotRad (rot, 'y', M_PI);
 	  guMtxConcat (mvtmp, rot, mvtmp);
+	  break;
+	  
+	case GHOST_RIGHT:
+	  break;
+	
+	case GHOST_TOWARDS:
+	  guMtxRotRad (rot, 'y', -M_PI / 2.0);
+	  guMtxConcat (mvtmp, rot, mvtmp);
+	  break;
 	}
 
-      object_set_matrices (&scene, &sdata->ghost_loc, scene.camera, mvtmp,
-			   sep_scale, NULL, 0);
+      object_set_matrices (&sdata->scene, &sdata->ghost_loc,
+			   sdata->scene.camera, mvtmp, sep_scale, NULL, 0);
 
       shader_load (sdata->ghost_shader);
 
@@ -607,12 +635,25 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
   sdata->deg += 0.012;
   sdata->deg2 += 0.05;
   sdata->ghost.sometimes++;
-  if ((sdata->ghost.sometimes & 7) == 0)
+  if (sdata->ghost.sometimes > 5)
     {
-      if (sdata->ghost.going_right)
-	sdata->ghost.acrossness += 0.8;
-      else
-	sdata->ghost.acrossness -= 0.8;
+      switch (sdata->ghost.ghost_dir)
+        {
+	case GHOST_RIGHT:
+	  sdata->ghost.acrossness += 0.8;
+	  break;
+	
+	case GHOST_LEFT:
+	  sdata->ghost.acrossness -= 0.8;
+	  break;
+	
+	case GHOST_TOWARDS:
+	  sdata->ghost.acrossness = 0.0;
+	  sdata->ghost.alongness -= 4.5;
+	  break;
+	}
+
+      sdata->ghost.sometimes = 0;
     }
 }
 
