@@ -1,67 +1,52 @@
-#stage 0:
-#  cr0.rgb = texmap0[texcoord0].rgb;
-
-# texmap1 is ramp texture
-#stage 1:
-#  tev.rgb = texmap1[texcoord1].arr;
-
-# texmap2 is shadow buffer
-#stage 2:
-#  tev.rgb = (tev{gr} > texmap2[texcoord2]{ra}) ? 1 : 0;
-
-# lit colour
-#stage 3:
-#  cr2.rgb = clamp (chan0.aaa + cr0.rgb * chan0.rgb);
-
-# in-shadow colour
-#stage 4:
-#  cr0.rgb = cr0.rgb * cr1.rgb;
-
-#stage 5:
-#  tev.rgb = mix (cr2.rgb, cr0.rgb, tev.rgb);
+# depth ramp lookup, shadow 1
+stage 0:
+  cr1.rgb = texmap1[texcoord1].arr;
 
 # shadow buffer sample 1
-stage 0:
+stage 1:
   tev.rgb = texmap2[texcoord2].arr;
 
+# sample 1 comparison
+stage 2:
+  tev.rgb = (cr1{gr} > tev{gr}) ? 1 : 0;
+
 # shadow buffer sample 2
-stage 1:
+stage 3:
   cr0.rgb = texmap2[texcoord3].arr;
 
-# shadow buffer sample 3
-stage 2:
-  cr1.rgb = texmap2[texcoord4].arr;
-
-# depth ramp lookup
-stage 3:
-  cr2.rgb = texmap1[texcoord1].arr;
-
+# sample 2 comparison
 stage 4:
-  cr1.rgb = (cr2{gr} > cr1{gr}) ? 1 : 0;
+  cr0.rgb = (cr1{gr} > cr0{gr}) ? 1 : 0;
 
 stage 5:
-  cr0.rgb = (cr2{gr} > cr0{gr}) ? 1 : 0;
-
-stage 6:
-  tev.rgb = (cr2{gr} > tev{gr}) ? 1 : 0;
-
-stage 7:
   tev.rgb = clamp (tev.rgb * cr0.rgb);
+
+# shadow buffer sample 3
+stage 6:
+  cr0.rgb = texmap2[texcoord4].arr;
+
+# sample 3 comparison
+stage 7:
+  cr0.rgb = (cr1{gr} > cr0{gr}) ? 1 : 0;
 
 # shadow (1) or lit (0)
 stage 8:
-  cr0.rgb = clamp (tev.rgb * cr1.rgb);
+  tev.rgb = clamp (tev.rgb * cr0.rgb);
 
+# base colour
 stage 9:
-  tev.rgb = texmap0[texcoord0].rgb;
+  cr0.rgb = texmap0[texcoord0].rgb;
 
 # lit colour
 stage 10:
-  cr1.rgb = clamp (chan0.aaa + tev.rgb * chan0.rgb);
+  cr1.rgb = clamp (chan0.aaa + cr0.rgb * chan0.rgb);
 
 # shadow colour
 stage 11:
-  tev.rgb = tev.rgb * k0.rgb;
+  cr0.rgb = cr0.rgb * k0.rgb;
 
+# "diffuse" channel 1 light colour isn't affected by shadow... it might be a
+# big light source? Anyway we don't have enough stages to do the 3-sample +
+# 16-bit comparison trick for two different shadows.
 stage 12:
-  tev.rgb = mix (cr1.rgb, tev.rgb, cr0.rgb);
+  tev.rgb = clamp (chan1.rgb + mix (cr1.rgb, cr0.rgb, tev.rgb));

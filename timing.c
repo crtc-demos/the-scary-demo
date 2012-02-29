@@ -73,8 +73,8 @@ extern u32 diff_msec (u64 start, u64 end);
 #include "adpcm.h"
 #endif
 
-//#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 95001
+#undef SKIP_TO_TIME
+//#define SKIP_TO_TIME 95001
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;

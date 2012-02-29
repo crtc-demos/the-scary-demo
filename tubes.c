@@ -25,6 +25,8 @@ static TPLFile snakeskinTPL;
 #define SHADOWBUF_H 512
 #define SHADOWBUF_FMT GX_TF_IA8
 
+#define NUM_SHADOWS 1
+
 tube_data tube_data_0;
 
 static f32 *tube[NUM_TUBES] = { 0 };
@@ -69,8 +71,8 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   float phase2 = bigger_offset - phase / 2.5;
   
   /* Override...  */
-  phase1 = which_phase_offset + (phase / 20.0);
-  phase2 = bigger_offset - phase / (2.5 * 20.0);
+  /*phase1 = which_phase_offset + (phase / 20.0);
+  phase2 = bigger_offset - phase / (2.5 * 20.0);*/
   
   assert (tube[which] != NULL);
   assert (tubenorms[which] != NULL);
@@ -215,7 +217,7 @@ render_tube (unsigned int around_steps, unsigned int along_steps)
 }
 
 static void
-specular_lighting_1light (void *privdata)
+tube_shader_setup (void *privdata)
 {
   world_info *world = (world_info *) privdata;
   GXLightObj lo0;
@@ -227,12 +229,12 @@ specular_lighting_1light (void *privdata)
   GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
   GX_SetChanMatColor (GX_COLOR0, (GXColor) { 192, 192, 192, 0 });
   GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
-		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_NONE);
+		  GX_LIGHT0 /*| GX_LIGHT1*/, GX_DF_CLAMP, GX_AF_NONE);
 
   GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
   GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
   GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
-		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_SPEC);
+		  GX_LIGHT0 /*| GX_LIGHT1*/, GX_DF_CLAMP, GX_AF_SPEC);
 
   /* Light 0.  */
   guVecSub (&world->light[0].tpos, &world->light[0].tlookat, &ldir);
@@ -245,16 +247,20 @@ specular_lighting_1light (void *privdata)
   GX_LoadLightObj (&lo0, GX_LIGHT0);
 
   /* Light 1.  */
-  guVecSub (&world->light[1].tpos, &world->light[1].tlookat, &ldir);
-  guVecNormalize (&ldir);
+  GX_SetChanAmbColor (GX_COLOR1, (GXColor) { 0, 0, 0, 0 });
+  GX_SetChanMatColor (GX_COLOR1, (GXColor) { 64, 64, 64, 0 });
+  GX_SetChanCtrl (GX_COLOR1, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT1, GX_DF_CLAMP, GX_AF_NONE);
+  GX_SetChanCtrl (GX_ALPHA1, GX_DISABLE, GX_SRC_REG, GX_SRC_REG,
+		  0, GX_DF_CLAMP, GX_AF_NONE);
 
-  GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightPos (&lo1, world->light[1].tpos.x, world->light[1].tpos.y,
+		   world->light[1].tpos.z);
   GX_InitLightDistAttn (&lo1, 1.0, 1.0, GX_DA_OFF);
-  GX_InitLightShininess (&lo1, 32);
   GX_InitLightColor (&lo1, (GXColor) { 128, 32, 32, 192 });
   GX_LoadLightObj (&lo1, GX_LIGHT1);
   
-  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 32, 32, 32, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 24, 24, 24, 0 });
 }
 
 static void
@@ -288,10 +294,12 @@ tubes_init_effect (void *params, backbuffer_info *bbuf)
   TPL_GetTexture (&snakeskinTPL, snakeskin, &tdata->snakeskin_texture_obj);
 
   object_loc_initialise (&tdata->tube_locator, GX_PNMTX0);
+#if NUM_SHADOWS == 2
   object_loc_initialise (&tdata->tube_locator_2, GX_PNMTX0);
   object_set_chained_loc (&tdata->tube_locator, &tdata->tube_locator_2);
+#endif
   
-  for (i = 0; i < 2; i++)
+  for (i = 0; i < NUM_SHADOWS; i++)
     {
       tdata->shadow[i].info = create_shadow_info (16, &tdata->world->light[i]);
       tdata->shadow[i].buf = memalign (32, GX_GetTexBufferSize (SHADOWBUF_W,
@@ -308,7 +316,7 @@ tubes_init_effect (void *params, backbuffer_info *bbuf)
   /*GX_InitTexObjMinLOD (&tdata->shadowbuf_obj, 1);
   GX_InitTexObjMaxLOD (&tdata->shadowbuf_obj, 1);*/
 
-  tdata->tube_shader = create_shader (&specular_lighting_1light,
+  tdata->tube_shader = create_shader (&tube_shader_setup,
 				      (void *) tdata->world);
   shader_append_texmap (tdata->tube_shader, &tdata->snakeskin_texture_obj,
 			GX_TEXMAP0);
@@ -332,10 +340,12 @@ tubes_init_effect (void *params, backbuffer_info *bbuf)
   object_set_multisample_shadow_tex_matrix (&tdata->tube_locator, GX_TEXMTX1,
 					    GX_TEXMTX2, GX_TEXMTX3, GX_TEXMTX0,
 					    1./256, tdata->shadow[0].info);
+#if NUM_SHADOWS == 2
   /* TEXMTX4 is ramp texture lookup, TEXMTX{5,6,7} for shadow buffer lookup.  */
   object_set_multisample_shadow_tex_matrix (&tdata->tube_locator_2, GX_TEXMTX5,
 					    GX_TEXMTX6, GX_TEXMTX7, GX_TEXMTX4,
 					    1./256, tdata->shadow[1].info);
+#endif
 }
 
 static void
@@ -349,7 +359,7 @@ tubes_uninit_effect (void *params, backbuffer_info *bbuf)
 
   free_world (tdata->world);
   free_shader (tdata->tube_shader);
-  for (i = 0; i < 2; i++)
+  for (i = 0; i < NUM_SHADOWS; i++)
     {
       destroy_shadow_info (tdata->shadow[i].info);
       free (tdata->shadow[i].buf);
@@ -387,6 +397,8 @@ render_tubes (void)
     }
 }
 
+/*static int alternate = 0;*/
+
 static display_target
 tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
@@ -398,7 +410,7 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
   Mtx rotmtx;
   const guVector axis = {0, 1, 0};
   const guVector axis2 = {0, 0, 1};
-  extern int switch_ghost_lighting;
+  /*extern int switch_ghost_lighting;*/
 
   GX_InvVtxCache ();
   
@@ -425,7 +437,10 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
 
   object_loc_initialise (&shadowcast_loc, GX_PNMTX0);
 
-  for (i = 0; i < 1; i++)
+  /*i = alternate;
+  alternate = 1 - alternate;*/
+
+  for (i = 0; i < NUM_SHADOWS; i++)
     {
       /* There isn't a way to update the light matrices! Re-running this is a
          bit ugly. FIXME.  */
