@@ -37,6 +37,7 @@ rendertarget_texture (u32 width, u32 height, u32 texfmt, u8 mipmap, u8 pixfmt,
 		      u8 zfmt)
 {
   int twidth = width, theight = height;
+  /*u8 vfilter[7] = { 9, 9, 9, 10, 9, 9, 9 };*/
   
   if (mipmap)
     {

@@ -24,6 +24,6 @@ extern void destroy_shadow_info (shadow_info *);
 extern void shadow_set_bounding_radius (shadow_info *, float);
 extern void shadow_setup_ortho (shadow_info *, float, float);
 extern void shadow_setup_frustum (shadow_info *, float, float);
-extern void shadow_casting_tev_setup (void);
+extern void shadow_casting_tev_setup (void *);
 
 #endif

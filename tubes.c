@@ -9,6 +9,7 @@
 #include "light.h"
 #include "sintab.h"
 #include "server.h"
+#include "rendertarget.h"
 
 #include "images/snakeskin.h"
 #include "snakeskin_tpl.h"
@@ -19,6 +20,10 @@ static TPLFile snakeskinTPL;
 
 #define TUBE_AROUND 16
 #define TUBE_ALONG 64
+
+#define SHADOWBUF_W 512
+#define SHADOWBUF_H 512
+#define SHADOWBUF_FMT GX_TF_IA8
 
 tube_data tube_data_0;
 
@@ -62,6 +67,10 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   float bigger_offset = 2.0 * M_PI * (which / 3) / 3.0;
   float phase1 = which_phase_offset + phase;
   float phase2 = bigger_offset - phase / 2.5;
+  
+  /* Override...  */
+  phase1 = which_phase_offset + (phase / 20.0);
+  phase2 = bigger_offset - phase / (2.5 * 20.0);
   
   assert (tube[which] != NULL);
   assert (tubenorms[which] != NULL);
@@ -244,6 +253,8 @@ specular_lighting_1light (void *privdata)
   GX_InitLightShininess (&lo1, 32);
   GX_InitLightColor (&lo1, (GXColor) { 128, 32, 32, 192 });
   GX_LoadLightObj (&lo1, GX_LIGHT1);
+  
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 32, 32, 32, 0 });
 }
 
 static void
@@ -276,14 +287,55 @@ tubes_init_effect (void *params, backbuffer_info *bbuf)
 
   TPL_GetTexture (&snakeskinTPL, snakeskin, &tdata->snakeskin_texture_obj);
 
+  object_loc_initialise (&tdata->tube_locator, GX_PNMTX0);
+  object_loc_initialise (&tdata->tube_locator_2, GX_PNMTX0);
+  object_set_chained_loc (&tdata->tube_locator, &tdata->tube_locator_2);
+  
+  for (i = 0; i < 2; i++)
+    {
+      tdata->shadow[i].info = create_shadow_info (16, &tdata->world->light[i]);
+      tdata->shadow[i].buf = memalign (32, GX_GetTexBufferSize (SHADOWBUF_W,
+				       SHADOWBUF_H, SHADOWBUF_FMT, GX_FALSE,
+				       0));
+      GX_InitTexObj (&tdata->shadow[i].buf_texobj, tdata->shadow[i].buf,
+		     SHADOWBUF_W, SHADOWBUF_H, SHADOWBUF_FMT, GX_CLAMP,
+		     GX_CLAMP, GX_FALSE);
+      GX_InitTexObjFilterMode (&tdata->shadow[i].buf_texobj, GX_NEAR, GX_NEAR);
+
+      shadow_set_bounding_radius (tdata->shadow[i].info, 55);
+      shadow_setup_ortho (tdata->shadow[i].info, 20, 400);
+    }
+  /*GX_InitTexObjMinLOD (&tdata->shadowbuf_obj, 1);
+  GX_InitTexObjMaxLOD (&tdata->shadowbuf_obj, 1);*/
+
   tdata->tube_shader = create_shader (&specular_lighting_1light,
 				      (void *) tdata->world);
   shader_append_texmap (tdata->tube_shader, &tdata->snakeskin_texture_obj,
 			GX_TEXMAP0);
+  shader_append_texmap (tdata->tube_shader,
+			get_utility_texture (tdata->shadow[0].info->ramp_type),
+			GX_TEXMAP1);
+  shader_append_texmap (tdata->tube_shader, &tdata->shadow[0].buf_texobj,
+			GX_TEXMAP2);
   shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
+  shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD1, GX_TG_MTX3x4,
+			     GX_TG_POS, GX_TEXMTX0);
+  shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD2, GX_TG_MTX3x4,
+			     GX_TG_POS, GX_TEXMTX1);
+  shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD3, GX_TG_MTX3x4,
+			     GX_TG_POS, GX_TEXMTX2);
+  shader_append_texcoordgen (tdata->tube_shader, GX_TEXCOORD4, GX_TG_MTX3x4,
+			     GX_TG_POS, GX_TEXMTX3);
 
-  object_loc_initialise (&tdata->tube_locator, GX_PNMTX0);
+  /* TEXMTX0 is ramp texture lookup, TEXMTX{1,2,3} for shadow buffer lookup.  */
+  object_set_multisample_shadow_tex_matrix (&tdata->tube_locator, GX_TEXMTX1,
+					    GX_TEXMTX2, GX_TEXMTX3, GX_TEXMTX0,
+					    1./256, tdata->shadow[0].info);
+  /* TEXMTX4 is ramp texture lookup, TEXMTX{5,6,7} for shadow buffer lookup.  */
+  object_set_multisample_shadow_tex_matrix (&tdata->tube_locator_2, GX_TEXMTX5,
+					    GX_TEXMTX6, GX_TEXMTX7, GX_TEXMTX4,
+					    1./256, tdata->shadow[1].info);
 }
 
 static void
@@ -297,6 +349,11 @@ tubes_uninit_effect (void *params, backbuffer_info *bbuf)
 
   free_world (tdata->world);
   free_shader (tdata->tube_shader);
+  for (i = 0; i < 2; i++)
+    {
+      destroy_shadow_info (tdata->shadow[i].info);
+      free (tdata->shadow[i].buf);
+    }
 }
 
 static void
@@ -308,62 +365,10 @@ update_anim (void)
   phase += 0.1;
 }
 
-static display_target
-tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
-{
-  unsigned int i;
-  tube_data *tdata = (tube_data *) params;
-
-  GX_InvVtxCache ();
-  
-  tdata->world->light[0].pos.x = FASTCOS ((lightdeg * 4) / 180.0 * M_PI) * 30.0;
-  tdata->world->light[0].pos.y = FASTCOS (lightdeg / 180.0 * M_PI) * 25.0;
-  tdata->world->light[0].pos.z = FASTSIN (lightdeg / 180.0 * M_PI) * 25.0;
-
-  /*light_update (viewmat, &light0);
-  light_update (viewmat, &light1);*/
-
-  for (i = 0; i < NUM_TUBES; i++)
-    fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
-  
-  update_anim ();
-  
-  return MAIN_BUFFER;
-}
-
 static void
-tubes_display_effect (uint32_t time_offset, void *params, int iparam)
+render_tubes (void)
 {
-  tube_data *tdata = (tube_data *) params;
-  world_info *world = tdata->world;
-  unsigned int i;
-  Mtx modelview, rotmtx;
-  const guVector axis = {0, 1, 0};
-  const guVector axis2 = {0, 0, 1};
-
-  //GX_InvalidateTexAll ();
-  
-  /* Updates various things, transformed light positions etc.  */
-  world_display (world);
-  
-  //GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
-  
-  shader_load (tdata->tube_shader);
-  
-  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
-  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
-  GX_SetColorUpdate (GX_TRUE);
-  GX_SetAlphaUpdate (GX_TRUE);
-
-  guMtxRotAxisDeg (modelview, (guVector *) &axis, deg);
-  guMtxRotAxisDeg (rotmtx, (guVector *) &axis2, deg);
-  
-  guMtxConcat (modelview, rotmtx, modelview);
-
-  object_set_matrices (&world->scene, &tdata->tube_locator,
-		       world->scene.camera, modelview, NULL,
-		       world->projection, world->projection_type);
-  //setup_tube_mats (viewmat, depth, texproj, 1);
+  int i;
 
   GX_ClearVtxDesc ();
   GX_SetVtxDesc (GX_VA_POS, GX_INDEX16);
@@ -380,6 +385,119 @@ tubes_display_effect (uint32_t time_offset, void *params, int iparam)
       GX_SetArray (GX_VA_NRM, tubenorms[i], 3 * sizeof (f32));
       render_tube (TUBE_AROUND, TUBE_ALONG);
     }
+}
+
+static display_target
+tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
+{
+  unsigned int i;
+  tube_data *tdata = (tube_data *) params;
+  world_info *world = tdata->world;
+  scene_info *scene = &world->scene;
+  object_loc shadowcast_loc;
+  Mtx rotmtx;
+  const guVector axis = {0, 1, 0};
+  const guVector axis2 = {0, 0, 1};
+  extern int switch_ghost_lighting;
+
+  GX_InvVtxCache ();
+  
+  tdata->world->light[0].pos.x = FASTCOS ((lightdeg * 4) / 180.0 * M_PI)
+				 * 120.0;
+  tdata->world->light[0].pos.y = FASTCOS (lightdeg / 180.0 * M_PI) * 100.0;
+  tdata->world->light[0].pos.z = FASTSIN ((lightdeg * 4) / 180.0 * M_PI)
+				 * 100.0;
+
+  /*if (switch_ghost_lighting)
+    tdata->world->light[0].pos.x = 120.0;
+  else
+    tdata->world->light[0].pos.x = -120.0;
+  tdata->world->light[0].pos.y = 0.0;
+  tdata->world->light[0].pos.z = 0.0;*/
+
+  /*light_update (viewmat, &light0);
+  light_update (viewmat, &light1);*/
+
+  for (i = 0; i < NUM_TUBES; i++)
+    fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
+  
+  world_display (world);
+
+  object_loc_initialise (&shadowcast_loc, GX_PNMTX0);
+
+  for (i = 0; i < 1; i++)
+    {
+      /* There isn't a way to update the light matrices! Re-running this is a
+         bit ugly. FIXME.  */
+      shadow_setup_ortho (tdata->shadow[i].info, 20, 400);
+
+      guMtxRotAxisDeg (tdata->modelview, (guVector *) &axis, deg);
+      guMtxRotAxisDeg (rotmtx, (guVector *) &axis2, deg);
+
+      guMtxConcat (tdata->modelview, rotmtx, tdata->modelview);
+
+      rendertarget_texture (SHADOWBUF_W, SHADOWBUF_H, GX_TF_Z16, GX_FALSE,
+			    GX_PF_Z24, GX_ZC_LINEAR);
+      GX_SetCullMode (GX_CULL_FRONT);
+
+      shadow_casting_tev_setup (NULL);
+      object_set_matrices (scene, &shadowcast_loc,
+			   tdata->shadow[i].info->light_cam,
+			   tdata->modelview, NULL,
+			   tdata->shadow[i].info->shadow_projection,
+			   tdata->shadow[i].info->projection_type);
+
+      GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+      GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+      GX_SetColorUpdate (GX_FALSE);
+      GX_SetAlphaUpdate (GX_FALSE);
+
+      render_tubes ();
+
+      GX_CopyTex (tdata->shadow[i].buf
+		  /*+ GX_GetTexBufferSize (SHADOWBUF_W, SHADOWBUF_H, SHADOWBUF_FMT,
+					 GX_FALSE, 0)*/, GX_TRUE);
+    }
+
+  GX_PixModeSync ();
+    
+  update_anim ();
+  
+  return MAIN_BUFFER;
+}
+
+static void
+tubes_display_effect (uint32_t time_offset, void *params, int iparam)
+{
+  tube_data *tdata = (tube_data *) params;
+  world_info *world = tdata->world;
+
+  //GX_InvalidateTexAll ();
+  
+  /* Updates various things, transformed light positions etc.  */
+  world_display (world);
+  
+  //GX_LoadProjectionMtx (perspmat, GX_PERSPECTIVE);
+  
+  shader_load (tdata->tube_shader);
+  
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
+  GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_TRUE);
+  GX_SetCullMode (GX_CULL_BACK);
+
+  object_set_matrices (&world->scene, &tdata->tube_locator,
+		       world->scene.camera, tdata->modelview, NULL,
+		       world->projection, world->projection_type);
+  /*light_update (tdata->shadow_info_0->light_cam, &world->light[0]);
+  object_set_matrices (&world->scene, &tdata->tube_locator,
+		       tdata->shadow_info_0->light_cam, tdata->modelview, NULL,
+		       tdata->shadow_info_0->shadow_projection,
+		       tdata->shadow_info_0->projection_type);*/
+  //setup_tube_mats (viewmat, depth, texproj, 1);
+  
+  render_tubes ();
 }
 
 effect_methods tubes_methods =

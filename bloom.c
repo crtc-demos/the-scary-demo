@@ -311,7 +311,7 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
     shadow_set_bounding_radius (bdata->shadow_inf, 30.0);
     shadow_setup_ortho (bdata->shadow_inf, 5.0f, 100.0f);
     
-    shadow_casting_tev_setup ();
+    shadow_casting_tev_setup (NULL);
     
     object_loc_initialise (&shadowcast_loc, GX_PNMTX0);
     

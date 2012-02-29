@@ -39,6 +39,10 @@ INIT_OBJECT (tunnel_section_obj, tunnel_section);
 #define REFLECTION_H 480
 #define REFLECTION_TEXFMT GX_TF_RGB565
 
+#define TUNNEL_SEPARATION 60
+
+const static int rearrange[] = { 0, -1, 1, -2, 2 };
+
 #undef SEE_TEXTURES
 
 static light_info light0 =
@@ -309,7 +313,8 @@ draw_waves (void)
 #endif
 
 static void
-render_tunnel (spooky_ghost_data *sdata, bool reflect, float camera_pos)
+render_tunnel (spooky_ghost_data *sdata, bool reflect, Mtx extra_xform,
+	       float camera_pos)
 {
   int i;
   const float fudge_factor = 1.15;
@@ -341,6 +346,8 @@ render_tunnel (spooky_ghost_data *sdata, bool reflect, float camera_pos)
 			   -1.15 * size, 0.0);
       else
 	guMtxTrans (mvtmp, block_start + i * fudge_factor * size, 0, 0.0);
+      
+      guMtxConcat (extra_xform, mvtmp, mvtmp);
       
       object_set_matrices (&sdata->scene, &sdata->tunnel_section_loc,
 			   sdata->scene.camera, mvtmp, sep_scale, NULL, 0);
@@ -377,7 +384,8 @@ static display_target
 spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
-  Mtx modelView, mvtmp, sep_scale, rot, id;
+  Mtx modelView, mvtmp, sep_scale, rot, id, exfm;
+  int i;
 
   light0.pos.x = cos (sdata->lightdeg) * 500.0;
   light0.pos.y = -1000; // sin (lightdeg / 1.33) * 300.0;
@@ -441,7 +449,11 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   rendertarget_texture (REFLECTION_W, REFLECTION_H, REFLECTION_TEXFMT,
 			GX_FALSE, GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
-  render_tunnel (sdata, true, sdata->bla);
+  for (i = -2; i <= 2; i++)
+    {
+      guMtxTrans (exfm, 0, 0, (float) rearrange[i] * TUNNEL_SEPARATION);
+      render_tunnel (sdata, true, exfm, sdata->bla);
+    }
 
   if (sdata->ghost.number == -1 && time_offset > 4000)
     place_ghost (sdata, 2, (GXColor) { 255, 32, 32, 0 }, GHOST_LEFT);
@@ -564,7 +576,8 @@ static void
 spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
-  Mtx modelView, mvtmp, sep_scale, rot;
+  Mtx modelView, mvtmp, sep_scale, rot, exfm;
+  int i;
 
   /* Draw "water".  */
 #if 1
@@ -591,7 +604,11 @@ spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
 
   GX_SetFog (GX_FOG_PERSP_LIN, 50, 300, 10.0, 500.0, (GXColor) { 0, 0, 0 });
 
-  render_tunnel (sdata, false, sdata->bla);
+  for (i = -2; i <= 2; i++)
+    {
+      guMtxTrans (exfm, 0, 0, (float) rearrange[i] * TUNNEL_SEPARATION);
+      render_tunnel (sdata, false, exfm, sdata->bla);
+    }
 
   /*sdata->bla += 0.15;*/
   /*if (sdata->bla >= size * fudge_factor)

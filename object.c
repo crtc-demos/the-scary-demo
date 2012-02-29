@@ -104,9 +104,30 @@ object_set_shadow_tex_matrix (object_loc *loc, u32 shadow_buf_tex_mtx,
 			      u32 shadow_ramp_tex_mtx, shadow_info *shinf)
 {
   loc->calculate_shadowing_tex_mtx = 1;
-  loc->shadow.buf_tex_mtx = shadow_buf_tex_mtx;
+  loc->shadow.buf_tex_mtx[0] = shadow_buf_tex_mtx;
   loc->shadow.ramp_tex_mtx = shadow_ramp_tex_mtx;
   loc->shadow.info = shinf;
+  loc->shadow.multisample = false;
+  loc->shadow.separation = 0.0;
+}
+
+void
+object_set_multisample_shadow_tex_matrix (object_loc *loc,
+					  u32 shadow_buf_tex_mtx_0,
+					  u32 shadow_buf_tex_mtx_1,
+					  u32 shadow_buf_tex_mtx_2,
+					  u32 shadow_ramp_tex_mtx,
+					  float separation,
+					  shadow_info *shinf)
+{
+  loc->calculate_shadowing_tex_mtx = 1;
+  loc->shadow.buf_tex_mtx[0] = shadow_buf_tex_mtx_0;
+  loc->shadow.buf_tex_mtx[1] = shadow_buf_tex_mtx_1;
+  loc->shadow.buf_tex_mtx[2] = shadow_buf_tex_mtx_2;
+  loc->shadow.ramp_tex_mtx = shadow_ramp_tex_mtx;
+  loc->shadow.info = shinf;
+  loc->shadow.multisample = true;
+  loc->shadow.separation = separation;
 }
 
 void
@@ -121,11 +142,17 @@ object_set_pos_norm_matrix (object_loc *obj, u32 pnmtx)
   obj->pnmtx = pnmtx;
 }
 
+void
+object_set_chained_loc (object_loc *loc, object_loc *next_loc)
+{
+  loc->chained_loc = next_loc;
+}
+
 /* This function doesn't need the SCENE parameter for much: consider
    removing.  */
 
 void
-object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
+object_set_matrices (scene_info *scene, object_loc *loc, Mtx cam_mtx,
 		     Mtx obj_mtx, Mtx separate_scale, Mtx projection,
 		     u32 projection_type)
 {
@@ -139,17 +166,17 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
   guMtxInverse (vertex, tempmtx);
   guMtxTranspose (tempmtx, normal);
   
-  if (obj->calculate_normal_tex_mtx)
+  if (loc->calculate_normal_tex_mtx)
     {
       guMtxTrans (tempmtx, 0.5, 0.5, 0.0);
       guMtxConcat (tempmtx, normal, normaltexmtx);
       guMtxScale (tempmtx, NRM_SCALE / 2, NRM_SCALE / 2, NRM_SCALE / 2);
       guMtxConcat (normaltexmtx, tempmtx, normaltexmtx);
 
-      GX_LoadTexMtxImm (normaltexmtx, obj->normal_tex_mtx, GX_MTX2x4);
+      GX_LoadTexMtxImm (normaltexmtx, loc->normal_tex_mtx, GX_MTX2x4);
     }
 
-  if (obj->calculate_sph_envmap_tex_mtx)
+  if (loc->calculate_sph_envmap_tex_mtx)
     {
       guMtxTrans (tempmtx, 0.5, 0.5, 0.0);
       guMtxConcat (tempmtx, normal, normaltexmtx);
@@ -160,10 +187,10 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxScale (tempmtx, 0.495, 0.495, 0.495);
       guMtxConcat (normaltexmtx, tempmtx, normaltexmtx);
 
-      GX_LoadTexMtxImm (normaltexmtx, obj->sph_envmap_tex_mtx, GX_MTX2x4);
+      GX_LoadTexMtxImm (normaltexmtx, loc->sph_envmap_tex_mtx, GX_MTX2x4);
     }
 
-  if (obj->calculate_binorm_tex_mtx)
+  if (loc->calculate_binorm_tex_mtx)
     {
       guMtxCopy (vertex, binormal);
       guMtxRowCol (binormal, 0, 3) = 0.0;
@@ -173,19 +200,19 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxScale (tempmtx, NRM_SCALE / 2, NRM_SCALE / 2, NRM_SCALE / 2);
       guMtxConcat (binormal, tempmtx, binormaltexmtx);
 
-      GX_LoadTexMtxImm (binormaltexmtx, obj->binorm_tex_mtx, GX_MTX2x4);
+      GX_LoadTexMtxImm (binormaltexmtx, loc->binorm_tex_mtx, GX_MTX2x4);
     }
   
-  if (obj->calculate_vertex_depth_mtx)
+  if (loc->calculate_vertex_depth_mtx)
     {
       guMtxConcat (scene->depth_ramp_lookup, vertex, tempmtx);
-      GX_LoadTexMtxImm (tempmtx, obj->vertex_depth_mtx, GX_MTX3x4);
+      GX_LoadTexMtxImm (tempmtx, loc->vertex_depth_mtx, GX_MTX3x4);
     }
   
   /* A matrix which performs the same transformation as the camera & projection,
      but gives results in the range 0...1 suitable for use as texture
      coordinates.  */
-  if (obj->calculate_screenspace_tex_mtx)
+  if (loc->calculate_screenspace_tex_mtx)
     {
       Mtx texproj, vertex_scaled;
 
@@ -208,7 +235,6 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxRowCol (texproj, 2, 2) = guMtxRowCol (projection, 3, 2);
       guMtxRowCol (texproj, 2, 3) = guMtxRowCol (projection, 3, 3);
 
-
       if (separate_scale)
 	{
 	  guMtxConcat (vertex, separate_scale, vertex_scaled);
@@ -219,13 +245,13 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
 	  guMtxConcat (texproj, vertex, tempmtx);
 	}
 
-      GX_LoadTexMtxImm (tempmtx, obj->screenspace_tex_mtx, GX_MTX3x4);
+      GX_LoadTexMtxImm (tempmtx, loc->screenspace_tex_mtx, GX_MTX3x4);
     }
 
-  if (obj->calculate_parallax_tex_mtx)
+  if (loc->calculate_parallax_tex_mtx)
     {
       Mtx parmtx, offset;
-      float scale = 256.0 / (float) obj->parallax.texture_edge;
+      float scale = 256.0 / (float) loc->parallax.texture_edge;
       
       /***
        ( s )   [ 1 0 0 0 ] ( +x )
@@ -261,7 +287,7 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxTrans (tempmtx, 0.0, 0.0, 0.0);
       guMtxConcat (tempmtx, parmtx, offset);
 
-      GX_LoadTexMtxImm (offset, obj->parallax.binorm_tex_mtx, GX_MTX2x4);
+      GX_LoadTexMtxImm (offset, loc->parallax.binorm_tex_mtx, GX_MTX2x4);
       
       /***
       
@@ -281,24 +307,44 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
 
       guMtxConcat (tempmtx, parmtx, offset);
 
-      GX_LoadTexMtxImm (offset, obj->parallax.tangent_tex_mtx, GX_MTX2x4);
+      GX_LoadTexMtxImm (offset, loc->parallax.tangent_tex_mtx, GX_MTX2x4);
     }
 
   /* Calculate matrices used for texture coordinate generation for casting
      shadows (self-shadowing objects, at present).  */
-  if (obj->calculate_shadowing_tex_mtx)
+  if (loc->calculate_shadowing_tex_mtx)
     {
-      Mtx scaled_objmtx;
+      Mtx scaled_objmtx, offset;
+      const float offset_scale = loc->shadow.separation;
       
-      guMtxConcat (obj_mtx, separate_scale, scaled_objmtx);
+      if (separate_scale)
+        guMtxConcat (obj_mtx, separate_scale, scaled_objmtx);
+      else
+        guMtxCopy (obj_mtx, scaled_objmtx);
       
       /* Depth-ramp lookup.  */
-      guMtxConcat (obj->shadow.info->shadow_tex_depth, scaled_objmtx, tempmtx);
-      GX_LoadTexMtxImm (tempmtx, obj->shadow.ramp_tex_mtx, GX_MTX3x4);
+      guMtxConcat (loc->shadow.info->shadow_tex_depth, scaled_objmtx, tempmtx);
+      GX_LoadTexMtxImm (tempmtx, loc->shadow.ramp_tex_mtx, GX_MTX3x4);
       /* Shadow buffer lookup.  */
-      guMtxConcat (obj->shadow.info->shadow_tex_projection, scaled_objmtx,
+      guMtxConcat (loc->shadow.info->shadow_tex_projection, scaled_objmtx,
 		   tempmtx);
-      GX_LoadTexMtxImm (tempmtx, obj->shadow.buf_tex_mtx, GX_MTX3x4);
+      /* This is a way of avoiding aliasing at glancing angles for the light
+         hitting the object: do three samples, and only make shadow fall if
+	 all three samples are in shadow.  */
+      if (loc->shadow.multisample)
+        {
+	  guMtxTrans (offset, 0.866 * offset_scale, -0.5 * offset_scale, 0);
+	  guMtxConcat (offset, tempmtx, offset);
+	  GX_LoadTexMtxImm (offset, loc->shadow.buf_tex_mtx[0], GX_MTX3x4);
+	  guMtxTrans (offset, -0.866 * offset_scale, -0.5 * offset_scale, 0);
+	  guMtxConcat (offset, tempmtx, offset);
+	  GX_LoadTexMtxImm (offset, loc->shadow.buf_tex_mtx[1], GX_MTX3x4);
+	  guMtxTrans (offset, 0, offset_scale, 0);
+	  guMtxConcat (offset, tempmtx, offset);
+	  GX_LoadTexMtxImm (offset, loc->shadow.buf_tex_mtx[2], GX_MTX3x4);
+	}
+      else
+	GX_LoadTexMtxImm (tempmtx, loc->shadow.buf_tex_mtx[0], GX_MTX3x4);
     }
 
   if (separate_scale)
@@ -307,8 +353,14 @@ object_set_matrices (scene_info *scene, object_loc *obj, Mtx cam_mtx,
       guMtxConcat (cam_mtx, vertex, vertex);
     }
 
-  GX_LoadPosMtxImm (vertex, obj->pnmtx);
-  GX_LoadNrmMtxImm (normal, obj->pnmtx);
+  if (loc->chained_loc)
+    object_set_matrices (scene, loc->chained_loc, cam_mtx, obj_mtx,
+			 separate_scale, NULL, 0);
+  else
+    {
+      GX_LoadPosMtxImm (vertex, loc->pnmtx);
+      GX_LoadNrmMtxImm (normal, loc->pnmtx);
+    }
 }
 
 /* Set vertex (position/normal) arrays for an object. WHICH_FMT should be

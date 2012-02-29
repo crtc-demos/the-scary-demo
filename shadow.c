@@ -129,7 +129,7 @@ shadow_setup_frustum (shadow_info *shinf, float near, float far)
 }
 
 void
-shadow_casting_tev_setup (void)
+shadow_casting_tev_setup (void *dummy)
 {
 #include "null.inc"
 }

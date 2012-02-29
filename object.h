@@ -4,7 +4,7 @@
 #include "shadow.h"
 #include "scene.h"
 
-typedef struct {
+typedef struct object_loc_tag {
   /* Which position/normal matrix to use (GX_PNMTX0 etc.).  */
   u32 pnmtx;
   
@@ -26,10 +26,17 @@ typedef struct {
     u32 texture_edge;
   } parallax;
   struct {
-    u32 buf_tex_mtx;
+    u32 buf_tex_mtx[3];
     u32 ramp_tex_mtx;
     shadow_info *info;
+    bool multisample;
+    float separation;
   } shadow;
+  /* Now then... this whole thing was designed to only have one of these locs
+     per object.  If we want to layer multiple effects (e.g. multiple shadows),
+     use this, and all the chained locs will be calculated too...  chained locs
+     won't set projection matrixes  */
+  struct object_loc_tag *chained_loc;
 } object_loc;
 
 typedef struct {
@@ -78,8 +85,12 @@ extern void object_set_shadow_tex_matrix (object_loc *loc,
 					  u32 shadow_buf_tex_mtx,
 					  u32 shadow_ramp_tex_mtx,
 					  shadow_info *);
+extern void object_set_multisample_shadow_tex_matrix (object_loc *,
+  u32 shadow_buf_tex_mtx_0, u32 shadow_buf_tex_mtx_1, u32 shadow_buf_tex_mtx_2,
+  u32 shadow_ramp_tex_mtx, float separation, shadow_info *shinf);
 extern void object_unset_shadow_tex_matrix (object_loc *loc);
 extern void object_set_pos_norm_matrix (object_loc *obj, u32 pnmtx);
+extern void object_set_chained_loc (object_loc *loc, object_loc *next_loc);
 extern void object_set_matrices (scene_info *scene, object_loc *obj,
 				 Mtx cam_mtx, Mtx obj_mtx, Mtx sep_scale,
 				 Mtx projection, u32 proj_type);

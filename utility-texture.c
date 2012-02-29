@@ -111,7 +111,7 @@ create_16bit_ramp (utility_texture_info *dst, int norepeat)
   for (t = 0; t < 256; t++)
     for (s = 0; s < 256; s++)
       {
-	unsigned int idx = tex_index (s, t, 256, 16);
+	unsigned int idx = tex_index (t, s, 256, 16);
 
 	/* alpha->low byte, intensity->high byte.  */
 	ramptex[idx] = s;
