@@ -51,8 +51,8 @@ static TPLFile snakytextureTPL;
 #include "objects/cobra9.xyz"
 
 /* These settings are kind of hackish & arbitrary...  */
-#define BUMP_DISPLACEMENT_STRENGTH -3
-#define BUMP_TANGENT_STRENGTH -1
+#define BUMP_DISPLACEMENT_STRENGTH -2
+#define BUMP_TANGENT_STRENGTH 0
 
 #define TEXCOORD_MAP_H 512
 #define TEXCOORD_MAP_W 512
@@ -368,7 +368,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
      results -- in screen space.  */
 
   {
-    f32 indmtx[2][3] = { { 0, 0.5, 0 }, { 0.5, 0, 0 } };
+    f32 indmtx[2][3] = { { 0.5, 0, 0 }, { 0, 0.5, 0 } };
     /* This wants to be: log2(size of bump s,t-offset texture) - 7.  */
     GX_SetIndTexMatrix (GX_ITM_2, indmtx, 1);
   }

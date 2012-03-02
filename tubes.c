@@ -61,14 +61,21 @@ static float phase = 0.0;
 /* A tube around X axis, from -1 to 1, with radius RADIUS.  */
 
 static void
-fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
-		  unsigned int along_steps)
+fill_tube_coords (uint32_t time_offset, unsigned int which, float radius,
+		  unsigned int around_steps, unsigned int along_steps)
 {
   int i, j;
   float which_phase_offset = 2.0 * M_PI * (which % 3) / 3.0;
   float bigger_offset = 2.0 * M_PI * (which / 3) / 3.0;
   float phase1 = which_phase_offset + phase;
   float phase2 = bigger_offset - phase / 2.5;
+  float rad_mult = 1.0;
+  
+  /* Cheesy fade in/out.  */
+  if (time_offset < 1000)
+    rad_mult = (float) time_offset / 1000.0;
+  else if (time_offset > 24000)
+    rad_mult = (float) (25000 - time_offset) / 1000.0;
   
   /* Override...  */
   /*phase1 = which_phase_offset + (phase / 20.0);
@@ -80,13 +87,13 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
   for (i = 0; i < along_steps; i++)
     {
       float x_pos = ((float) i / (float) (along_steps - 1)) * 100.0 - 50.0;
-      float y_offset = 6 * FASTCOS (phase1 + x_pos * 0.2);
-      float z_offset = 6 * FASTSIN (phase1 + x_pos * 0.2);
+      float y_offset = rad_mult * 6 * FASTCOS (phase1 + x_pos * 0.2);
+      float z_offset = rad_mult * 6 * FASTSIN (phase1 + x_pos * 0.2);
       guVector along, up = { 0.0, 1.0, 0.0 }, side;
       Mtx circ_mat;
       
-      y_offset += 15 * FASTCOS (phase2 + x_pos * 3.0 / 50.0);
-      z_offset += 15 * FASTSIN (phase2 + x_pos * 3.0 / 50.0);
+      y_offset += rad_mult * 15 * FASTCOS (phase2 + x_pos * 3.0 / 50.0);
+      z_offset += rad_mult * 15 * FASTSIN (phase2 + x_pos * 3.0 / 50.0);
       
       /* Differentiate the offset to get a gradient along y & z...  */
       along.x = 1.0;
@@ -145,6 +152,8 @@ fill_tube_coords (unsigned int which, float radius, unsigned int around_steps,
 		around_steps * along_steps * 3 * sizeof (f32));
 }
 
+Mtx tube_rotmtx;
+
 #if 0
 static void
 setup_tube_mats (Mtx viewMatrix, Mtx depth, Mtx texproj, int do_texture_mats)
@@ -156,7 +165,7 @@ setup_tube_mats (Mtx viewMatrix, Mtx depth, Mtx texproj, int do_texture_mats)
   guMtxIdentity (modelView);
   guMtxRotAxisDeg (modelView, &axis, deg);
   guMtxRotAxisDeg (rotmtx, &axis2, deg2);
-
+  
   guMtxConcat (modelView, rotmtx, modelView);
 
   guMtxScale (scale, 1.0, 1.0, 1.0);
@@ -431,7 +440,7 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
   light_update (viewmat, &light1);*/
 
   for (i = 0; i < NUM_TUBES; i++)
-    fill_tube_coords (i, 2, TUBE_AROUND, TUBE_ALONG);
+    fill_tube_coords (time_offset, i, 2, TUBE_AROUND, TUBE_ALONG);
   
   world_display (world);
 
@@ -450,6 +459,8 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
       guMtxRotAxisDeg (rotmtx, (guVector *) &axis2, deg);
 
       guMtxConcat (tdata->modelview, rotmtx, tdata->modelview);
+
+      guMtxCopy (tdata->modelview, tube_rotmtx);
 
       rendertarget_texture (SHADOWBUF_W, SHADOWBUF_H, GX_TF_Z16, GX_FALSE,
 			    GX_PF_Z24, GX_ZC_LINEAR);

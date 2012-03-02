@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "timing.h"
 #include "greets.h"
@@ -37,6 +38,136 @@ static unsigned char grid_ascii_equiv[] =
 
 static unsigned char ascii_to_char[256];
 
+static unsigned char message[] =
+  "TTTT"
+  "HHHH"
+  "EEEE"
+  "    "
+  "SSSS"
+  "CCCC"
+  "AAAA"
+  "RRRR"
+  "YYYY"
+  "    "
+  "DDDD"
+  "EEEE"
+  "MMMM"
+  "OOOO"
+  "    "
+  "G   "
+  "R H "
+  "E I "
+  "E T "
+  "T M "
+  "S E "
+  "  N "
+  "T   "
+  "O   "
+  "    "
+  "F   "
+  "O B "
+  "O A "
+  "  R "
+  " B  "
+  " A Q"
+  " Z U"
+  "Q  X"
+  "U F "
+  "U R "
+  "X O "
+  "  B "
+  " E  "
+  " T E"
+  " C T"
+  "   C"
+  "S   "
+  "C   "
+  "A P "
+  "R A "
+  "Y R "
+  "  A "
+  "D L "
+  "E L "
+  "M A "
+  "O X "
+  "    "
+  "C M "
+  "O A "
+  "N P "
+  "T P "
+  "A I "
+  "I N "
+  "N G "
+  "S   "
+  "  R "
+  "P E "
+  "R F "
+  "O R "
+  "J A "
+  "E C "
+  "C T "
+  "T I "
+  "I O "
+  "V N "
+  "E  R"
+  "   E"
+  "S  A"
+  "H  L"
+  "A   "
+  "D  T"
+  "O  I"
+  "W  M"
+  "S  E"
+  " B  "
+  " L R"
+  " O E"
+  " O F"
+  " M L"
+  "E  E"
+  "M  C"
+  "B  T"
+  "M  I"
+  " T O"
+  " E N"
+  " R  "
+  " R  "
+  " I  "
+  " F C"
+  " Y O"
+  " I D"
+  " N E"
+  " G  "
+  "   G"
+  " O F"
+  " B X"
+  " J  "
+  " E M"
+  " C O"
+  " T D"
+  " S E"
+  "   L"
+  "   S"
+  "    "
+  "   B"
+  "   Y"
+  "    "
+  "   P"
+  "   U"
+  "   P"
+  "C  P"
+  "R  E"
+  "T  H"
+  "C   "
+  "  C "
+  "  R "
+  "  T "
+  "  C "
+  "    "
+  " C  "
+  " R  "
+  " T  "
+  " C  ";
+  
 static void
 init_ascii_to_char (void)
 {
@@ -53,15 +184,18 @@ init_ascii_to_char (void)
 }
 
 static void
-put_text (void *tileidx, int row, int startcol, unsigned char *text)
+put_text (void *tileidx, int row, int startcol, unsigned char *text,
+	  unsigned int textlen, int offset, int len)
 {
   unsigned char *c = tileidx;
   int i;
   
-  for (i = 0; text[i] != '\0'; i++)
+  for (i = 0; i < len; i++)
     {
+      int offset2 = offset + i * 4;
       int idx = tex_index (startcol + i, row, TILES_W, 8);
-      c[idx] = ascii_to_char[text[i]];
+      c[idx] = (offset2 >= 0 && offset2 < textlen)
+	         ? ascii_to_char[text[offset2]] : 0;
     }
 
   DCFlushRange (c, GX_GetTexBufferSize (TILES_W, TILES_H, TILES_FMT, GX_FALSE,
@@ -72,12 +206,11 @@ static void
 greets_init_effect (void *params, backbuffer_info *bbuf)
 {
   greets_data *gdata = (greets_data *) params;
-  int i;
   
   gdata->world = create_world (0);
-  world_set_perspective (gdata->world, 60.0, 1.33f, 5.0f, 500.0f);
+  world_set_perspective (gdata->world, 60.0, 1.33f, 10.0f, 300.0f);
   world_set_pos_lookat_up (gdata->world,
-			   (guVector) { 0, 0, -30 },
+			   (guVector) { 0, 0, 50 },
 			   (guVector) { 0, 0, 0 },
 			   (guVector) { 0, 1, 0 });
 
@@ -89,7 +222,7 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
   gdata->tileidx = memalign (32, GX_GetTexBufferSize (TILES_W, TILES_H,
 						      TILES_FMT, GX_FALSE, 0));
   GX_InitTexObj (&gdata->tileidxobj, gdata->tileidx, TILES_W, TILES_H,
-		 TILES_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
+		 TILES_FMT, GX_REPEAT, GX_REPEAT, GX_FALSE);
   GX_InitTexObjFilterMode (&gdata->tileidxobj, GX_NEAR, GX_NEAR);
 
   gdata->tile_shader = create_shader (&init_tile_shader, NULL);
@@ -101,7 +234,8 @@ greets_init_effect (void *params, backbuffer_info *bbuf)
 						  TILES_FMT, GX_FALSE, 0));
   init_ascii_to_char ();
 
-  put_text (gdata->tileidx, 0, 0, (unsigned char *) "HELLO WORLD!");
+  /*for (i = 0; i < 4; i++)
+    put_text (gdata->tileidx, i, i, (unsigned char *) "OOOOOOOOOOOOOO");*/
   
   object_loc_initialise (&gdata->greets_loc, GX_PNMTX0);
 }
@@ -117,12 +251,14 @@ greets_uninit_effect (void *params, backbuffer_info *bbuf)
 }
 
 static void
-render_texture (greets_data *gdata, float zpos)
+render_texture (greets_data *gdata, float zpos, float scroll)
 {
   world_info *world = gdata->world;
   Mtx mvtmp;
+  extern Mtx tube_rotmtx;
 
   guMtxIdentity (mvtmp);
+  guMtxConcat (mvtmp, tube_rotmtx, mvtmp);
 
   object_set_matrices (&world->scene, &gdata->greets_loc, world->scene.camera,
 		       mvtmp, NULL, world->projection, world->projection_type);
@@ -136,19 +272,39 @@ render_texture (greets_data *gdata, float zpos)
 
   GX_SetCullMode (GX_CULL_NONE);
 
+  scroll = scroll * 8.0f;
+  scroll = scroll - floorf (scroll);
+  scroll = scroll * 1./8;
+
   GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
 
-  GX_Position3f32 (zpos, 3, -4);
-  GX_TexCoord2f32 (0, 0);
+  GX_Position3f32 (-40, 8, 0);
+  GX_TexCoord2f32 (scroll, 0);
 
-  GX_Position3f32 (zpos, 3, 4);
-  GX_TexCoord2f32 (4, 0);
+  GX_Position3f32 (40, 8, 0);
+  GX_TexCoord2f32 (4 + scroll, 0);
 
-  GX_Position3f32 (zpos, -3, -4);
-  GX_TexCoord2f32 (0, 2);
+  GX_Position3f32 (-40, -8, 0);
+  GX_TexCoord2f32 (scroll, 0.5);
 
-  GX_Position3f32 (zpos, -3, 4);
-  GX_TexCoord2f32 (4, 2);
+  GX_Position3f32 (40, -8, 0);
+  GX_TexCoord2f32 (4 + scroll, 0.5);
+
+  GX_End ();
+
+  GX_Begin (GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+
+  GX_Position3f32 (-40, 0, 8);
+  GX_TexCoord2f32 (scroll, 0);
+
+  GX_Position3f32 (40, 0, 8);
+  GX_TexCoord2f32 (4 + scroll, 0);
+
+  GX_Position3f32 (-40, 0, -8);
+  GX_TexCoord2f32 (scroll, 0.5);
+
+  GX_Position3f32 (40, 0, -8);
+  GX_TexCoord2f32 (4 + scroll, 0.5);
 
   GX_End ();
 }
@@ -159,22 +315,29 @@ greets_display_effect (uint32_t time_offset, void *params, int iparam)
   greets_data *gdata = (greets_data *) params;
   f32 indmtx[2][3] = { { 0.5, 0.0, 0.0 },
 		       { 0.0, 0.5, 0.0 } };
+  float scroll = (float) time_offset / 1000.0;
+  int i, startpos;
 
-  world_set_pos_lookat_up (gdata->world,
+  /*world_set_pos_lookat_up (gdata->world,
 			   (guVector) spooky_ghost_data_0.scene.pos,
 			   (guVector) spooky_ghost_data_0.scene.lookat,
-			   (guVector) spooky_ghost_data_0.scene.up);
+			   (guVector) spooky_ghost_data_0.scene.up);*/
 
   GX_SetIndTexMatrix (GX_ITM_0, indmtx, 5);
 
   world_display (gdata->world);
-  //shader_load (gdata->tile_shader);
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   
   shader_load (gdata->tile_shader);
 
+  startpos = (int) (scroll * 8.0) - 32;
+
+  for (i = 0; i < 4; i++)
+    put_text (gdata->tileidx, i, 0, message, sizeof (message) - 1,
+	      startpos * 4 + i, 32);
+
   GX_SetTevColor (GX_TEVREG0, (GXColor) { 255, 255, 255, 255 });
-  render_texture (gdata, 5.5 + spooky_ghost_data_0.bla);
+  render_texture (gdata, 5.5, scroll);
 
   //screenspace_rect (gdata->tile_shader, GX_VTXFMT0, 0);
 }
