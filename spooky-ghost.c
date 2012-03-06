@@ -381,7 +381,7 @@ place_ghost (spooky_ghost_data *sdata, int blocknum, GXColor colour,
 }
 
 static display_target
-spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
+spooky_ghost_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
   Mtx modelView, mvtmp, sep_scale, rot, id, exfm;
@@ -404,7 +404,7 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   guMtxScale (id, 28, 28, 28);
   matrixutil_swap_yz (id, id);
   cam_path_follow (&sdata->scene, id, &tunnel_track,
-		   (float) time_offset / 60000.0);
+		   (float) sync->time_offset / 60000.0);
   sdata->bla = sdata->scene.pos.x - 28.0;
 #else
   scene_set_pos (&sdata->scene, (guVector) { sdata->bla, 0.0, 0.0 });
@@ -455,19 +455,19 @@ spooky_ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
       render_tunnel (sdata, true, exfm, sdata->bla);
     }
 
-  if (sdata->ghost.number == -1 && time_offset > 4000)
+  if (sdata->ghost.number == -1 && sync->time_offset > 4000)
     place_ghost (sdata, 2, (GXColor) { 255, 32, 32, 0 }, GHOST_LEFT);
-  else if (sdata->ghost.number == 0 && time_offset > 9000)
+  else if (sdata->ghost.number == 0 && sync->time_offset > 9000)
     place_ghost (sdata, 5, (GXColor) { 255, 32, 32, 0 }, GHOST_RIGHT);
-  else if (sdata->ghost.number == 1 && time_offset > 14000)
+  else if (sdata->ghost.number == 1 && sync->time_offset > 14000)
     {
       sdata->ghost.visible = false;
-      if (time_offset > 25000)
+      if (sync->time_offset > 25000)
 	place_ghost (sdata, 9, (GXColor) { 255, 255, 32, 0 }, GHOST_RIGHT);
     }
-  else if (sdata->ghost.number == 2 && time_offset > 32000)
+  else if (sdata->ghost.number == 2 && sync->time_offset > 32000)
     place_ghost (sdata, 12, (GXColor) { 255, 32, 32, 0 }, GHOST_LEFT);
-  else if (sdata->ghost.number == 3 && time_offset > 47000)
+  else if (sdata->ghost.number == 3 && sync->time_offset > 47000)
     place_ghost (sdata, 20, (GXColor) { 255, 192, 32, 0 }, GHOST_TOWARDS);
 
   /* Ghost.  */
@@ -573,7 +573,7 @@ void dummy ()
 
 
 static void
-spooky_ghost_display_effect (uint32_t time_offset, void *params, int iparam)
+spooky_ghost_display_effect (sync_info *sync, void *params, int iparam)
 {
   spooky_ghost_data *sdata = (spooky_ghost_data *) params;
   Mtx modelView, mvtmp, sep_scale, rot, exfm;

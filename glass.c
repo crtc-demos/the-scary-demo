@@ -179,7 +179,7 @@ ghost_uninit_effect (void *params, backbuffer_info *bbuf)
 }
 
 static display_target
-ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
+ghost_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   glass_data *gdata = (glass_data *) params;
   /*GXTexObj spiderweb_tex_obj;*/
@@ -229,10 +229,10 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
   guMtxRotAxisDeg (rot, &((guVector) { 1, 0, 0 }), gdata->thr * 0.7);
   guMtxConcat (rot, mvtmp, mvtmp);
   
-  if (time_offset < 1000)
-    gdata->xoffset = -(float) (1000 - time_offset) / 10.0;
-  else if (time_offset > 9000)
-    gdata->xoffset = (float) (time_offset - 9000) / 10.0;
+  if (sync->time_offset < 1000)
+    gdata->xoffset = -(float) (1000 - sync->time_offset) / 10.0;
+  else if (sync->time_offset > 9000)
+    gdata->xoffset = (float) (sync->time_offset - 9000) / 10.0;
   else
     gdata->xoffset = 0.0;
   
@@ -270,7 +270,7 @@ ghost_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-ghost_display_effect (uint32_t time_offset, void *params, int iparam)
+ghost_display_effect (sync_info *sync, void *params, int iparam)
 {
   glass_data *gdata = (glass_data *) params;
   /*GXTexObj spiderweb_tex_obj;*/

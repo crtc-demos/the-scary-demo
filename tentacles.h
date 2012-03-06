@@ -27,6 +27,9 @@ typedef struct
   float rot3;
   
   float wave;
+  
+  GXTexRegionCallback prev_callback;
+  GXTexRegion texregion;
 } tentacle_data;
 
 extern effect_methods tentacle_methods;

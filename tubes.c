@@ -409,7 +409,7 @@ render_tubes (void)
 /*static int alternate = 0;*/
 
 static display_target
-tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
+tubes_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   unsigned int i;
   tube_data *tdata = (tube_data *) params;
@@ -440,7 +440,7 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
   light_update (viewmat, &light1);*/
 
   for (i = 0; i < NUM_TUBES; i++)
-    fill_tube_coords (time_offset, i, 2, TUBE_AROUND, TUBE_ALONG);
+    fill_tube_coords (sync->time_offset, i, 2, TUBE_AROUND, TUBE_ALONG);
   
   world_display (world);
 
@@ -493,7 +493,7 @@ tubes_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-tubes_display_effect (uint32_t time_offset, void *params, int iparam)
+tubes_display_effect (sync_info *sync, void *params, int iparam)
 {
   tube_data *tdata = (tube_data *) params;
   world_info *world = tdata->world;

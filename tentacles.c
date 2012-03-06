@@ -9,6 +9,9 @@
 #include "rendertarget.h"
 #include "sintab.h"
 
+/* This doesn't really help much...  */
+#define PRELOADED_TEXTURES
+
 tentacle_data tentacle_data_0;
 
 #include "objects/tentacles.inc"
@@ -19,8 +22,8 @@ INIT_OBJECT (tentacles_obj, tentacles);
 
 INIT_OBJECT (cross_cube_obj, cross_cube);
 
-#define TEX_WIDTH 640
-#define TEX_HEIGHT 480
+#define TEX_WIDTH 512
+#define TEX_HEIGHT 512
 #define TEX_FMT GX_TF_I8
 
 static void
@@ -57,10 +60,20 @@ channel_split (void *dummy)
   GX_SetTevKColor (2, (GXColor) { 0, 0, 255 });
 }
 
+#if 0 && defined(PRELOADED_TEXTURES)
+/* We don't need this if there aren't any non-preloaded textures...  */
+static GXTexRegion *
+tex_region_callback (GXTexObj *obj, u8 mapid)
+{
+  return 0;
+}
+#endif
+
 static void
 tentacle_init_effect (void *params, backbuffer_info *bbuf)
 {
   tentacle_data *tdata = (tentacle_data *) params;
+  int even_size;
   
   tdata->light_brightness = 0;
   
@@ -79,32 +92,44 @@ tentacle_init_effect (void *params, backbuffer_info *bbuf)
 
   tdata->tentacle_shader = create_shader (&tentacle_lighting, (void *) tdata);
   
-  world_add_standard_object (tdata->world, &tentacles_obj,
-			     &tdata->tentacle_loc, OBJECT_POS | OBJECT_NORM,
-			     GX_VTXFMT0, 0, &tdata->tentacle_modelview,
-			     &tdata->tentacle_scale, tdata->tentacle_shader);
-
   world_add_standard_object (tdata->world, &cross_cube_obj,
   			     &tdata->tentacle_loc, OBJECT_POS | OBJECT_NORM,
 			     GX_VTXFMT0, 0, &tdata->tentacle_modelview,
 			     &tdata->box_scale, tdata->tentacle_shader);
+
+  world_add_standard_object (tdata->world, &tentacles_obj,
+			     &tdata->tentacle_loc, OBJECT_POS | OBJECT_NORM,
+			     GX_VTXFMT0, 0, &tdata->tentacle_modelview,
+			     &tdata->tentacle_scale, tdata->tentacle_shader);
 
   tdata->back_buffer = memalign (32, GX_GetTexBufferSize (TEX_WIDTH, TEX_HEIGHT,
 				 TEX_FMT, GX_FALSE, 0));
   
   GX_InitTexObj (&tdata->backbuffer_texobj, tdata->back_buffer, TEX_WIDTH,
 		 TEX_HEIGHT, TEX_FMT, GX_CLAMP, GX_CLAMP, GX_FALSE);
-  GX_InitTexObjFilterMode (&tdata->backbuffer_texobj, GX_LINEAR, GX_LINEAR);
+  GX_InitTexObjFilterMode (&tdata->backbuffer_texobj, GX_NEAR, GX_NEAR);
 
   tdata->channelsplit_shader = create_shader (&channel_split, NULL);
+#ifdef PRELOADED_TEXTURES
+  shader_append_preloaded_texmap (tdata->channelsplit_shader,
+				  &tdata->backbuffer_texobj, GX_TEXMAP0,
+				  &tdata->texregion);
+#else
   shader_append_texmap (tdata->channelsplit_shader, &tdata->backbuffer_texobj,
   			GX_TEXMAP0);
+#endif
   shader_append_texcoordgen (tdata->channelsplit_shader, GX_TEXCOORD0,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
   shader_append_texcoordgen (tdata->channelsplit_shader, GX_TEXCOORD1,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX1);
   shader_append_texcoordgen (tdata->channelsplit_shader, GX_TEXCOORD2,
 			     GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX2);
+
+#ifdef PRELOADED_TEXTURES
+  //tdata->prev_callback = GX_SetTexRegionCallback (tex_region_callback);
+  even_size = GX_GetTexBufferSize (TEX_WIDTH, TEX_HEIGHT, TEX_FMT, GX_FALSE, 0);
+  GX_InitTexPreloadRegion (&tdata->texregion, 0x0, even_size, 0x80000, 0x0);
+#endif
 }
 
 
@@ -118,10 +143,12 @@ tentacle_uninit_effect (void *params, backbuffer_info *bbuf)
   free_shader (tdata->tentacle_shader);
   free_world (tdata->world);
   free (tdata->tentacle_wavey_pos);
+  
+  //GX_SetTexRegionCallback (tdata->prev_callback);
 }
 
 static display_target
-tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
+tentacle_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   Mtx rotmtx;
@@ -133,7 +160,8 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
       int idx = verts * 3;
       float amt = (tentacles_pos[idx + 1] + 8) / 16.0;
       float phase = tentacles_pos[idx + 1] + tdata->wave;
-      float phase2 = 3.0 * FASTSIN (tdata->wave / 2.0);
+      float phase2 = 3.0 * FASTSIN ((sync->param2 - 0.5) * 3);
+				     /*tdata->wave / 2.0);*/
       float x, y, z;
       
       x = tentacles_pos[idx] + amt * FASTSIN (phase);
@@ -166,7 +194,9 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
   
   GX_CopyTex (tdata->back_buffer, GX_TRUE);
   GX_PixModeSync ();
-  
+
+  GX_PreloadEntireTexture (&tdata->backbuffer_texobj, &tdata->texregion);
+
   tdata->light_brightness += 2;
   
   if (tdata->light_brightness > 255)
@@ -176,26 +206,27 @@ tentacle_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-tentacle_display_effect (uint32_t time_offset, void *params, int iparam)
+tentacle_display_effect (sync_info *sync, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   Mtx texoffset;
+  float split_rad = sync->param1;
   
   guMtxIdentity (texoffset);
-  guMtxTransApply (texoffset, texoffset, cosf (tdata->rot2) / 50.0,
-		   sinf (tdata->rot2) / 50.0, 0);
+  guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->rot2) / 50.0,
+		   split_rad * sinf (tdata->rot2) / 50.0, 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX0, GX_MTX2x4);
 
   guMtxIdentity (texoffset);
-  guMtxTransApply (texoffset, texoffset, cosf (tdata->rot3) / 50.0,
-		   sinf (tdata->rot3) / 50.0, 0);
+  guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->rot3) / 50.0,
+		   split_rad * sinf (tdata->rot3) / 50.0, 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX1, GX_MTX2x4);
 
   guMtxIdentity (texoffset);
-  guMtxTransApply (texoffset, texoffset, cosf (tdata->wave) / 50.0,
-		   sinf (tdata->wave) / 50.0, 0);
+  guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->wave) / 50.0,
+		   split_rad * sinf (tdata->wave) / 50.0, 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX2, GX_MTX2x4);
-  
+
   screenspace_rect (tdata->channelsplit_shader, GX_VTXFMT1, 0);
   
   tdata->rot++;

@@ -73,8 +73,8 @@ extern u32 diff_msec (u64 start, u64 end);
 #include "adpcm.h"
 #endif
 
-#undef SKIP_TO_TIME
-//#define SKIP_TO_TIME 94000
+//#undef SKIP_TO_TIME
+#define SKIP_TO_TIME 10000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -134,7 +134,12 @@ initialise ()
   PAD_Init();
 
   //rmode = VIDEO_GetPreferredMode (NULL);
+#ifdef PAL60
+  /* Is this PAL60 mode?  */
+  rmode = &TVEurgb60Hz480Int;
+#else
   rmode = &TVPal528IntDf;
+#endif
   framebuffer = MEM_K0_TO_K1 (SYS_AllocateFramebuffer (rmode));
  /* console_init (framebuffer, 20, 20, rmode->fbWidth, rmode->xfbHeight,
 		rmode->fbWidth * VI_DISPLAY_PIX_SZ);*/
@@ -439,9 +444,16 @@ main (int argc, char *argv[])
       u32 current_time;
       int i, j;
       int compositors_active;
+      sync_info sync;
 
       GX_InvVtxCache ();
       GX_InvalidateTexAll ();
+
+      PAD_ScanPads();
+
+      sync.param1 = (PAD_StickX (0) - 127.0) / 128.0;
+      sync.param2 = (PAD_StickY (0) - 127.0) / 128.0;
+      sync.param3 = (PAD_SubStickX (0) - 127.0) / 128.0;
 
       current_time = diff_msec (start_time, gettime ()) + offset_time;
       // srv_printf ("current_time: %d\n", current_time);
@@ -545,13 +557,17 @@ main (int argc, char *argv[])
 	  if (active_effects[i]->methods->prepare_frame)
 	    {
 	      int target;
+
+              sync.time_offset
+	        = current_time - active_effects[i]->start_time;
+
 #ifdef DEBUG
 	      srv_printf ("prepare frame: %p\n",
 		      active_effects[i]->methods->prepare_frame);
 #endif
 	      target = active_effects[i]->methods->prepare_frame (
-		    current_time - active_effects[i]->start_time,
-		    active_effects[i]->params, active_effects[i]->iparam);
+		    &sync, active_effects[i]->params,
+		    active_effects[i]->iparam);
 
 	      /* If there aren't any compositing effects active, render direct
 		 to the main buffer.  */
@@ -584,9 +600,11 @@ main (int argc, char *argv[])
           for (i = 0; i < num_active_effects; i++)
 	    if (active_effects[i]->methods->display_effect
 	        && target_for_active_effect[i] == j)
-	      active_effects[i]->methods->display_effect (
-	        current_time - active_effects[i]->start_time,
-		active_effects[i]->params, active_effects[i]->iparam);
+	      {
+	        sync.time_offset = current_time - active_effects[i]->start_time;
+		active_effects[i]->methods->display_effect (
+	          &sync, active_effects[i]->params, active_effects[i]->iparam);
+	      }
 	  
 	  GX_CopyTex (backbuffers[idx].pixels, GX_TRUE);
 	}
@@ -600,23 +618,25 @@ main (int argc, char *argv[])
       for (i = 0; i < num_active_effects; i++)
 	if (active_effects[i]->methods->display_effect
 	    && target_for_active_effect[i] == MAIN_BUFFER)
-	  active_effects[i]->methods->display_effect (
-	    current_time - active_effects[i]->start_time,
-	    active_effects[i]->params, active_effects[i]->iparam);
+	  {
+	    sync.time_offset = current_time - active_effects[i]->start_time;
+	    active_effects[i]->methods->display_effect (
+	      &sync, active_effects[i]->params, active_effects[i]->iparam);
+	  }
 
       /* And if we are using compositing, do that.  */
       for (i = 0; i < num_active_effects; i++)
 	if (active_effects[i]->methods->composite_effect)
-	  active_effects[i]->methods->composite_effect (
-	    current_time - active_effects[i]->start_time,
-	    active_effects[i]->params, active_effects[i]->iparam,
-	    backbuffers);
+	  {
+	    sync.time_offset = current_time - active_effects[i]->start_time;
+	    active_effects[i]->methods->composite_effect (
+	      &sync, active_effects[i]->params, active_effects[i]->iparam,
+	      backbuffers);
+	  }
 
       GX_DrawDone ();
       do_copy = GX_TRUE;
       VIDEO_WaitVSync();
-
-      PAD_ScanPads();
 
       int buttonsDown = PAD_ButtonsDown (0);
 

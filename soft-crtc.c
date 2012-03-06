@@ -93,7 +93,7 @@ specular_lighting_1light (void)
 static char *grid[2];
 static int current_grid = 0;
 static int counter = 0;
-static int sometimes = 0;
+/*static int sometimes = 0;*/
 static int get_bigger = 0;
 static float block_size = 0.5;
 static float block_size_acc = 0.0;
@@ -124,8 +124,9 @@ typedef struct grid_config_tag {
   struct grid_config_tag *next;
 } grid_list;
 
-static grid_list *generation_list = NULL;
+/*static grid_list *generation_list = NULL;*/
 
+#if 0
 static void
 pack_grid (grid_list *glist, char *grid)
 {
@@ -164,7 +165,6 @@ unpack_grid (grid_list *glist, char *grid)
     }
 }
 
-#if 0
 static grid_list *
 add_grid (char *grid, grid_list *oldhead)
 {
@@ -302,7 +302,7 @@ static int bounce_trigger = 0;
 static float uprot = 0.0;
 
 static void
-soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
+soft_crtc_display_effect (sync_info *sync, void *params, int iparam)
 {
   Mtx modelView, mvi, mvitmp, rotmtx, rotmtx2;
   guVector axis = {0, 1, 0};
@@ -313,7 +313,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
 
   guMtxScale (id, 2, 2, 2);
   matrixutil_swap_yz (id, id);
-  cam_path_follow (&scene, id, &soft_crtc, (float) time_offset / 10000.0);
+  cam_path_follow (&scene, id, &soft_crtc, (float) sync->time_offset / 10000.0);
 
   scene.up.x = sinf (uprot);
   scene.up.y = cosf (uprot);
@@ -345,7 +345,7 @@ soft_crtc_display_effect (uint32_t time_offset, void *params, int iparam)
   if (counter < 256)
     set_grid (counter / 4);
   
-  tmo_mod = (time_offset / 10) % 35;
+  tmo_mod = (sync->time_offset / 10) % 35;
   
   if (tmo_mod < last_time_offset)
     bounce_trigger = 1;

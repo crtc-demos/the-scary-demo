@@ -18,7 +18,10 @@ typedef struct
   {
     GXTexObj *obj;
     u8 mapid;
+    bool preload;
+    GXTexRegion *texregion;
   } textures[SHADER_MAX_TEXTURES];
+
   unsigned int num_textures;
   
   struct
@@ -34,6 +37,8 @@ typedef struct
 extern shader_info *create_shader (tev_setup_fn setup_tev, void *private_data);
 extern void free_shader (shader_info *shader);
 extern void shader_append_texmap (shader_info *shinf, GXTexObj *obj, u8 mapid);
+extern void shader_append_preloaded_texmap (shader_info *shinf, GXTexObj *obj,
+					    u8 mapid, GXTexRegion *texregion);
 extern void shader_append_texcoordgen (shader_info *shinf, u16 texcoord,
 				       u32 tgen_typ, u32 tgen_src, u32 mtxsrc);
 extern void shader_load (shader_info *shinf);

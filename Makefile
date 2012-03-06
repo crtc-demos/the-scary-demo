@@ -6,6 +6,9 @@ CONSOLE := gamecube
 FILESYSTEM := -lfat
 #FILESYSTEM := -lext2fs
 
+#REFRESHRATE := -DPAL60
+REFRESHRATE :=
+
 ifeq ($(CONSOLE),gamecube)
 include $(DEVKITPPC)/gamecube_rules
 else
@@ -19,7 +22,7 @@ TEVSL :=	$(TOOLROOT)/tevsl/tevsl
 OBJCONVERT :=	$(TOOLROOT)/objconvert/objconvert
 BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
-CFLAGS =	-g -O2 -Wall -std=gnu99 $(MACHDEP) $(INCLUDE)
+CFLAGS =	-g -O2 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(INCLUDE)
 ifeq ($(CONSOLE),gamecube)
 CFLAGS +=	-DNETWORKING
 endif

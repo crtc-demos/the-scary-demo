@@ -282,7 +282,7 @@ static float up = 0.0;
 static float lightrot = 0.0;
 
 static display_target
-parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
+parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_info *render_object;
@@ -312,7 +312,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 			      50 * sinf (around) * cosf (up) });*/
   guMtxScale (id, 10, 10, 10);
   matrixutil_swap_yz (id, id);
-  cam_path_follow (&scene, id, &cobra9, (float) time_offset / 10000.0);
+  cam_path_follow (&scene, id, &cobra9, (float) sync->time_offset / 10000.0);
 
   scene_update_camera (&scene);
 
@@ -385,7 +385,7 @@ parallax_mapping_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-parallax_mapping_display_effect (uint32_t time_offset, void *params, int iparam)
+parallax_mapping_display_effect (sync_info *sync, void *params, int iparam)
 {
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_loc map_flat_loc;

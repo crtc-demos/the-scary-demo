@@ -218,7 +218,7 @@ pumpkin_uninit_effect (void *params, backbuffer_info *bbuf)
 }
 
 static display_target
-pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
+pumpkin_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
   Mtx mvtmp, rot/*, sep_scale*/;
@@ -234,7 +234,7 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
     guMtxScale (path_mtx, 30, 30, 30);
     matrixutil_swap_yz (path_mtx, path_mtx);
     cam_path_follow (&scene, path_mtx, &pumpkin_track,
-		     (float) time_offset / 10000.0);
+		     (float) sync->time_offset / 10000.0);
   }
 #else
   scene_set_pos (&scene, (guVector) { 100 * cosf (phase), 15 * sinf (phase2),
@@ -364,7 +364,7 @@ pumpkin_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
+pumpkin_display_effect (sync_info *sync, void *params, int iparam)
 {
   pumpkin_data *pdata = (pumpkin_data *) params;
   Mtx mvtmp, rot, mvtmp2/*, sep_scale*/;
@@ -384,7 +384,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
   light_update (scene.camera, &light0);
   shader_load (pdata->pumpkin_lighting_shader);
 
-  if (time_offset < 5000)
+  if (sync->time_offset < 5000)
     {
       object_set_arrays (&pumpkin_obj,
 			 OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0,
@@ -404,9 +404,9 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
         pdata->vpos[i] += pdata->spd[i];
 
       pdata->spd[0] -= 0.2;
-      if (time_offset > 1000)
+      if (sync->time_offset > 1000)
         pdata->spd[1] -= 0.2;
-      if (time_offset > 2000)
+      if (sync->time_offset > 2000)
         pdata->spd[2] -= 0.2;
 
       for (i = 0; i < 3; i++)
@@ -448,7 +448,7 @@ pumpkin_display_effect (uint32_t time_offset, void *params, int iparam)
       object_render (&pumpkin_obj,
 		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-      if (time_offset > 6000 && (rand () & 8))
+      if (sync->time_offset > 6000 && (rand () & 8))
         {
 	  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 	  GX_SetColorUpdate (GX_TRUE);

@@ -265,14 +265,11 @@ bloom_uninit_effect (void *params, backbuffer_info *bbuf)
 }
 
 static display_target
-bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
+bloom_prepare_frame (sync_info *sync, void *params, int iparam)
 {
   bloom_data *bdata = (bloom_data *) params;
   object_loc softcube_loc;
   Mtx modelview, rotmtx, rotmtx2, scale;
-  int i;
-  static int first_time = 1;
-  int offset_acc = 0;
 
   if (use_mipmapping)
     {
@@ -403,8 +400,6 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
   }
 #endif
 
-  first_time = 0;
-
   rendertarget_texture (STAGE2_W, STAGE2_H, STAGE2_FMT, GX_FALSE,
 			GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
@@ -427,11 +422,9 @@ bloom_prepare_frame (uint32_t time_offset, void *params, int iparam)
 }
 
 static void
-bloom_display_effect (uint32_t time_offset, void *params, int iparam)
+bloom_display_effect (sync_info *sync, void *params, int iparam)
 {
   bloom_data *bdata = (bloom_data *) params;
-  object_loc softcube_loc;
-  Mtx modelview, rotmtx, rotmtx2, scale;
     
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -449,8 +442,10 @@ bloom_display_effect (uint32_t time_offset, void *params, int iparam)
   GX_InitTexObjMinLOD (&bdata->stage1_tex_obj, 0);
   GX_InitTexObjMaxLOD (&bdata->stage1_tex_obj, 0);
 
-  if ((time_offset > 3000 || (time_offset > 2000 && (rand () & 8) != 0))
-      && (time_offset < 11000 || (time_offset < 12000 && (rand () & 8) != 0)))
+  if ((sync->time_offset > 3000 || (sync->time_offset > 2000
+				    && (rand () & 8) != 0))
+      && (sync->time_offset < 11000 || (sync->time_offset < 12000
+					&& (rand () & 8) != 0)))
     screenspace_rect (bdata->composite_shader, GX_VTXFMT1, 0);
 
   bdata->phase += 1;

@@ -23,7 +23,7 @@ Tentacle (in box, colour-channel split)
 
 * Fade in from black [DONE]
 
-* Time to music (several parameters...). Don't start with colour split, make that happen later.
+* Time to music (several parameters...). Don't start with colour split, make that happen later. [PARTIAL, no data to control it with!]
 
 Pumpkins
 --------
@@ -60,6 +60,8 @@ Glass
 Bloom
 -----
 
+* !!! problem with lighting sometimes? Fix.
+
 * Use mipmap levels/hardware box filter to get rid of jaggies. [doesn't work quite like I thought; still, using hardware box filter will probably speed up the bloom effect a little.]
 
 * Dunno, add background? Inside of pumpkin?
@@ -73,12 +75,12 @@ Tubes
 
 * Better camera
 
+* Instead, it's a greets part! [DONE]
+
 Spooky ghost tunnel
 -------------------
 
 * Fix jitter on spooky ghost in tunnel [DONE]
 
-* Red & blue & yellow colours for spooky ghost in tunnel, make a fun left/right pattern. Or straight towards viewer sometimes. [PARTIAL]
-
-* End credits using bitmap font. [PARTIAL]
+* Red & blue & yellow colours for spooky ghost in tunnel, make a fun left/right pattern. Or straight towards viewer sometimes. [DONE]
 
