@@ -55,9 +55,9 @@ static void
 channel_split (void *dummy)
 {
   #include "channelsplit.inc"
-  GX_SetTevKColor (0, (GXColor) { 255, 0, 0 });
-  GX_SetTevKColor (1, (GXColor) { 0, 255, 0 });
-  GX_SetTevKColor (2, (GXColor) { 0, 0, 255 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 0, 0 });
+  GX_SetTevKColor (GX_KCOLOR1, (GXColor) { 0, 255, 0 });
+  GX_SetTevKColor (GX_KCOLOR2, (GXColor) { 0, 0, 255 });
 }
 
 #if 0 && defined(PRELOADED_TEXTURES)

@@ -137,7 +137,7 @@ tunnel_lighting (void *dummy)
   GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
 
-  //GX_SetTevKColor (0, (GXColor) { 255, 192, 0, 0 });
+  //GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 192, 0, 0 });
 }
 
 static void

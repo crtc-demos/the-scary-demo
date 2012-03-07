@@ -317,15 +317,15 @@ pumpkin_prepare_frame (sync_info *sync, void *params, int iparam)
   object_set_matrices (&scene, &pdata->beam_loc, scene.camera, mvtmp, NULL,
 		       NULL, 0);
 
-  GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 0, 255, 0, 0 });
   object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 0, 0, 255, 0 });
   object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
 
@@ -333,15 +333,15 @@ pumpkin_prepare_frame (sync_info *sync, void *params, int iparam)
   GX_SetBlendMode (GX_BM_SUBTRACT, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetCullMode (GX_CULL_BACK);
   
-  GX_SetTevKColor (0, (GXColor) { 255, 0, 0, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 0, 0, 0 });
   object_set_arrays (&beam_left_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_left_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 255, 0, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 0, 255, 0, 0 });
   object_set_arrays (&beam_right_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_right_obj, OBJECT_POS, GX_VTXFMT0);
 
-  GX_SetTevKColor (0, (GXColor) { 0, 0, 255, 0 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 0, 0, 255, 0 });
   object_set_arrays (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0, 0);
   object_render (&beam_mouth_obj, OBJECT_POS, GX_VTXFMT0);
 

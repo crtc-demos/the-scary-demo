@@ -130,16 +130,16 @@ static void
 bloom_gaussian_shader (void *dummy)
 {
   #include "bloom-gaussian.inc"
-  GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
-  GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 36, 73, 146, 255 });
+  GX_SetTevKColor (GX_KCOLOR1, (GXColor) { 255, 146, 73, 36 });
 }
 
 static void
 bloom_gaussian2_shader (void *dummy)
 {
   #include "bloom-gaussian2.inc"
-  GX_SetTevKColor (0, (GXColor) { 36, 73, 146, 255 });
-  GX_SetTevKColor (1, (GXColor) { 255, 146, 73, 36 });
+  GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 36, 73, 146, 255 });
+  GX_SetTevKColor (GX_KCOLOR1, (GXColor) { 255, 146, 73, 36 });
 }
 
 #define STAGE1_MAX_LOD 5
