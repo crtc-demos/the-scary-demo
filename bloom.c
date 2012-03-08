@@ -28,12 +28,14 @@ static light_info light0 =
   .up = { 0, 1, 0 }
 };
 
+#if 0
 static light_info light1 =
 {
   .pos = { -20, -20, 20 },
   .lookat = { 0, 0, 0 },
   .up = { 0, 1, 0 }
 };
+#endif
 
 static Mtx44 proj;
 
@@ -82,6 +84,7 @@ cube_lighting (void *dummy)
   guVecNormalize (&ldir);
 
   GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightDistAttn (&lo0, 1.0, 1.0, GX_DA_OFF);
   GX_InitLightShininess (&lo0, 64);
   GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
@@ -286,7 +289,7 @@ bloom_prepare_frame (sync_info *sync, void *params, int iparam)
   
   scene_update_camera (&scene);
   light_update (scene.camera, &light0);
-  light_update (scene.camera, &light1);
+  /*light_update (scene.camera, &light1);*/
   
   guMtxIdentity (modelview);
   guMtxRotAxisDeg (rotmtx, &((guVector) {0, 1, 0}), bdata->phase);
