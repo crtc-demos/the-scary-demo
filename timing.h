@@ -22,6 +22,8 @@ typedef struct {
   float param1;
   float param2;
   float param3;
+  float bar_pos;
+  int bar;
 } sync_info;
 
 typedef struct {
@@ -44,6 +46,13 @@ typedef struct {
   int iparam;
   int finalize;
 } do_thing_at;
+
+static __inline__ float
+impulse (float k, float x)
+{
+  float h = k * x;
+  return h * expf (1.0f - h);
+}
 
 #ifndef NULL
 #define NULL ((void*) 0)

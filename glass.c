@@ -178,6 +178,26 @@ ghost_uninit_effect (void *params, backbuffer_info *bbuf)
   free (gdata->grabbed_texture);
 }
 
+static void
+set_sep_scale (Mtx sep_scale, sync_info *sync)
+{
+  if (sync->bar >= 73 && sync->bar <= 75)
+    {
+      float beat = 4.0 * (sync->bar_pos - 0.25);
+      float bar_pos_adj = sync->bar_pos + (float) sync->bar - 73.0;
+      float size, bar_impulse;
+      beat = beat - floorf (beat);
+      if (bar_pos_adj >= 0)
+        bar_impulse = impulse (4, bar_pos_adj);
+      else
+        bar_impulse = 0.0;
+      size = 10.0 + 10.0 * impulse (4, beat) * bar_impulse;
+      guMtxScale (sep_scale, size, size, size);
+    }
+  else
+    guMtxScale (sep_scale, 10.0, 10.0, 10.0);
+}
+
 static display_target
 ghost_prepare_frame (sync_info *sync, void *params, int iparam)
 {
@@ -231,13 +251,13 @@ ghost_prepare_frame (sync_info *sync, void *params, int iparam)
   
   if (sync->time_offset < 1000)
     gdata->xoffset = -(float) (1000 - sync->time_offset) / 10.0;
-  else if (sync->time_offset > 9000)
-    gdata->xoffset = (float) (sync->time_offset - 9000) / 10.0;
+  else if (sync->time_offset > 16000)
+    gdata->xoffset = (float) (sync->time_offset - 16000) / 10.0;
   else
     gdata->xoffset = 0.0;
   
   /*guMtxScale (sep_scale, 6.0, 6.0, 6.0);*/
-  guMtxScale (sep_scale, 10.0, 10.0, 10.0);
+  set_sep_scale (sep_scale, sync);
   guMtxTransApply (mvtmp, mvtmp2, gdata->xoffset, 0, 0);
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, perspmat, GX_PERSPECTIVE);
@@ -310,7 +330,7 @@ ghost_display_effect (sync_info *sync, void *params, int iparam)
   guMtxConcat (rot, mvtmp, mvtmp);
 
   /*guMtxScale (sep_scale, 6.0, 6.0, 6.0);*/
-  guMtxScale (sep_scale, 10.0, 10.0, 10.0);
+  set_sep_scale (sep_scale, sync);
   guMtxTransApply (mvtmp, mvtmp2, gdata->xoffset, 0, 0);
   object_set_matrices (&scene, &gdata->obj_loc, scene.camera, mvtmp2,
 		       sep_scale, perspmat, GX_PERSPECTIVE);

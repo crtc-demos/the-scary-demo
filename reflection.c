@@ -344,13 +344,6 @@ rib_render (reflection_data *rdata, Mtx camera, int lo, float twist)
     }
 }
 
-static float
-impulse (float k, float x)
-{
-  float h = k * x;
-  return h * expf (1.0f - h);
-}
-
 static float around = 0.0;
 static float up = 0.0;
 static float twisty = 0.0;
@@ -361,6 +354,7 @@ reflection_prepare_frame (sync_info *sync, void *params, int iparam)
   reflection_data *rdata = (reflection_data *) params;
   int i;
   Mtx cp;
+  float beat;
 
   assert (rdata->rib_dl && rdata->rib_lo_dl);
 
@@ -377,7 +371,7 @@ reflection_prepare_frame (sync_info *sync, void *params, int iparam)
   guMtxScale (cp, 6.5, 6.5, 6.5);
   matrixutil_swap_yz (cp, cp);
   cam_path_follow (&rdata->world->scene, cp, &skull_path,
-		   (float) sync->time_offset / 20000.0);
+		   (float) sync->time_offset / 23000.0);
 #else
   scene_set_pos (&rdata->world->scene,
 		 (guVector) { 30 * cosf (around) * cosf (up),
@@ -388,9 +382,17 @@ reflection_prepare_frame (sync_info *sync, void *params, int iparam)
   scene_update_camera (&rdata->world->scene);
 
   //rdata->skybox_redness = 128.0 + PAD_SubStickY (0);
-  rdata->skybox_redness = 255.0
-			  * impulse (5, (float) (sync->time_offset % 1000)
-				     / 500.0);
+
+  beat = 4.0 * (sync->bar_pos + 0.2);
+  beat = beat - floorf (beat);
+  if (sync->bar >= 64)
+    rdata->skybox_redness = 255.0 * impulse (5, beat);
+  else
+    rdata->skybox_redness = 0;
+
+  /*rdata->skybox_redness = (int) (sync->param1 * 64);
+  if (rdata->skybox_redness > 255)
+    rdata->skybox_redness = 255;*/
 
   /* We only need to set this once...  */
   GX_LoadProjectionMtx (cubeface_proj, GX_PERSPECTIVE);

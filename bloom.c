@@ -428,7 +428,7 @@ static void
 bloom_display_effect (sync_info *sync, void *params, int iparam)
 {
   bloom_data *bdata = (bloom_data *) params;
-    
+
   GX_SetZMode (GX_FALSE, GX_LEQUAL, GX_FALSE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
   GX_SetCullMode (GX_CULL_NONE);

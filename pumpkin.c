@@ -448,7 +448,7 @@ pumpkin_display_effect (sync_info *sync, void *params, int iparam)
       object_render (&pumpkin_obj,
 		     OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD, GX_VTXFMT0);
 
-      if (sync->time_offset > 6000 && (rand () & 8))
+      if (sync->time_offset > 6800 && (rand () & 8))
         {
 	  GX_SetBlendMode (GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_SET);
 	  GX_SetColorUpdate (GX_TRUE);

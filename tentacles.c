@@ -147,6 +147,8 @@ tentacle_uninit_effect (void *params, backbuffer_info *bbuf)
   //GX_SetTexRegionCallback (tdata->prev_callback);
 }
 
+static int switch_dir = 0;
+
 static display_target
 tentacle_prepare_frame (sync_info *sync, void *params, int iparam)
 {
@@ -155,12 +157,15 @@ tentacle_prepare_frame (sync_info *sync, void *params, int iparam)
   guVector around = { 0, 1, 0 };
   int verts;
 
+  if (sync->time_offset >= 12000)
+    switch_dir = 1;
+
   for (verts = 0; verts < ARRAY_SIZE (tentacles_pos) / 3; verts++)
     {
       int idx = verts * 3;
       float amt = (tentacles_pos[idx + 1] + 8) / 16.0;
       float phase = tentacles_pos[idx + 1] + tdata->wave;
-      float phase2 = 3.0 * FASTSIN ((sync->param2 - 0.5) * 3);
+      float phase2 = 3.0 * FASTSIN (sync->param2 - 0.5);
 				     /*tdata->wave / 2.0);*/
       float x, y, z;
       
@@ -210,28 +215,39 @@ tentacle_display_effect (sync_info *sync, void *params, int iparam)
 {
   tentacle_data *tdata = (tentacle_data *) params;
   Mtx texoffset;
-  float split_rad = sync->param1;
+  float split_rad = sync->param3 / 2.0;
   
-  guMtxIdentity (texoffset);
+  tdata->rot2 += sync->param2 / 3.0;
+  
+  /*guMtxIdentity (texoffset);
   guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->rot2) / 50.0,
-		   split_rad * sinf (tdata->rot2) / 50.0, 0);
+		   split_rad * sinf (tdata->rot2) / 50.0, 0);*/
+  guMtxTrans (texoffset, split_rad * cosf (tdata->rot2),
+			 split_rad * sinf (tdata->rot2), 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX0, GX_MTX2x4);
 
-  guMtxIdentity (texoffset);
+  /*guMtxIdentity (texoffset);
   guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->rot3) / 50.0,
-		   split_rad * sinf (tdata->rot3) / 50.0, 0);
+		   split_rad * sinf (tdata->rot3) / 50.0, 0);*/
+  guMtxTrans (texoffset, 0.5 * split_rad * cosf (tdata->rot2),
+			 0.5 * split_rad * sinf (tdata->rot2), 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX1, GX_MTX2x4);
 
-  guMtxIdentity (texoffset);
+  /*guMtxIdentity (texoffset);
   guMtxTransApply (texoffset, texoffset, split_rad * cosf (tdata->wave) / 50.0,
-		   split_rad * sinf (tdata->wave) / 50.0, 0);
+		   split_rad * sinf (tdata->wave) / 50.0, 0);*/
+  guMtxTrans (texoffset, -1 * split_rad * cosf (tdata->rot2),
+			 -1 * split_rad * sinf (tdata->rot2), 0);
   GX_LoadTexMtxImm (texoffset, GX_TEXMTX2, GX_MTX2x4);
 
   screenspace_rect (tdata->channelsplit_shader, GX_VTXFMT1, 0);
   
-  tdata->rot++;
-  tdata->rot2 += 0.3;
-  tdata->rot3 += 0.35;
+  if (switch_dir == 0)
+    tdata->rot++;
+  else
+    tdata->rot--;
+
+  /*tdata->rot3 += 0.35;*/
   tdata->wave += 0.1;
 }
 

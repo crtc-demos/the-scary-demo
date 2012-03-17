@@ -73,8 +73,12 @@ extern u32 diff_msec (u64 start, u64 end);
 #include "adpcm.h"
 #endif
 
-//#undef SKIP_TO_TIME
-#define SKIP_TO_TIME 80000
+static float boombox[] = {
+#include "boombox/boombox.inc"
+};
+
+#undef SKIP_TO_TIME
+//#define SKIP_TO_TIME 90000
 
 #ifdef SKIP_TO_TIME
 u64 offset_time = 0;
@@ -86,18 +90,29 @@ u64 offset_time = 0;
 
 uint64_t start_time;
 
+effect_methods null_effect =
+{
+  .preinit_assets = NULL,
+  .init_effect = NULL,
+  .prepare_frame = NULL,
+  .display_effect = NULL,
+  .uninit_effect = NULL,
+  .finalize = NULL
+};
+
 static do_thing_at sequence[] = {
-  {      0,  10000, &soft_crtc_methods, NULL, -1, 0 },
-  {  10000,  30000, &tentacle_methods, &tentacle_data_0, -1, 0 },
-  {  30000,  40000, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
-  {  40000,  50000, &parallax_mapping_methods, &parallax_mapping_data_0, -1,
+  {      0,   2000, &null_effect, NULL, -1, 0 },
+  {   3500,  13500, &soft_crtc_methods, NULL, -1, 0 },
+  {  13500,  36700, &tentacle_methods, &tentacle_data_0, -1, 0 },
+  {  36700,  46700, &parallax_mapping_methods, &parallax_mapping_data_0, -1,
 		    0 },
-  {  50000,  70000, &reflection_methods, &reflection_data_0, -1, 0 },
-  {  70000,  80000, &glass_methods, &glass_data_0, -1, 0 },
-  {  80000,  95000, &bloom_methods, &bloom_data_0, -1, 0 },
-  {  95000, 120000, &tubes_methods, &tube_data_0, -1, 0 },
-  {  96000, 119000, &greets_methods, &greets_data_0, -1, 0 },
-  { 120000, 180000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 }
+  {  46700,  56700, &pumpkin_methods, &pumpkin_data_0, -1, 0 },
+  {  56700,  70000, &bloom_methods, &bloom_data_0, -1, 0 },
+  {  70000,  93000, &reflection_methods, &reflection_data_0, -1, 0 },
+  {  93000, 110000, &glass_methods, &glass_data_0, -1, 0 },
+  { 110000, 135000, &tubes_methods, &tube_data_0, -1, 0 },
+  { 111000, 134000, &greets_methods, &greets_data_0, -1, 0 },
+  { 135000, 195000, &spooky_ghost_methods, &spooky_ghost_data_0, -1, 0 },
 };
 
 #define ARRAY_SIZE(X) (sizeof (X) / sizeof (X[0]))
@@ -221,6 +236,8 @@ mp3_reader (void *data, void* readstart, s32 readsize)
   return bytesread;
 }
 #endif
+
+static int last_bar = -99;
 
 int
 main (int argc, char *argv[])
@@ -424,7 +441,8 @@ main (int argc, char *argv[])
   AESND_Init (NULL);
   
   adpcm_init ();
-  song_handle = adpcm_load_file ("sd:/adpcm.wav");
+  //song_handle = adpcm_load_file ("sd:/adpcm.wav");
+  song_handle = adpcm_load_file ("sd:/tesla-demo.wav");
   srv_printf ("Make it play!\n");
 #ifdef SKIP_TO_TIME
   adpcm_play (song_handle, SKIP_TO_TIME);
@@ -451,11 +469,41 @@ main (int argc, char *argv[])
 
       PAD_ScanPads();
 
-      sync.param1 = (PAD_StickX (0) - 127.0) / 128.0;
-      sync.param2 = (PAD_StickY (0) - 127.0) / 128.0;
-      sync.param3 = (PAD_SubStickX (0) - 127.0) / 128.0;
-
       current_time = diff_msec (start_time, gettime ()) + offset_time;
+
+      {
+        int frame = (current_time + 40) / 20;
+	const float coeff[4] = { 0.8, 0.4, 0.25, 0.1 };
+	/*sync.param1 = (PAD_StickX (0) - 127.0) / 128.0;
+	sync.param2 = (PAD_StickY (0) - 127.0) / 128.0;
+	sync.param3 = (PAD_SubStickX (0) - 127.0) / 128.0;*/
+	if (frame > 4)
+	  {
+	    float acc;
+	    for (acc = 0.0, j = 0; j < 4; j++)
+	      acc += boombox[(frame - j) * 3] * coeff[j];
+	    sync.param1 = acc / 100.0;
+
+	    for (acc = 0.0, j = 0; j < 4; j++)
+	      acc += boombox[(frame - j) * 3 + 1] * coeff[j];
+	    sync.param2 = acc / 100.0;
+	    
+	    for (acc = 0.0, j = 0; j < 4; j++)
+	      acc += boombox[(frame - j) * 3 + 2] * coeff[j];
+	    sync.param3 = acc / 100.0;
+	  }
+	
+	/* Fudge factor of 49 because WAV file doesn't start on an exact
+	   bar...  anyway, this drifts quite a lot by the end of the tune.  */
+	sync.bar_pos = ((float) (current_time + 49) / 1000.0)
+		       * (170.0 / 60.0) / 4.0;
+	sync.bar = sync.bar_pos;
+	sync.bar_pos = sync.bar_pos - floorf (sync.bar_pos);
+	/*if (last_bar != sync.bar)
+	  srv_printf ("bar %d\n", sync.bar);*/
+	last_bar = sync.bar;
+      }
+
       // srv_printf ("current_time: %d\n", current_time);
 
       /* Terminate old effects.  */

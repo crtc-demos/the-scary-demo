@@ -56,6 +56,8 @@ static unsigned char ascii_to_char[256];
     unstable label
     lft
     mfx
+    
+    tune is: golgot vs simao: tesla! (170bpm)
 */
 
 static unsigned char message[] =

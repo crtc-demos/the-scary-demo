@@ -319,7 +319,7 @@ soft_crtc_display_effect (sync_info *sync, void *params, int iparam)
   scene.up.y = cosf (uprot);
   scene.up.z = 0.0;
 
-  uprot -= 0.002;
+  uprot -= 0.0015;
 
   scene_update_camera (&scene);
 
