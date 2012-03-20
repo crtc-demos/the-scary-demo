@@ -42,6 +42,13 @@ static light_info light0 =
   .up = { 0, 1, 0 }
 };
 
+static light_info light1 =
+{
+  .pos = { 20, 20, 50 },
+  .lookat = { 0, 0, 0 },
+  .up = { 0, 1, 0 }
+};
+
 #include "images/snakytextures.h"
 #include "snakytextures_tpl.h"
 
@@ -85,23 +92,31 @@ parallax_phase3 (void *dummy)
 static void
 column_shader_setup (void *dummy)
 {
-  GXLightObj lo0;
+  GXLightObj lo0, lo1;
   guVector ldir;
 
   #include "column-texture.inc"
 
   GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
   GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
-  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_NONE);
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_NONE);
 
   guVecSub (&light0.tpos, &light0.tlookat, &ldir);
   guVecNormalize (&ldir);
 
   GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
   GX_InitLightShininess (&lo0, 64);
-  GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
+  GX_InitLightColor (&lo0, (GXColor) { 255, 0, 0, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
+
+  guVecSub (&light1.tpos, &light1.tlookat, &ldir);
+  guVecNormalize (&ldir);
+
+  GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightShininess (&lo1, 64);
+  GX_InitLightColor (&lo1, (GXColor) { 0, 0, 255, 255 });
+  GX_LoadLightObj (&lo1, GX_LIGHT0);
 }
 
 static void
@@ -113,20 +128,20 @@ fog_shader_setup (void *dummy)
 static void
 tunnel_lighting (void *dummy)
 {
-  GXLightObj lo0;
+  GXLightObj lo0, lo1;
   guVector ldir;
 
 #include "tunnel-lighting.inc"
 
   GX_SetChanAmbColor (GX_COLOR0, (GXColor) { 32, 32, 32, 0 });
   GX_SetChanMatColor (GX_COLOR0, (GXColor) { 224, 224, 224, 0 });
-  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_CLAMP, GX_AF_NONE);
+  GX_SetChanCtrl (GX_COLOR0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT0 | GX_LIGHT1, GX_DF_CLAMP, GX_AF_NONE);
 
   GX_SetChanAmbColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 0 });
   GX_SetChanMatColor (GX_ALPHA0, (GXColor) { 0, 0, 0, 255 });
-  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT0,
-		  GX_DF_NONE, GX_AF_SPEC);
+  GX_SetChanCtrl (GX_ALPHA0, GX_ENABLE, GX_SRC_REG, GX_SRC_REG,
+		  GX_LIGHT0 | GX_LIGHT1, GX_DF_NONE, GX_AF_SPEC);
 
   /* Light 0: use for both specular and diffuse lighting.  */
   guVecSub (&light0.tpos, &light0.tlookat, &ldir);
@@ -134,8 +149,17 @@ tunnel_lighting (void *dummy)
 
   GX_InitSpecularDir (&lo0, -ldir.x, -ldir.y, -ldir.z);
   GX_InitLightShininess (&lo0, 64);
-  GX_InitLightColor (&lo0, (GXColor) { 192, 192, 192, 255 });
+  GX_InitLightColor (&lo0, (GXColor) { 255, 0, 0, 255 });
   GX_LoadLightObj (&lo0, GX_LIGHT0);
+
+  /* Light 1: use for both specular and diffuse lighting.  */
+  guVecSub (&light1.tpos, &light1.tlookat, &ldir);
+  guVecNormalize (&ldir);
+
+  GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
+  GX_InitLightShininess (&lo1, 64);
+  GX_InitLightColor (&lo1, (GXColor) { 0, 0, 255, 255 });
+  GX_LoadLightObj (&lo1, GX_LIGHT0);
 
   //GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 192, 0, 0 });
 }
@@ -287,6 +311,7 @@ parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
   parallax_mapping_data *pdata = (parallax_mapping_data *) params;
   object_info *render_object;
   Mtx /*rot,*/ id;
+  float beatrot;
 
   GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
@@ -300,9 +325,15 @@ parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
   around += PAD_StickX (0) / 300.0;
   up += PAD_StickY (0) / 300.0;
 
-  light0.pos.x = 40 * cosf (lightrot);
+  beatrot = sync->bar_pos * 4.0 * M_PI;
+
+  light0.pos.x = 40 * cosf (beatrot);
   light0.pos.y = 40;
-  light0.pos.z = 40 * sinf (lightrot);
+  light0.pos.z = 40 * sinf (beatrot);
+
+  light1.pos.x = 40 * cosf (beatrot + M_PI);
+  light1.pos.y = 40;
+  light1.pos.z = 40 * sinf (beatrot + M_PI);
   
   lightrot += 0.2;
 
@@ -320,6 +351,7 @@ parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
 
   shader_load (pdata->tunnel_lighting_shader);
   light_update (scene.camera, &light0);
+  light_update (scene.camera, &light1);
   update_lighting_texture (&scene, pdata->lighting_texture);
 
   /* PHASE 1: Render bump offset to screen-space indirect texture.  */

@@ -442,7 +442,11 @@ main (int argc, char *argv[])
   
   adpcm_init ();
   //song_handle = adpcm_load_file ("sd:/adpcm.wav");
+#ifdef WII
+  song_handle = adpcm_load_file ("sd:/apps/TheScaryDemo/tesla-demo.wav");
+#else
   song_handle = adpcm_load_file ("sd:/tesla-demo.wav");
+#endif
   srv_printf ("Make it play!\n");
 #ifdef SKIP_TO_TIME
   adpcm_play (song_handle, SKIP_TO_TIME);
@@ -708,6 +712,10 @@ main (int argc, char *argv[])
   if (mp3_fh)
     fclose (mp3_fh);
   ASND_End ();
+#endif
+
+#ifdef PLAY_ADPCM
+  adpcm_stop ();
 #endif
 
 #if defined(PLAY_MP3) || defined(PLAY_ADPCM)

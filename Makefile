@@ -25,6 +25,8 @@ TARGET :=	demo.dol
 CFLAGS =	-g -O2 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(INCLUDE)
 ifeq ($(CONSOLE),gamecube)
 CFLAGS +=	-DNETWORKING
+else
+CFLAGS +=	-DWII
 endif
 ifeq ($(FILESYSTEM),-lext2fs)
 CFLAGS +=	-DUSE_EXT2FS

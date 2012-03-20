@@ -543,3 +543,19 @@ adpcm_play (u32 handle, u32 skip_to_millis)
   
   return adjusted_millis;
 }
+
+/* Stop audio, shut up output.  */
+void
+adpcm_stop (void)
+{
+  void *thread_ret;
+
+  AESND_SetVoiceVolume (adpcm_voice, 0, 0);
+  
+  sndPlaying = false;
+  
+  LWP_JoinThread (hplayer, &thread_ret);
+
+  AESND_SetVoiceStop (adpcm_voice, true);
+  AESND_SetVoiceStream (adpcm_voice, false);
+}
