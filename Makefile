@@ -22,7 +22,7 @@ TEVSL :=	$(TOOLROOT)/tevsl/tevsl
 OBJCONVERT :=	$(TOOLROOT)/objconvert/objconvert
 BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
-CFLAGS =	-g -O2 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(INCLUDE)
+CFLAGS =	-g -O3 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(INCLUDE)
 ifeq ($(CONSOLE),gamecube)
 CFLAGS +=	-DNETWORKING
 else

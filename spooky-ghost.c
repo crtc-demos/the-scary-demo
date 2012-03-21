@@ -449,7 +449,7 @@ spooky_ghost_prepare_frame (sync_info *sync, void *params, int iparam)
   rendertarget_texture (REFLECTION_W, REFLECTION_H, REFLECTION_TEXFMT,
 			GX_FALSE, GX_PF_RGB8_Z24, GX_ZC_LINEAR);
 
-  for (i = -2; i <= 2; i++)
+  for (i = 0; i < 5; i++)
     {
       guMtxTrans (exfm, 0, 0, (float) rearrange[i] * TUNNEL_SEPARATION);
       render_tunnel (sdata, true, exfm, sdata->bla);
@@ -604,7 +604,7 @@ spooky_ghost_display_effect (sync_info *sync, void *params, int iparam)
 
   GX_SetFog (GX_FOG_PERSP_LIN, 50, 300, 10.0, 500.0, (GXColor) { 0, 0, 0 });
 
-  for (i = -2; i <= 2; i++)
+  for (i = 0; i < 5; i++)
     {
       guMtxTrans (exfm, 0, 0, (float) rearrange[i] * TUNNEL_SEPARATION);
       render_tunnel (sdata, false, exfm, sdata->bla);

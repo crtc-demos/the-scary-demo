@@ -69,6 +69,9 @@ static TPLFile snakytextureTPL;
 #define TEXCOORD_MAP2_W 512
 #define TEXCOORD_MAP2_FMT GX_TF_IA8
 
+#define COLUMN_DL_SIZE 16384
+#define USE_DISPLAY_LISTS 1
+
 parallax_mapping_data parallax_mapping_data_0;
 
 static void
@@ -116,14 +119,16 @@ column_shader_setup (void *dummy)
   GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
   GX_InitLightShininess (&lo1, 64);
   GX_InitLightColor (&lo1, (GXColor) { 0, 0, 255, 255 });
-  GX_LoadLightObj (&lo1, GX_LIGHT0);
+  GX_LoadLightObj (&lo1, GX_LIGHT1);
 }
 
+#if 0
 static void
 fog_shader_setup (void *dummy)
 {
   #include "fog-texture.inc"
 }
+#endif
 
 static void
 tunnel_lighting (void *dummy)
@@ -159,7 +164,7 @@ tunnel_lighting (void *dummy)
   GX_InitSpecularDir (&lo1, -ldir.x, -ldir.y, -ldir.z);
   GX_InitLightShininess (&lo1, 64);
   GX_InitLightColor (&lo1, (GXColor) { 0, 0, 255, 255 });
-  GX_LoadLightObj (&lo1, GX_LIGHT0);
+  GX_LoadLightObj (&lo1, GX_LIGHT1);
 
   //GX_SetTevKColor (GX_KCOLOR0, (GXColor) { 255, 192, 0, 0 });
 }
@@ -274,6 +279,7 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
   shader_append_texcoordgen (pdata->column_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
 
+#if 0
   /* Fog bits.  */
   TPL_GetTexture (&snakytextureTPL, fog_texture, &pdata->fog_texture_obj);
   
@@ -282,6 +288,12 @@ parallax_mapping_init_effect (void *params, backbuffer_info *bbuf)
 			GX_TEXMAP0);
   shader_append_texcoordgen (pdata->fog_shader, GX_TEXCOORD0, GX_TG_MTX2x4,
 			     GX_TG_TEX0, GX_IDENTITY);
+#endif
+
+#ifdef USE_DISPLAY_LISTS
+  pdata->column_dl = memalign (32, COLUMN_DL_SIZE);
+  pdata->column_dl_size = 0;
+#endif
 }
 
 static void
@@ -297,13 +309,18 @@ parallax_mapping_uninit_effect (void *params, backbuffer_info *bbuf)
   free_shader (pdata->parallax_lit_phase2_shader);
   free_shader (pdata->parallax_lit_phase3_shader);
   free_shader (pdata->column_shader);
+#if 0
   free_shader (pdata->fog_shader);
+#endif
+#ifdef USE_DISPLAY_LISTS
+  free (pdata->column_dl);
+#endif
 }
 
-static float around = 0.0;
+/*static float around = 0.0;
 static float up = 0.0;
 
-static float lightrot = 0.0;
+static float lightrot = 0.0;*/
 
 static display_target
 parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
@@ -322,8 +339,8 @@ parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
 
   render_object = &cobra_obj;
 
-  around += PAD_StickX (0) / 300.0;
-  up += PAD_StickY (0) / 300.0;
+ /* around += PAD_StickX (0) / 300.0;
+  up += PAD_StickY (0) / 300.0;*/
 
   beatrot = sync->bar_pos * 4.0 * M_PI;
 
@@ -335,7 +352,7 @@ parallax_mapping_prepare_frame (sync_info *sync, void *params, int iparam)
   light1.pos.y = 40;
   light1.pos.z = 40 * sinf (beatrot + M_PI);
   
-  lightrot += 0.2;
+  /*lightrot += 0.2;*/
 
   /*scene_set_pos (&scene,
 		 (guVector) { 50 * cosf (around) * cosf (up),
@@ -439,9 +456,11 @@ parallax_mapping_display_effect (sync_info *sync, void *params, int iparam)
 
   GX_SetPixelFmt (GX_PF_RGB8_Z24, GX_ZC_LINEAR);
   
-  /* We want alpha blending.  */
-  //GX_SetBlendMode (GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+  GX_SetZMode (GX_TRUE, GX_LEQUAL, GX_TRUE);
   GX_SetBlendMode (GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_SET);
+  GX_SetCullMode (GX_CULL_BACK);
+  GX_SetColorUpdate (GX_TRUE);
+  GX_SetAlphaUpdate (GX_FALSE);
   
   object_loc_initialise (&map_flat_loc, GX_PNMTX0);
   object_set_screenspace_tex_matrix (&map_flat_loc, GX_TEXMTX4);
@@ -464,20 +483,43 @@ parallax_mapping_display_effect (sync_info *sync, void *params, int iparam)
   object_set_arrays (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0, GX_VA_TEX0);
 
+#ifdef USE_DISPLAY_LISTS
+  if (pdata->column_dl_size == 0)
+    {
+      DCInvalidateRange (pdata->column_dl, COLUMN_DL_SIZE);
+      GX_BeginDispList (pdata->column_dl, COLUMN_DL_SIZE);
+      object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
+		     GX_VTXFMT0);
+      pdata->column_dl_size = GX_EndDispList ();
+      srv_printf ("Initialised display list for column object (%u bytes)\n",
+		  pdata->column_dl_size);
+    }
+#endif
+
   for (i = 0; i < 6; i++)
     {
       guMtxTrans (col_mv, 75.0, 0.0, 25.0 + i * 75);
 
       object_set_matrices (&scene, &pdata->column_loc, scene.camera, col_mv,
 			   col_scale, NULL, 0);
+#ifdef USE_DISPLAY_LIST
+      if (pdata->column_dl_size)
+        GX_CallDispList (pdata->column_dl, pdata->column_dl_size);
+#else
       object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0);
+#endif
 
       guMtxTrans (col_mv, -75.0, 0.0, 25.0 + i * 75);
       object_set_matrices (&scene, &pdata->column_loc, scene.camera, col_mv,
 			   col_scale, NULL, 0);
+#ifdef USE_DISPLAY_LIST
+      if (pdata->column_dl_size)
+        GX_CallDispList (pdata->column_dl, pdata->column_dl_size);
+#else
       object_render (&column_obj, OBJECT_POS | OBJECT_NORM | OBJECT_TEXCOORD,
 		     GX_VTXFMT0);
+#endif
     }
   
   /*screenspace_rect (pdata->fog_shader, GX_VTXFMT0, 0);*/

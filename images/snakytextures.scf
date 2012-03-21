@@ -1,5 +1,4 @@
 <filepath="snakeoffset.png" id="snake_offset" colfmt=1 />
-<filepath="snaketex.png" id="snake_texture" colfmt=1 mipmap=yes minlod=0 maxlod=2 />
+<filepath="snaketex.png" id="snake_texture" colfmt=0 mipmap=yes minlod=0 maxlod=2 />
 <filepath="snaketanmap.png" id="snake_tanmap" colfmt=3 />
-<filepath="marble.png" id="column_texture" colfmt=14 mipmap=yes minlod=0 maxlod=6 />
-<filepath="fog.png" id="fog_texture" colfmt=1 />
+<filepath="marble2.png" id="column_texture" colfmt=14 mipmap=yes minlod=0 maxlod=6 />
