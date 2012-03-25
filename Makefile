@@ -1,13 +1,16 @@
 # Dirty configurable bits, uncomment as appropriate
 
-CONSOLE := gamecube
-#CONSOLE := wii
+#CONSOLE := gamecube
+CONSOLE := wii
 
 FILESYSTEM := -lfat
 #FILESYSTEM := -lext2fs
 
 #REFRESHRATE := -DPAL60
 REFRESHRATE :=
+
+#NETWORKING := -DNETWORKING
+NETWORKING :=
 
 ifeq ($(CONSOLE),gamecube)
 include $(DEVKITPPC)/gamecube_rules
@@ -22,10 +25,8 @@ TEVSL :=	$(TOOLROOT)/tevsl/tevsl
 OBJCONVERT :=	$(TOOLROOT)/objconvert/objconvert
 BUMPTOOL :=	$(TOOLROOT)/bumpmap-tool/bumpmap
 TARGET :=	demo.dol
-CFLAGS =	-g -O3 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(INCLUDE)
-ifeq ($(CONSOLE),gamecube)
-CFLAGS +=	-DNETWORKING
-else
+CFLAGS =	-g -O3 -Wno-unused-value -Werror -Wall -std=gnu99 $(REFRESHRATE) $(MACHDEP) $(NETWORKING) $(INCLUDE)
+ifeq ($(CONSOLE),wii)
 CFLAGS +=	-DWII
 endif
 ifeq ($(FILESYSTEM),-lext2fs)

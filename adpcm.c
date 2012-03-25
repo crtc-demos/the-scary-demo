@@ -26,6 +26,27 @@ typedef struct
 
 static aram_buffer_info aram_buffer;
 
+#ifdef WII
+void
+aram_cache_init (aram_buffer_info *abuf __attribute__((unused)),
+		 u32 aram_handle __attribute__((unused)),
+		 u32 start_idx __attribute__((unused)))
+{
+}
+
+static unsigned char *whole_song;
+
+/* The ARAM buffering doesn't work on a Wii! Just load the file into the
+   (larger amount of) RAM instead.  */
+
+static unsigned char
+aram_read (aram_buffer_info *abuf __attribute__((unused)), int offset)
+{
+  return whole_song[offset];
+}
+
+#else  /* Gamecube.  */
+
 /* Start with pre-loaded blocks (seems easier...).  */
 
 void
@@ -46,6 +67,7 @@ aram_cache_init (aram_buffer_info *abuf, u32 aram_handle, u32 start_idx)
       abuf->block[0] = memalign (32, ARAM_CACHE_BLOCKSIZE);
       abuf->block[1] = memalign (32, ARAM_CACHE_BLOCKSIZE);
     }
+  while (AR_GetDMAStatus () != 0);
   DCInvalidateRange (abuf->block[0], ARAM_CACHE_BLOCKSIZE);
   AR_StartDMA (AR_ARAMTOMRAM, (u32) abuf->block[0], aram_handle + start_block,
 	       ARAM_CACHE_BLOCKSIZE);
@@ -114,6 +136,8 @@ aram_read (aram_buffer_info *abuf, int offset)
 
   return 0;
 }
+
+#endif
 
 typedef struct
 {
@@ -327,13 +351,23 @@ adpcm_load_file (const char *filename)
   FILE *fh;
   u32 song;
   unsigned char *mem = memalign (32, LOAD_BLOCKSIZE);
-  size_t nread, total = 0;
+  size_t nread;
   unsigned int song_length;
+#ifndef WII
+  size_t total = 0;
   int sometimes = 0;
+  int first = 1;
+#endif
 
-  stat (filename, &buf);
+  if (stat (filename, &buf) != 0)
+    {
+      srv_printf ("Can't stat songfile\n");
+      return 0;
+    }
+
   song_length = buf.st_size;
-  
+
+#ifndef WII
   song = AR_Alloc (song_length);
   
   if (!song)
@@ -341,13 +375,41 @@ adpcm_load_file (const char *filename)
       srv_printf ("Can't allocate ARAM\n");
       return 0;
     }
+#endif
   
   fh = fopen (filename, "r");
+  
+  if (!fh)
+    {
+      srv_printf ("Can't load song!\n");
+      return 0;
+    }
 
+#ifdef WII
+  whole_song = malloc (song_length);
+  
+  if (!whole_song)
+    {
+      srv_printf ("Can't allocate memory\n");
+      return 0;
+    }
+  
+  srv_printf ("Loading '%s' into RAM (%d bytes)", filename, song_length);
+  
+  nread = fread (whole_song, 1, song_length, fh);
+  if (nread != song_length)
+    srv_printf ("failed!\n");
+#else
   srv_printf ("Loading '%s' to ARAM (%d bytes)", filename, song_length);
   do
     {
       nread = fread (mem, 1, LOAD_BLOCKSIZE, fh);
+      if (first)
+        {
+	  srv_printf ("Read %d bytes (first few are %d,%d,%d,%d,%d\n",
+		      nread, mem[0], mem[1], mem[2], mem[3], mem[4]);
+	  first = 0;
+	}
       DCFlushRange (mem, LOAD_BLOCKSIZE);
       AR_StartDMA (AR_MRAMTOARAM, (u32) mem, song + total, (nread + 31) & ~31);
       /* Busy-wait.  This is the slowest possible way of doing things!  */
@@ -361,6 +423,7 @@ adpcm_load_file (const char *filename)
 	}
     }
   while (total < song_length);
+#endif
 
   fclose (fh);
   
@@ -375,7 +438,7 @@ adpcm_load_file (const char *filename)
 #if 0
   aram_cache_init (&aram_buffer, song);
   read_header (&aram_buffer, &playback_state_0);
-  srv_printf ("Writing raw wave...\n");
+  /*srv_printf ("Writing raw wave...\n");
   fh = fopen ("sd:/raw-wave.out", "w");
   {
     int res;
@@ -394,7 +457,7 @@ adpcm_load_file (const char *filename)
       } while (res == 0);
   }
   srv_printf ("Done.\n");
-  fclose (fh);
+  fclose (fh);*/
 #endif
 
   return song;

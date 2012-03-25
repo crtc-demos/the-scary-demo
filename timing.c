@@ -284,12 +284,20 @@ main (int argc, char *argv[])
 #ifdef NETWORKING
   printf ("Configuring network ...\n");
 
+  // Configure the network interface
+#ifdef WII
+  strcpy (localip, "192.168.1.66");
+  strcpy (gateway, "192.168.1.254");
+  strcpy (netmask, "192.168.1.0");
+
+  ret = if_config (localip, netmask, gateway, TRUE);
+#else
   strcpy (localip, "192.168.2.254");
   strcpy (gateway, "192.168.2.251");
   strcpy (netmask, "192.168.2.248");
 
-  // Configure the network interface
   ret = if_config (localip, netmask, gateway, FALSE);
+#endif
 
   if (ret >= 0)
     printf ("network configured, ip: %s, gw: %s, mask %s\n", localip,
@@ -441,7 +449,6 @@ main (int argc, char *argv[])
   AESND_Init (NULL);
   
   adpcm_init ();
-  //song_handle = adpcm_load_file ("sd:/adpcm.wav");
 #ifdef WII
   song_handle = adpcm_load_file ("sd:/apps/TheScaryDemo/tesla-demo.wav");
 #else
