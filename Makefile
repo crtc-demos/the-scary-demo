@@ -1,7 +1,7 @@
 # Dirty configurable bits, uncomment as appropriate
 
-#CONSOLE := gamecube
-CONSOLE := wii
+CONSOLE := gamecube
+#CONSOLE := wii
 
 FILESYSTEM := -lfat
 #FILESYSTEM := -lext2fs
@@ -53,7 +53,8 @@ OBJS :=		sintab.o backbuffer.o list.o server.o matrixutil.o \
 		light.o lighting-texture.o utility-texture.o spline.o \
 		shadow.o world.o pumpkin.o soft-crtc.o tubes.o ghost-obj.o \
 		reflection.o spooky-ghost.o bloom.o glass.o \
-		parallax-mapping.o tentacles.o greets.o adpcm.o timing.o
+		parallax-mapping.o tentacles.o greets.o loading.o adpcm.o \
+		timing.o
 
 SHADERS_INC :=  plain-lighting.inc specular-lighting.inc \
 		shadow-mapped-lighting.inc shadow-depth.inc \
@@ -76,7 +77,8 @@ TEXTURES :=	images/more_stones.tpl.o images/stones_bump.tpl.o \
 		images/snakeskin.tpl.o images/pumpkin_skin.tpl.o \
 		images/mighty_zebu.tpl.o images/gradient.tpl.o \
 		images/sky.tpl.o images/skull_tangentmap_gx.tpl.o \
-		images/snakytextures.tpl.o images/font.tpl.o
+		images/snakytextures.tpl.o images/font.tpl.o \
+		images/loading.tpl.o
 
 MODS :=		back_to_my_roots.mod.o
 

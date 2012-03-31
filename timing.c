@@ -38,6 +38,7 @@
 #include "sintab.h"
 #include "reflection.h"
 #include "greets.h"
+#include "loading.h"
 
 /* Not in any header file AFAICT...  */
 extern u64 gettime (void);
@@ -280,6 +281,14 @@ main (int argc, char *argv[])
 
   /* Hopefully this will trigger if we exit unexpectedly...  */
   atexit (return_to_loader);
+
+  /* Make sure EFB is blank...  */
+  do_copy = TRUE;
+  copy_to_xfb (0);
+
+  draw_loading_screen ();
+  do_copy = TRUE;
+  copy_to_xfb (0);
 
 #ifdef NETWORKING
   printf ("Configuring network ...\n");
