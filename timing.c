@@ -139,6 +139,50 @@ copy_to_xfb (u32 count)
     }
 }
 
+#ifdef PROGRESSIVE_SCAN
+
+/* This bit from Extrems... need the libogc version from:
+
+   https://code.google.com/p/devkitrice/
+   
+   in order to build with this, at present.  */
+
+GXRModeObj TVPal528Prog =
+{
+  VI_TVMODE_PAL_PROG,                 // viDisplayMode
+  640,                                // fbWidth
+  528,                                // efbHeight
+  528,                                // xfbHeight
+  (VI_MAX_WIDTH_PAL - 720)/2,         // viXOrigin
+  (VI_MAX_HEIGHT_PAL - 528)/2,        // viYOrigin
+  720,                                // viWidth
+  528,                                // viHeight
+  VI_XFBMODE_SF,                      // xFBmode
+  GX_FALSE,                           // field_rendering
+  GX_FALSE,                           // aa
+
+  // sample points arranged in increasing Y order
+  {
+    {6,6},{6,6},{6,6},  // pix 0, 3 sample points, 1/12 units, 4 bits each
+    {6,6},{6,6},{6,6},  // pix 1
+    {6,6},{6,6},{6,6},  // pix 2
+    {6,6},{6,6},{6,6}   // pix 3
+  },
+
+  // vertical filter[7], 1/64 units, 6 bits each
+  {
+    0,         // line n-1
+    0,         // line n-1
+    21,        // line n
+    22,        // line n
+    21,        // line n
+    0,         // line n+1
+    0          // line n+1
+  }
+};
+
+#endif
+
 void *
 initialise ()
 {
@@ -154,7 +198,11 @@ initialise ()
   /* Is this PAL60 mode?  */
   rmode = &TVEurgb60Hz480Int;
 #else
+#ifdef PROGRESSIVE_SCAN
+  rmode = &TVPal528Prog;
+#else
   rmode = &TVPal528IntDf;
+#endif
 #endif
   framebuffer = MEM_K0_TO_K1 (SYS_AllocateFramebuffer (rmode));
  /* console_init (framebuffer, 20, 20, rmode->fbWidth, rmode->xfbHeight,

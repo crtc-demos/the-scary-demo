@@ -1,7 +1,7 @@
 # Dirty configurable bits, uncomment as appropriate
 
-CONSOLE := gamecube
-#CONSOLE := wii
+#CONSOLE := gamecube
+CONSOLE := wii
 
 FILESYSTEM := -lfat
 #FILESYSTEM := -lext2fs
